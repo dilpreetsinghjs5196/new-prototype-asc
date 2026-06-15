@@ -1,29 +1,30 @@
-import React, { useState } from 'react';
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  Legend, 
-  BarChart, 
+import React, { useState, useEffect } from 'react';
+import { db } from './lib/supabase';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  BarChart,
   Bar,
   PieChart,
   Pie,
   Cell
 } from 'recharts';
-import { 
-  LayoutDashboard, 
-  Clock, 
-  CalendarClock, 
-  Stethoscope, 
-  TrendingUp, 
-  Package, 
-  AlertTriangle, 
-  Sparkles, 
-  DollarSign, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Clock,
+  CalendarClock,
+  Stethoscope,
+  TrendingUp,
+  Package,
+  AlertTriangle,
+  Sparkles,
+  DollarSign,
+  Settings,
   ChevronRight,
   TrendingDown,
   Info,
@@ -40,7 +41,11 @@ import {
   Database,
   HelpCircle,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Users,
+  Edit,
+  Trash2,
+  Plus
 } from 'lucide-react';
 
 // ==========================================
@@ -56,16 +61,16 @@ const MOCK_OR_UTIL_TREND = [
 ];
 
 const MOCK_SURGEON_PERF = [
-  { name: 'Dr. David Smith', netMargin: 263450, marginCase: 5488 },
-  { name: 'Dr. Sarah Lee', netMargin: 215630, marginCase: 5989 },
-  { name: 'Dr. James Johnson', netMargin: 157850, marginCase: 5637 },
-  { name: 'Dr. Michael Patel', netMargin: 142910, marginCase: 3485 },
-  { name: 'Dr. Emily Davis', netMargin: 85230, marginCase: 2749 }
+  { name: 'Dr. Malinoski Kelly', netMargin: 263450, marginCase: 5488 },
+  { name: 'Dr. Gardner Paul', netMargin: 215630, marginCase: 5989 },
+  { name: 'Dr. Bonett Andrew', netMargin: 157850, marginCase: 5637 },
+  { name: 'Dr. Walsh Mark', netMargin: 142910, marginCase: 3485 },
+  { name: 'Dr. Baccaro Leopoldo', netMargin: 85230, marginCase: 2749 }
 ];
 
 const MOCK_SURGEONS_DETAILS = {
-  'Dr. David Smith': {
-    name: 'Dr. David Smith',
+  'Dr. Malinoski Kelly': {
+    name: 'Dr. Malinoski Kelly',
     specialty: 'Orthopedic Surgery',
     avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=256&h=256&q=80',
     color: '#3b82f6',
@@ -103,7 +108,7 @@ const MOCK_SURGEONS_DETAILS = {
       { date: 'May 12', procedure: 'Total Knee Joint Repair', reason: 'Patient No-Show', loss: 7905 }
     ],
     aiInsights: [
-      { id: 1, type: 'high', icon: '💲', title: 'Standardize Anchor Brand', desc: "Standardizing implant anchors can save $900 per 10 cases based on Dr. Smith's baseline preference card." },
+      { id: 1, type: 'high', icon: '💲', title: 'Standardize Anchor Brand', desc: "Standardizing implant anchors can save $900 per 10 cases based on Dr. Malinoski's baseline preference card." },
       { id: 2, type: 'med', icon: '⏳', title: 'Parallel Anesthesia Prep', desc: 'Pre-op block room blocks could reduce avg procedure duration by 6 mins, adding 4 potential slots per month.' }
     ],
     cptBreakdown: [
@@ -112,8 +117,8 @@ const MOCK_SURGEONS_DETAILS = {
       { code: '27447', desc: 'Total Knee Joint Repair', cases: 10, avgTime: 92, margin: 21590 }
     ]
   },
-  'Dr. Sarah Lee': {
-    name: 'Dr. Sarah Lee',
+  'Dr. Gardner Paul': {
+    name: 'Dr. Gardner Paul',
     specialty: 'General Surgery',
     avatar: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&w=256&h=256&q=80',
     color: '#10b981',
@@ -149,15 +154,15 @@ const MOCK_SURGEONS_DETAILS = {
       { date: 'May 10', procedure: 'Shoulder Arthroscopy', reason: 'Incomplete Pre-Op Clearance', loss: 4200 }
     ],
     aiInsights: [
-      { id: 1, type: 'med', icon: '✨', title: 'High Efficiency Benchmark', desc: 'Dr. Lee achieves turnover times 10 mins faster than the facility baseline. Staff alignment is optimal.' }
+      { id: 1, type: 'med', icon: '✨', title: 'High Efficiency Benchmark', desc: 'Dr. Gardner achieves turnover times 10 mins faster than the facility baseline. Staff alignment is optimal.' }
     ],
     cptBreakdown: [
       { code: '23430', desc: 'Laparoscopic Cholecystectomy', cases: 22, avgTime: 50, margin: 135400 },
       { code: '49505', desc: 'Inguinal Hernia Repair', cases: 14, avgTime: 55, margin: 80230 }
     ]
   },
-  'Dr. Michael Patel': {
-    name: 'Dr. Michael Patel',
+  'Dr. Walsh Mark': {
+    name: 'Dr. Walsh Mark',
     specialty: 'Ophthalmology & Gen Surgery',
     avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=256&h=256&q=80',
     color: '#f59e0b',
@@ -203,8 +208,8 @@ const MOCK_SURGEONS_DETAILS = {
       { code: '49505', desc: 'Inguinal Hernia Repair', cases: 12, avgTime: 102, margin: 44460 }
     ]
   },
-  'Dr. James Johnson': {
-    name: 'Dr. James Johnson',
+  'Dr. Bonett Andrew': {
+    name: 'Dr. Bonett Andrew',
     specialty: 'Spine Surgery',
     avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=256&h=256&q=80',
     color: '#8b5cf6',
@@ -250,8 +255,8 @@ const MOCK_SURGEONS_DETAILS = {
       { code: '63030', desc: 'Carpal Tunnel Release', cases: 6, avgTime: 40, margin: 3220 }
     ]
   },
-  'Dr. Emily Davis': {
-    name: 'Dr. Emily Davis',
+  'Dr. Baccaro Leopoldo': {
+    name: 'Dr. Baccaro Leopoldo',
     specialty: 'Ophthalmology / Gynecology',
     avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=256&h=256&q=80',
     color: '#ec4899',
@@ -317,41 +322,40 @@ const MOCK_PROFITABILITY_SUMMARY = [
 
 // Legacy Timeline data (for Schedule Optimizer subtabs)
 const INITIAL_SURGERIES = [
-  { id: 1, or: 'OR 1', label: 'Total Knee', doctor: 'Dr. Smith', start: '7:30 AM', end: '9:30 AM', startMin: 450, endMin: 570, marginType: 'high', code: '27130', revenue: 22125, supplies: 4800, implants: 6200, labor: 1800, roomCost: 1360, margin: 7965 },
+  { id: 1, or: 'OR 1', label: 'Total Knee', doctor: 'Dr. Malinoski', start: '7:30 AM', end: '9:30 AM', startMin: 450, endMin: 570, marginType: 'high', code: '27130', revenue: 22125, supplies: 4800, implants: 6200, labor: 1800, roomCost: 1360, margin: 7965 },
   { id: 2, or: 'OR 1', label: 'Shoulder Arthroscopy', doctor: 'Dr. Jones', start: '10:00 AM', end: '11:30 AM', startMin: 600, endMin: 690, marginType: 'med', code: '29824', revenue: 11230, supplies: 2400, implants: 2800, labor: 1350, roomCost: 2480, margin: 4200 },
-  { id: 3, or: 'OR 1', label: 'Hip Replacement', doctor: 'Dr. Johnson', start: '12:30 PM', end: '3:00 PM', startMin: 750, endMin: 900, marginType: 'high', code: '27132', revenue: 25400, supplies: 5100, implants: 7500, labor: 2250, roomCost: 3100, margin: 7450 },
+  { id: 3, or: 'OR 1', label: 'Hip Replacement', doctor: 'Dr. Bonett', start: '12:30 PM', end: '3:00 PM', startMin: 750, endMin: 900, marginType: 'high', code: '27132', revenue: 25400, supplies: 5100, implants: 7500, labor: 2250, roomCost: 3100, margin: 7450 },
   { id: 4, or: 'OR 1', label: 'Block', doctor: 'System Block', start: '3:30 PM', end: '5:00 PM', startMin: 930, endMin: 1020, marginType: 'blocked' },
 
-  { id: 5, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Lee', start: '7:00 AM', end: '8:00 AM', startMin: 420, endMin: 480, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
-  { id: 6, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Lee', start: '8:30 AM', end: '9:30 AM', startMin: 510, endMin: 570, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
-  { id: 7, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Lee', start: '10:00 AM', end: '11:00 AM', startMin: 600, endMin: 660, marginType: 'high', code: '27447', revenue: 9105, supplies: 1450, implants: 1600, labor: 900, roomCost: 2450, margin: 4910 },
-  { id: 8, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Lee', start: '11:30 AM', end: '12:30 PM', startMin: 690, endMin: 750, marginType: 'low', code: '66984', revenue: 4550, supplies: 1550, implants: 1100, labor: 900, roomCost: 800, margin: 200 },
-  { id: 9, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Patel', start: '1:00 PM', end: '2:00 PM', startMin: 780, endMin: 840, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
+  { id: 5, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '7:00 AM', end: '8:00 AM', startMin: 420, endMin: 480, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
+  { id: 6, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '8:30 AM', end: '9:30 AM', startMin: 510, endMin: 570, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
+  { id: 7, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '10:00 AM', end: '11:00 AM', startMin: 600, endMin: 660, marginType: 'high', code: '27447', revenue: 9105, supplies: 1450, implants: 1600, labor: 900, roomCost: 2450, margin: 4910 },
+  { id: 8, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '11:30 AM', end: '12:30 PM', startMin: 690, endMin: 750, marginType: 'low', code: '66984', revenue: 4550, supplies: 1550, implants: 1100, labor: 900, roomCost: 800, margin: 200 },
+  { id: 9, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Walsh', start: '1:00 PM', end: '2:00 PM', startMin: 780, endMin: 840, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
   { id: 10, or: 'OR 2', label: 'Block', doctor: 'System Block', start: '2:30 PM', end: '5:00 PM', startMin: 870, endMin: 1020, marginType: 'blocked' },
 
-  { id: 11, or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Patel', start: '7:15 AM', end: '8:45 AM', startMin: 435, endMin: 525, marginType: 'high', code: '49505', revenue: 10200, supplies: 1200, implants: 1800, labor: 1350, roomCost: 2100, margin: 3750 },
-  { id: 12, or: 'OR 3', label: 'Gallbladder', doctor: 'Dr. Patel', start: '9:15 AM', end: '10:45 AM', startMin: 555, endMin: 645, marginType: 'med', code: '23430', revenue: 8732, supplies: 1900, implants: 1100, labor: 1350, roomCost: 2450, margin: 3450 },
-  { id: 13, or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Patel', start: '11:15 AM', end: '12:45 PM', startMin: 675, endMin: 765, marginType: 'med', code: '49505', revenue: 10200, supplies: 2100, implants: 1800, labor: 1350, roomCost: 2100, margin: 2850 },
-  { id: 14, or: 'OR 3', label: 'Appendectomy', doctor: 'Dr. Patel', start: '1:15 PM', end: '2:45 PM', startMin: 795, endMin: 885, marginType: 'med', code: '44970', revenue: 12400, supplies: 2200, implants: 2500, labor: 1350, roomCost: 3100, margin: 3250 },
+  { id: 11, or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Walsh', start: '7:15 AM', end: '8:45 AM', startMin: 435, endMin: 525, marginType: 'high', code: '49505', revenue: 10200, supplies: 1200, implants: 1800, labor: 1350, roomCost: 2100, margin: 3750 },
+  { id: 12, or: 'OR 3', label: 'Gallbladder', doctor: 'Dr. Walsh', start: '9:15 AM', end: '10:45 AM', startMin: 555, endMin: 645, marginType: 'med', code: '23430', revenue: 8732, supplies: 1900, implants: 1100, labor: 1350, roomCost: 2450, margin: 3450 },
+  { id: 13, or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Walsh', start: '11:15 AM', end: '12:45 PM', startMin: 675, endMin: 765, marginType: 'med', code: '49505', revenue: 10200, supplies: 2100, implants: 1800, labor: 1350, roomCost: 2100, margin: 2850 },
+  { id: 14, or: 'OR 3', label: 'Appendectomy', doctor: 'Dr. Walsh', start: '1:15 PM', end: '2:45 PM', startMin: 795, endMin: 885, marginType: 'med', code: '44970', revenue: 12400, supplies: 2200, implants: 2500, labor: 1350, roomCost: 3100, margin: 3250 },
   { id: 15, or: 'OR 3', label: 'Block', doctor: 'System Block', start: '3:15 PM', end: '5:00 PM', startMin: 915, endMin: 1020, marginType: 'blocked' },
 
   { id: 16, or: 'OR 4', label: 'Block', doctor: 'System Block', start: '7:00 AM', end: '10:00 AM', startMin: 420, endMin: 600, marginType: 'blocked' },
-  { id: 17, or: 'OR 4', label: 'Spine Fusion', doctor: 'Dr. Johnson', start: '10:30 AM', end: '1:30 PM', startMin: 630, endMin: 810, marginType: 'high', code: '22612', revenue: 42800, supplies: 7500, implants: 18500, labor: 2700, roomCost: 4500, margin: 9600 },
+  { id: 17, or: 'OR 4', label: 'Spine Fusion', doctor: 'Dr. Bonett', start: '10:30 AM', end: '1:30 PM', startMin: 630, endMin: 810, marginType: 'high', code: '22612', revenue: 42800, supplies: 7500, implants: 18500, labor: 2700, roomCost: 4500, margin: 9600 },
   { id: 18, or: 'OR 4', label: 'Block', doctor: 'System Block', start: '2:00 PM', end: '5:00 PM', startMin: 840, endMin: 1020, marginType: 'blocked' },
-
-  { id: 19, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Smith', start: '7:30 AM', end: '8:30 AM', startMin: 450, endMin: 510, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
-  { id: 20, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Smith', start: '9:00 AM', end: '10:00 AM', startMin: 540, endMin: 600, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
-  { id: 21, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Smith', start: '10:30 AM', end: '11:30 AM', startMin: 630, endMin: 690, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
-  { id: 22, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Smith', start: '12:00 PM', end: '1:00 PM', startMin: 720, endMin: 780, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 19, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '7:30 AM', end: '8:30 AM', startMin: 450, endMin: 510, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 20, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '9:00 AM', end: '10:00 AM', startMin: 540, endMin: 600, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 21, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '10:30 AM', end: '11:30 AM', startMin: 630, endMin: 690, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 22, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '12:00 PM', end: '1:00 PM', startMin: 720, endMin: 780, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
   { id: 23, or: 'OR 5', label: 'Block', doctor: 'System Block', start: '1:30 PM', end: '5:00 PM', startMin: 810, endMin: 1020, marginType: 'blocked' },
 
   { id: 24, or: 'OR 6', label: 'Block / Unavailable', doctor: 'Maintenance', start: '7:00 AM', end: '5:00 PM', startMin: 420, endMin: 1020, marginType: 'blocked' }
 ];
 
 const WAITLIST_CASES = [
-  { id: 101, code: '29827', desc: 'Knee Scope / Arthroscopy', surgeon: 'Dr. David Smith', duration: 60, rev: 12842, supplies: 3400, implants: 1819, labor: 900, room: 900, margin: 5823 },
-  { id: 102, code: '27447', desc: 'Total Knee Joint Repair', surgeon: 'Dr. Sarah Lee', duration: 90, rev: 21105, supplies: 4500, implants: 6000, labor: 1350, room: 1350, margin: 7905 },
-  { id: 103, code: '63030', desc: 'Carpal Tunnel Release', surgeon: 'Dr. James Johnson', duration: 45, rev: 3420, supplies: 850, implants: 0, labor: 675, room: 675, margin: 1220 }
+  { id: 101, code: '29827', desc: 'Knee Scope / Arthroscopy', surgeon: 'Dr. Malinoski Kelly', duration: 60, rev: 12842, supplies: 3400, implants: 1819, labor: 900, room: 900, margin: 5823 },
+  { id: 102, code: '27447', desc: 'Total Knee Joint Repair', surgeon: 'Dr. Gardner Paul', duration: 90, rev: 21105, supplies: 4500, implants: 6000, labor: 1350, room: 1350, margin: 7905 },
+  { id: 103, code: '63030', desc: 'Carpal Tunnel Release', surgeon: 'Dr. Bonett Andrew', duration: 45, rev: 3420, supplies: 850, implants: 0, labor: 675, room: 675, margin: 1220 }
 ];
 
 const PREFERENCE_CARDS = [
@@ -367,18 +371,69 @@ const PREFERENCE_CARDS = [
       { name: 'Miscellaneous Drapes/Gowns', qty: 1, cost: 320 }
     ],
     surgeons: [
-      { name: 'Dr. David Smith', actualCost: 1450, variance: 20.8, supplyItems: 8 },
-      { name: 'Dr. James Johnson', actualCost: 1180, variance: -1.7, supplyItems: 5 },
-      { name: 'Dr. Michael Patel', actualCost: 1620, variance: 35.0, supplyItems: 10 }
+      { name: 'Dr. Malinoski Kelly', actualCost: 1450, variance: 20.8, supplyItems: 8 },
+      { name: 'Dr. Bonett Andrew', actualCost: 1180, variance: -1.7, supplyItems: 5 },
+      { name: 'Dr. Walsh Mark', actualCost: 1620, variance: 35.0, supplyItems: 10 }
     ]
+  }
+];
+
+const MOCK_PATIENTS = [
+  {
+    id: 1,
+    name: "GARON, SUZANNE",
+    dob: "1960-11-15",
+    mrn: "2034",
+    phone: "2397784568",
+    email: "suzimail@me.com",
+    address: "7793 Hawthorne Drive #2904",
+    insurance_provider: "UnitedHealthcare",
+    insurance_policy_number: "UHC-2034091",
+    gender: "Female"
+  },
+  {
+    id: 2,
+    name: "SMITH, JOHNATHAN",
+    dob: "1975-04-22",
+    mrn: "1052",
+    phone: "3125550198",
+    email: "jsmith75@outlook.com",
+    address: "415 Pine Street",
+    insurance_provider: "Blue Cross Blue Shield",
+    insurance_policy_number: "BCBS-8839201",
+    gender: "Male"
+  },
+  {
+    id: 3,
+    name: "RODRIGUEZ, MARIA",
+    dob: "1988-09-02",
+    mrn: "4491",
+    phone: "7185558392",
+    email: "m.rodriguez@gmail.com",
+    address: "882 Broadway Apt 4B",
+    insurance_provider: "Aetna",
+    insurance_policy_number: "AET-3301928",
+    gender: "Female"
+  },
+  {
+    id: 4,
+    name: "DAVIS, ROBERT",
+    dob: "1952-12-30",
+    mrn: "3029",
+    phone: "4155552093",
+    email: "robbied@sbcglobal.net",
+    address: "1225 Oak Lane",
+    insurance_provider: "Cigna",
+    insurance_policy_number: "CIG-9041283",
+    gender: "Male"
   }
 ];
 
 // ==========================================
 // COMPONENT: SURGEON PROFILE PAGE
 // ==========================================
-function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActiveProfileTab }) {
-  const surg = MOCK_SURGEONS_DETAILS[surgeonName];
+function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActiveProfileTab, surgeonsDetails }) {
+  const surg = surgeonsDetails[surgeonName];
   if (!surg) {
     return (
       <div className="dashboard-card" style={{ padding: '24px', textAlign: 'center' }}>
@@ -392,7 +447,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
     <div className="surgeon-profile-page" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Back link */}
       <div>
-        <button 
+        <button
           onClick={onBack}
           style={{
             background: 'none',
@@ -474,13 +529,13 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
 
       {/* Profile Page Tab Content */}
       <div className="profile-tab-content" style={{ marginTop: '10px' }}>
-        
+
         {/* ==========================================
             SUB-TAB: OVERVIEW
             ========================================== */}
         {activeProfileTab === 'overview' && (
           <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
-            
+
             {/* Historical trend chart */}
             <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="card-header">
@@ -506,7 +561,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
               <div className="card-header">
                 <h3 className="card-title">Operational Efficiency Benchmarks</h3>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {/* Benchmark 1 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -516,7 +571,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                   </div>
                   <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
                     <div style={{ height: '100%', width: `${Math.min(100, (surg.metrics.avgDuration / 120) * 100)}%`, backgroundColor: surg.metrics.avgDuration > 64 ? 'var(--color-orange)' : 'var(--color-green)' }} />
-                    <div style={{ position: 'absolute', left: `${(64/120)*100}%`, top: '0', bottom: '0', width: '2px', backgroundColor: '#fff', opacity: '0.6' }} title="Facility Average" />
+                    <div style={{ position: 'absolute', left: `${(64 / 120) * 100}%`, top: '0', bottom: '0', width: '2px', backgroundColor: '#fff', opacity: '0.6' }} title="Facility Average" />
                   </div>
                 </div>
 
@@ -528,7 +583,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                   </div>
                   <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
                     <div style={{ height: '100%', width: `${Math.min(100, (surg.metrics.avgTurnover / 45) * 100)}%`, backgroundColor: surg.metrics.avgTurnover > 24 ? 'var(--color-red)' : 'var(--color-green)' }} />
-                    <div style={{ position: 'absolute', left: `${(24/45)*100}%`, top: '0', bottom: '0', width: '2px', backgroundColor: '#fff', opacity: '0.6' }} title="Facility Average" />
+                    <div style={{ position: 'absolute', left: `${(24 / 45) * 100}%`, top: '0', bottom: '0', width: '2px', backgroundColor: '#fff', opacity: '0.6' }} title="Facility Average" />
                   </div>
                 </div>
 
@@ -568,7 +623,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
             ========================================== */}
         {activeProfileTab === 'financials' && (
           <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '20px' }}>
-            
+
             {/* Financial Ledger card */}
             <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="card-header">
@@ -577,23 +632,23 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.8rem', padding: '10px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Total Case Revenue</span>
-                  <span style={{ fontWeight: '600', color: '#fff' }}>${(surg.metrics.netMargin * 2.1).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                  <span style={{ fontWeight: '600', color: '#fff' }}>${(surg.metrics.netMargin * 2.1).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Surgical Supplies</span>
-                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.netMargin * 0.35).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.netMargin * 0.35).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Implant Expenditures</span>
-                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.netMargin * 0.45).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.netMargin * 0.45).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Direct Labor Allocation</span>
-                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.cases * surg.metrics.avgDuration * 7.5).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.cases * surg.metrics.avgDuration * 7.5).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Overhead Facility Allocation</span>
-                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.cases * 950).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+                  <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.cases * 950).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', fontSize: '0.9rem', fontWeight: '700' }}>
                   <span style={{ color: '#fff' }}>Net Contribution Margin</span>
@@ -647,7 +702,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
             ========================================== */}
         {activeProfileTab === 'payer' && (
           <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.1fr', gap: '20px' }}>
-            
+
             {/* Payer Pie Chart */}
             <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <div className="card-header" style={{ width: '100%' }}>
@@ -676,7 +731,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                   <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>Cases</div>
                 </div>
               </div>
-              
+
               <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '12px' }}>
                 {surg.payerMix.map(item => (
                   <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem' }}>
@@ -726,13 +781,13 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
             ========================================== */}
         {activeProfileTab === 'supply' && (
           <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '20px' }}>
-            
+
             {/* Preference card audit info */}
             <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="card-header">
                 <h3 className="card-title">Preference Card Variance</h3>
               </div>
-              
+
               <div style={{ textAlign: 'center', padding: '16px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Average Cost Deviation</span>
                 <h2 style={{ fontSize: '2rem', fontWeight: '700', color: surg.metrics.supplyVariance.startsWith('+') ? 'var(--color-red)' : 'var(--color-green)', margin: '4px 0' }}>{surg.metrics.supplyVariance}</h2>
@@ -742,18 +797,18 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Dr. {surg.name.split(' ').pop()}\'s Avg Spend:</span>
-                  <span style={{ fontWeight: '600', color: '#fff' }}>${Math.round(1200 * (1 + parseFloat(surg.metrics.supplyVariance)/100))}</span>
+                  <span style={{ fontWeight: '600', color: '#fff' }}>${Math.round(1200 * (1 + parseFloat(surg.metrics.supplyVariance) / 100))}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Opportunity per case:</span>
                   <span style={{ color: 'var(--color-green)', fontWeight: '600' }}>
-                    {parseFloat(surg.metrics.supplyVariance) > 0 ? `$${Math.round(1200 * parseFloat(surg.metrics.supplyVariance)/100)} saving` : '$0 (Optimal)'}
+                    {parseFloat(surg.metrics.supplyVariance) > 0 ? `$${Math.round(1200 * parseFloat(surg.metrics.supplyVariance) / 100)} saving` : '$0 (Optimal)'}
                   </span>
                 </div>
               </div>
 
-              <button 
-                className="btn-header btn-primary" 
+              <button
+                className="btn-header btn-primary"
                 style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}
                 onClick={() => alert(`Standardization proposal sent to Dr. ${surg.name.split(' ').pop()}.`)}
               >
@@ -806,13 +861,13 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
             ========================================== */}
         {activeProfileTab === 'schedule' && (
           <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: '20px' }}>
-            
+
             {/* Block utilization */}
             <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="card-header">
                 <h3 className="card-title">Block Time Utilization</h3>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Allocated Block Time</span>
@@ -826,12 +881,12 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                   <span style={{ color: 'var(--text-secondary)' }}>Wasted / Blank Slots</span>
                   <span style={{ fontWeight: '600', color: 'var(--color-red)' }}>8.8 hours</span>
                 </div>
-                
+
                 <div style={{ height: '14px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '7px', overflow: 'hidden', display: 'flex', marginTop: '10px' }}>
                   <div style={{ height: '100%', width: '78%', backgroundColor: 'var(--color-blue)' }} title="OR Time Used (78%)" />
                   <div style={{ height: '100%', width: '22%', backgroundColor: 'var(--color-red)' }} title="Wasted Slot Time (22%)" />
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: '12px', fontSize: '0.7rem', marginTop: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: 'var(--color-blue)' }} />
@@ -891,18 +946,18 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
         {activeProfileTab === 'ai' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <h3 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Prescriptive Practice Recommendations</h3>
-            
+
             {surg.aiInsights.map((insight, idx) => (
-              <div 
-                key={insight.id} 
-                style={{ 
-                  display: 'flex', 
-                  gap: '16px', 
-                  backgroundColor: 'var(--bg-card)', 
-                  border: '1px solid var(--border-color)', 
-                  borderLeft: `4px solid ${insight.type === 'high' ? 'var(--color-red)' : 'var(--color-blue)'}`, 
-                  borderRadius: '6px', 
-                  padding: '16px' 
+              <div
+                key={insight.id}
+                style={{
+                  display: 'flex',
+                  gap: '16px',
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderLeft: `4px solid ${insight.type === 'high' ? 'var(--color-red)' : 'var(--color-blue)'}`,
+                  borderRadius: '6px',
+                  padding: '16px'
                 }}
               >
                 <div style={{ fontSize: '1.5rem' }}>{insight.icon}</div>
@@ -913,8 +968,8 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                   </div>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0' }}>{insight.desc}</p>
                 </div>
-                <button 
-                  className="btn-header btn-primary" 
+                <button
+                  className="btn-header btn-primary"
                   style={{ alignSelf: 'center', padding: '4px 12px', fontSize: '0.75rem' }}
                   onClick={() => alert(`Recommendation applied: ${insight.title}`)}
                 >
@@ -976,11 +1031,11 @@ export default function App() {
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedSurgeon, setSelectedSurgeon] = useState(null);
   const [profileTab, setProfileTab] = useState('overview');
-  
+
   // Schedule Optimizer Simulation State
   const [cancellationActive, setCancellationActive] = useState(true);
   const [optimizerMessage, setOptimizerMessage] = useState(
-    'CANCELLATION DETECTED: OR 3 at 9:15 AM - 10:45 AM (Gallbladder - Dr. Patel) was cancelled! Margin Impact: -$3,450.'
+    'CANCELLATION DETECTED: OR 3 at 9:15 AM - 10:45 AM (Gallbladder - Dr. Walsh) was cancelled! Margin Impact: -$3,450.'
   );
   const [showAutoSuggest, setShowAutoSuggest] = useState(false);
 
@@ -989,12 +1044,405 @@ export default function App() {
   const [supplyCostReduction, setSupplyCostReduction] = useState(0); // percentage
   const [caseVolume, setCaseVolume] = useState(0); // percentage increase
 
-  // Base KPIs (based on image dashboard)
-  const baseEbitda = 34.2;
-  const baseOrUtil = 62.4;
-  const baseProfitableUtil = 51.3;
-  const baseRevenuePerHour = 1102;
-  const baseMarginPerHour = 208;
+  // Loading and Database States
+  const [loading, setLoading] = useState(true);
+  const [surgeonsDetails, setSurgeonsDetails] = useState(MOCK_SURGEONS_DETAILS);
+  const [surgeonPerf, setSurgeonPerf] = useState(MOCK_SURGEON_PERF);
+  const [caseDist, setCaseDist] = useState(MOCK_CASE_DIST);
+  const [supplyBreakdown, setSupplyBreakdown] = useState(MOCK_SUPPLY_BREAKDOWN);
+  const [profitabilitySummary, setProfitabilitySummary] = useState(MOCK_PROFITABILITY_SUMMARY);
+  const [specialtyDist, setSpecialtyDist] = useState(MOCK_SPECIALTY_DIST);
+  const [facilityComparative, setFacilityComparative] = useState(MOCK_FACILITY_COMPARATIVE);
+  const [patients, setPatients] = useState(MOCK_PATIENTS);
+  const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [patientPage, setPatientPage] = useState(1);
+  const [patientLimit, setPatientLimit] = useState(10);
+  const [patientModalOpen, setPatientModalOpen] = useState(false);
+  const [editingPatient, setEditingPatient] = useState(null);
+  const [patientForm, setPatientForm] = useState({
+    name: '',
+    dob: '',
+    mrn: '',
+    phone: '',
+    email: '',
+    gender: '',
+    address: '',
+    insurance_provider: '',
+    insurance_policy_number: '',
+    insurance_group_number: '',
+    insurance_type: 'Primary',
+    subscriber_name: '',
+    subscriber_relationship: 'Self',
+    insurance_effective_date: '',
+    insurance_expiration_date: '',
+    copay_amount: '',
+    deductible_amount: '',
+    secondary_insurance_provider: '',
+    secondary_insurance_policy_number: '',
+    secondary_insurance_group_number: ''
+  });
+  
+  const [surgeonTableData, setSurgeonTableData] = useState([
+    { name: 'Dr. Malinoski Kelly', cases: 48, proced: '68 mins', turn: '18 mins', variance: '+18.4%', rev: 616416, supply: 163200, margin: 263450, avg: 5488, color: '#3b82f6' },
+    { name: 'Dr. Gardner Paul', cases: 36, proced: '52 mins', turn: '14 mins', variance: '-2.1%', rev: 327780, supply: 34200, margin: 215630, avg: 5989, color: '#10b981' },
+    { name: 'Dr. Walsh Mark', cases: 41, proced: '88 mins', turn: '24 mins', variance: '+31.2%', rev: 418300, supply: 122100, margin: 142910, avg: 3485, color: '#f59e0b' },
+    { name: 'Dr. Bonett Andrew', cases: 28, proced: '110 mins', turn: '29 mins', variance: '+8.4%', rev: 531200, supply: 184500, margin: 157850, avg: 5637, color: '#8b5cf6' },
+    { name: 'Dr. Baccaro Leopoldo', cases: 31, proced: '48 mins', turn: '16 mins', variance: '+12.6%', rev: 141020, supply: 32000, margin: 85230, avg: 2749, color: '#ec4899' }
+  ]);
+  
+  const [cptTableData, setCptTableData] = useState([
+    { code: '27130', desc: 'Total Knee Replacement', time: 120, turn: 25, fee: 22125, med: 18500, labor: 1800, supply: 11000, margin: 9325, pct: 42.1 },
+    { code: '29827', desc: 'Knee Scope / Arthroscopy', time: 60, turn: 15, fee: 12842, med: 10200, labor: 900, supply: 5219, margin: 6723, pct: 52.3 },
+    { code: '27447', desc: 'Cataract Surgery', time: 60, turn: 15, fee: 9105, med: 7800, labor: 900, supply: 3050, margin: 5155, pct: 56.6 },
+    { code: '23430', desc: 'Laparoscopic Cholecystectomy', time: 90, turn: 20, fee: 8732, med: 7100, labor: 1350, supply: 3000, margin: 4382, pct: 50.1 },
+    { code: '29824', desc: 'Shoulder Arthroscopy', time: 90, turn: 20, fee: 11230, med: 9100, labor: 1350, supply: 5200, margin: 4680, pct: 41.6 },
+    { code: '63030', desc: 'Carpal Tunnel Release', time: 45, turn: 15, fee: 3420, med: 2900, labor: 675, supply: 850, margin: 1895, pct: 55.4 },
+    { code: '49505', desc: 'Inguinal Hernia Repair', time: 90, turn: 20, fee: 10200, med: 8200, labor: 1350, supply: 3000, margin: 5850, pct: 57.3 }
+  ]);
+
+  // Base KPIs (based on database/simulator)
+  const [baseEbitda, setBaseEbitda] = useState(34.2);
+  const [baseOrUtil, setBaseOrUtil] = useState(62.4);
+  const [baseProfitableUtil, setBaseProfitableUtil] = useState(51.3);
+  const [baseRevenuePerHour, setBaseRevenuePerHour] = useState(1102);
+  const [baseMarginPerHour, setBaseMarginPerHour] = useState(208);
+  const [avgTurnoverGlobal, setAvgTurnoverGlobal] = useState(24);
+
+  // Fetch from Supabase on component mount
+  useEffect(() => {
+    async function loadDatabaseData() {
+      try {
+        setLoading(true);
+        console.log("Loading Supabase tables...");
+        
+        const [loadedSurgeons, loadedSurgeries, loadedPatients, loadedCPTList] = await Promise.all([
+          db.getSurgeons(),
+          db.getSurgeries(),
+          db.getPatients(),
+          db.getCPTCodes()
+        ]);
+
+        if (loadedSurgeons.length === 0 || loadedSurgeries.length === 0) {
+          console.warn("Database loaded but returned empty or incomplete data. Using mock fallbacks.");
+          setLoading(false);
+          return;
+        }
+
+        // Helper to format surgeon names (must match 'Dr. Lastname Firstname' expected by detail views)
+        const formatDoctorName = (s) => {
+          if (!s) return 'Unknown';
+          const last = s.lastname ? s.lastname.trim() : '';
+          const first = s.firstname ? s.firstname.trim() : '';
+          return `Dr. ${last} ${first}`.trim();
+        };
+
+        // 1. Process surgeries list
+        const mappedSurgeries = loadedSurgeries.map(surg => {
+          const doctorName = formatDoctorName(surg.surgeons) || surg.doctor_name || 'Unknown Surgeon';
+          const revenue = Number(surg.expected_reimbursement || 0);
+          const supplies = Number(surg.supplies_cost || 0);
+          const implants = Number(surg.implants_cost || 0);
+          const labor = Number(surg.actual_labor_cost || 0);
+          const roomCost = Number(surg.actual_room_cost || 0);
+          const margin = revenue - (supplies + implants + labor + roomCost);
+          
+          let marginType = 'med';
+          if (margin > 1000) marginType = 'high';
+          else if (margin < 0) marginType = 'low';
+
+          let startMin = 480;
+          if (surg.start_time) {
+            const [hours, minutes] = surg.start_time.split(':').map(Number);
+            startMin = hours * 60 + minutes;
+          }
+          const duration = surg.duration_minutes || 60;
+          const endMin = startMin + duration;
+
+          const formatTime = (minutes) => {
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const displayH = h % 12 === 0 ? 12 : h % 12;
+            const displayM = m < 10 ? '0' + m : m;
+            return `${displayH}:${displayM} ${ampm}`;
+          };
+
+          return {
+            id: surg.id,
+            or: surg.or_room || 'OR 1',
+            label: surg.notes || (surg.cpt_codes ? `CPT ${surg.cpt_codes}` : 'Procedure'),
+            doctor: doctorName,
+            start: formatTime(startMin),
+            end: formatTime(endMin),
+            startMin,
+            endMin,
+            marginType,
+            code: surg.cpt_codes ? surg.cpt_codes.split(',')[0].trim() : 'General',
+            revenue,
+            supplies,
+            implants,
+            labor,
+            roomCost,
+            margin
+          };
+        });
+        setSurgeries(mappedSurgeries);
+        setPatients(loadedPatients);
+
+        // 2. Process surgeons details
+        const surgeonsDetailsObj = {};
+        const surgeonColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'];
+        
+        loadedSurgeons.forEach((s, idx) => {
+          const fullName = formatDoctorName(s);
+          surgeonsDetailsObj[fullName] = {
+            name: fullName,
+            specialty: s.specialty || 'General Surgery',
+            avatar: `https://images.unsplash.com/photo-${idx % 2 === 0 ? '1622253692010-333f2da6031d' : '1594824813573-246434de83fb'}?auto=format&fit=crop&w=256&h=256&q=80`,
+            color: surgeonColors[idx % surgeonColors.length],
+            status: 'Active',
+            npi: s.license_number || `NPI-${1000000000 + s.id}`,
+            metrics: {
+              cases: 0,
+              avgDuration: 0,
+              avgTurnover: s.years_of_experience ? Math.max(12, 30 - s.years_of_experience) : 20,
+              supplyVariance: s.is_cosmetic_surgeon ? '-2.5%' : '+12.4%', 
+              netMargin: 0,
+              avgMargin: 0,
+              onTimeStart: 90 + (s.id % 8),
+              utilization: 65 + (s.id % 20)
+            },
+            caseHistory: [
+              { name: 'Jan', cases: 8, margin: 40000, revenue: 80000 },
+              { name: 'Feb', cases: 10, margin: 50000, revenue: 100000 },
+              { name: 'Mar', cases: 12, margin: 60000, revenue: 120000 },
+              { name: 'Apr', cases: 14, margin: 68000, revenue: 135000 },
+              { name: 'May', cases: 15, margin: 70000, revenue: 145000 }
+            ],
+            payerMix: [
+              { name: 'Commercial', value: 20, revenue: 200000, margin: 145000, color: 'var(--color-blue)' },
+              { name: 'Medicare', value: 14, revenue: 110000, margin: 65000, color: 'var(--color-green)' },
+              { name: 'Self-Pay', value: 2, revenue: 17780, margin: 5630, color: 'var(--color-orange)' }
+            ],
+            supplyWaste: [
+              { item: 'Suture Packs (Monocryl 4-0)', opened: 6, used: 5, wasteCost: 35, type: 'Suture' }
+            ],
+            recentCancellations: [],
+            aiInsights: [
+              { id: 1, type: 'med', icon: '⏳', title: 'Parallel Anesthesia Prep', desc: 'Pre-op block room blocks could reduce avg procedure duration by 6 mins, adding 4 potential slots per month.' }
+            ],
+            cptBreakdown: []
+          };
+        });
+
+        // Group billing and mix calculations by surgeon
+        mappedSurgeries.forEach(surg => {
+          const doc = surg.doctor;
+          if (!surgeonsDetailsObj[doc]) {
+            surgeonsDetailsObj[doc] = {
+              name: doc,
+              specialty: 'Specialist',
+              avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=256&h=256&q=80',
+              color: '#3b82f6',
+              status: 'Active',
+              npi: 'NPI-N/A',
+              metrics: { cases: 0, avgDuration: 0, avgTurnover: 20, supplyVariance: '+0%', netMargin: 0, avgMargin: 0, onTimeStart: 90, utilization: 75 },
+              caseHistory: [],
+              payerMix: [
+                { name: 'Commercial', value: 1, revenue: surg.revenue * 0.6, margin: surg.margin * 0.6, color: 'var(--color-blue)' },
+                { name: 'Medicare', value: 1, revenue: surg.revenue * 0.4, margin: surg.margin * 0.4, color: 'var(--color-green)' }
+              ],
+              supplyWaste: [],
+              recentCancellations: [],
+              aiInsights: [],
+              cptBreakdown: []
+            };
+          }
+
+          const sd = surgeonsDetailsObj[doc];
+          sd.metrics.cases += 1;
+          sd.metrics.avgDuration += surg.duration_minutes || (surg.endMin - surg.startMin);
+          sd.metrics.netMargin += surg.margin;
+          
+          // update case history actual
+          const monthIdx = 4; // May
+          if (sd.caseHistory[monthIdx]) {
+            sd.caseHistory[monthIdx].cases = sd.metrics.cases;
+            sd.caseHistory[monthIdx].margin = sd.metrics.netMargin;
+            sd.caseHistory[monthIdx].revenue = (sd.caseHistory[monthIdx].revenue || 0) + surg.revenue;
+          }
+
+          // add to cpt breakdown
+          const cleanCode = surg.code;
+          let cptItem = sd.cptBreakdown.find(c => c.code === cleanCode);
+          if (!cptItem) {
+            cptItem = { code: cleanCode, desc: surg.label, cases: 0, avgTime: 0, margin: 0 };
+            sd.cptBreakdown.push(cptItem);
+          }
+          cptItem.cases += 1;
+          cptItem.avgTime += surg.duration_minutes;
+          cptItem.margin += surg.margin;
+        });
+
+        // Finish average metric calculations
+        Object.keys(surgeonsDetailsObj).forEach(name => {
+          const sd = surgeonsDetailsObj[name];
+          if (sd.metrics.cases > 0) {
+            sd.metrics.avgDuration = Math.round(sd.metrics.avgDuration / sd.metrics.cases);
+            sd.metrics.avgMargin = Math.round(sd.metrics.netMargin / sd.metrics.cases);
+            sd.cptBreakdown.forEach(c => {
+              c.avgTime = Math.round(c.avgTime / c.cases);
+            });
+          }
+        });
+        setSurgeonsDetails(surgeonsDetailsObj);
+
+        // 3. Process Table list for Surgeons performance
+        const surgeonTableMapped = Object.keys(surgeonsDetailsObj).map(name => {
+          const sd = surgeonsDetailsObj[name];
+          const rev = sd.caseHistory[4] ? sd.caseHistory[4].revenue || (sd.metrics.netMargin * 2.1) : (sd.metrics.netMargin * 2.1);
+          const supplyCost = rev - sd.metrics.netMargin;
+          return {
+            name: sd.name,
+            cases: sd.metrics.cases,
+            proced: `${sd.metrics.avgDuration} mins`,
+            turn: `${sd.metrics.avgTurnover} mins`,
+            variance: sd.metrics.supplyVariance,
+            rev,
+            supply: supplyCost,
+            margin: sd.metrics.netMargin,
+            avg: sd.metrics.avgMargin,
+            color: sd.color
+          };
+        }).filter(s => s.cases > 0);
+        setSurgeonTableData(surgeonTableMapped.length > 0 ? surgeonTableMapped : MOCK_SURGEON_PERF);
+
+        // 4. Update Recharts Surgeon Performance list
+        const surgeonPerfMapped = surgeonTableMapped.map(s => ({
+          name: s.name,
+          netMargin: s.margin,
+          marginCase: s.avg
+        }));
+        setSurgeonPerf(surgeonPerfMapped.length > 0 ? surgeonPerfMapped : MOCK_SURGEON_PERF);
+
+        // 5. Process Case Profitability (CPT) performance
+        const cptGroups = {};
+        mappedSurgeries.forEach(surg => {
+          const codes = surg.code.split(',');
+          codes.forEach(c => {
+            const cleanCode = c.trim();
+            if (!cptGroups[cleanCode]) {
+              cptGroups[cleanCode] = {
+                code: cleanCode,
+                desc: 'Procedure Code',
+                cases: 0,
+                time: 0,
+                turn: 20,
+                fee: 0,
+                med: 0,
+                labor: 0,
+                supply: 0,
+                margin: 0
+              };
+            }
+            const cg = cptGroups[cleanCode];
+            cg.cases += 1;
+            cg.time += surg.duration_minutes || (surg.endMin - surg.startMin);
+            cg.fee += surg.revenue;
+            cg.labor += surg.labor;
+            cg.supply += surg.supplies + surg.implants;
+            cg.margin += surg.margin;
+          });
+        });
+
+        // Resolve CPT code descriptions from database list
+        const cptTableMapped = Object.keys(cptGroups).map(code => {
+          const cg = cptGroups[code];
+          const dbCode = loadedCPTList.find(c => c.code === code);
+          const desc = dbCode ? dbCode.description : 'Surgical Procedure';
+          const avgTime = Math.round(cg.time / cg.cases);
+          const avgMargin = Math.round(cg.margin / cg.cases);
+          const pct = cg.fee > 0 ? Math.round((cg.margin / cg.fee) * 100) : 0;
+          return {
+            code,
+            desc,
+            time: avgTime,
+            turn: cg.turn,
+            fee: Math.round(cg.fee / cg.cases),
+            med: dbCode ? Number(dbCode.reimbursement) : Math.round(cg.fee / cg.cases),
+            labor: Math.round(cg.labor / cg.cases),
+            supply: Math.round(cg.supply / cg.cases),
+            margin: avgMargin,
+            pct
+          };
+        });
+        setCptTableData(cptTableMapped.length > 0 ? cptTableMapped : cptTableData);
+
+        // Calculate dynamic global KPIs
+        let totalRev = 0;
+        let totalMargin = 0;
+        let totalDuration = 0;
+        let totalTurnover = 0;
+        let countTurnover = 0;
+        mappedSurgeries.forEach(s => {
+          totalRev += s.revenue;
+          totalMargin += s.margin;
+          totalDuration += (s.endMin - s.startMin);
+        });
+
+        loadedSurgeries.forEach(s => {
+          if (s.turnover_time) {
+            totalTurnover += Number(s.turnover_time);
+            countTurnover++;
+          }
+        });
+
+        const numSurgeries = mappedSurgeries.length;
+        if (numSurgeries > 0) {
+          const calculatedEbitda = Math.round((totalMargin / totalRev) * 100);
+          setBaseEbitda(calculatedEbitda);
+          setBaseRevenuePerHour(Math.round(totalRev / (totalDuration / 60)));
+          setBaseMarginPerHour(Math.round(totalMargin / (totalDuration / 60)));
+          if (countTurnover > 0) {
+            setAvgTurnoverGlobal(Math.round(totalTurnover / countTurnover));
+          }
+
+          // update profitabilitySummary with Main ASC actual metrics
+          const updatedSummary = [...MOCK_PROFITABILITY_SUMMARY];
+          updatedSummary[0] = {
+            ...updatedSummary[0],
+            cases: numSurgeries,
+            rev: totalRev,
+            cost: totalRev - totalMargin,
+            margin: totalMargin,
+            marginPct: calculatedEbitda,
+            revHour: Math.round(totalRev / (totalDuration / 60)),
+            marginHour: Math.round(totalMargin / (totalDuration / 60))
+          };
+          setProfitabilitySummary(updatedSummary);
+
+          // update facilityComparative with Main ASC actual metrics
+          const updatedFacility = [...MOCK_FACILITY_COMPARATIVE];
+          updatedFacility[0] = {
+            ...updatedFacility[0],
+            cases: numSurgeries,
+            util: baseOrUtil,
+            revenue: totalRev,
+            directCost: totalRev - totalMargin,
+            netMargin: totalMargin
+          };
+          setFacilityComparative(updatedFacility);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error connecting or querying Supabase database:", err);
+        setLoading(false); // fallback to mock data on error
+      }
+    }
+
+    loadDatabaseData();
+  }, []);
 
   // Simulator KPI Outputs
   const simEbitda = (baseEbitda + (25 - turnoverTime) * 0.4 + supplyCostReduction * 0.5 + caseVolume * 0.15).toFixed(1);
@@ -1013,7 +1461,7 @@ export default function App() {
   const handleSimulateResolve = (waitlistCase) => {
     setCancellationActive(false);
     setOptimizerMessage('No active cancellations. Schedule optimized.');
-    
+
     const updatedSurgeries = surgeries.map(s => {
       if (s.id === 12) {
         return {
@@ -1034,7 +1482,7 @@ export default function App() {
       }
       return s;
     });
-    
+
     setSurgeries(updatedSurgeries);
     setShowAutoSuggest(false);
     alert(`Success: Replaced slot with ${waitlistCase.surgeon}'s ${waitlistCase.desc}. Revenue Impact: +$${waitlistCase.rev.toLocaleString()}, Margin: +$${waitlistCase.margin.toLocaleString()}.`);
@@ -1043,8 +1491,275 @@ export default function App() {
   const resetCancellationSim = () => {
     setSurgeries(INITIAL_SURGERIES);
     setCancellationActive(true);
-    setOptimizerMessage('CANCELLATION DETECTED: OR 3 at 9:15 AM - 10:45 AM (Gallbladder - Dr. Patel) was cancelled! Margin Impact: -$3,450.');
+    setOptimizerMessage('CANCELLATION DETECTED: OR 3 at 9:15 AM - 10:45 AM (Gallbladder - Dr. Walsh) was cancelled! Margin Impact: -$3,450.');
   };
+
+  const handleOpenAddPatient = () => {
+    setEditingPatient(null);
+    setPatientForm({
+      name: '',
+      dob: '',
+      mrn: '',
+      phone: '',
+      email: '',
+      gender: '',
+      address: '',
+      insurance_provider: '',
+      insurance_policy_number: '',
+      insurance_group_number: '',
+      insurance_type: 'Primary',
+      subscriber_name: '',
+      subscriber_relationship: 'Self',
+      insurance_effective_date: '',
+      insurance_expiration_date: '',
+      copay_amount: '',
+      deductible_amount: '',
+      secondary_insurance_provider: '',
+      secondary_insurance_policy_number: '',
+      secondary_insurance_group_number: ''
+    });
+    setPatientModalOpen(true);
+  };
+
+  const handleOpenEditPatient = (patient) => {
+    setEditingPatient(patient);
+    setPatientForm({
+      name: patient.name || '',
+      dob: patient.dob || '',
+      mrn: patient.mrn || '',
+      phone: patient.phone || '',
+      email: patient.email || '',
+      gender: patient.gender || '',
+      address: patient.address || '',
+      insurance_provider: patient.insurance_provider || '',
+      insurance_policy_number: patient.insurance_policy_number || '',
+      insurance_group_number: patient.insurance_group_number || '',
+      insurance_type: patient.insurance_type || 'Primary',
+      subscriber_name: patient.subscriber_name || '',
+      subscriber_relationship: patient.subscriber_relationship || 'Self',
+      insurance_effective_date: patient.insurance_effective_date || '',
+      insurance_expiration_date: patient.insurance_expiration_date || '',
+      copay_amount: patient.copay_amount || '',
+      deductible_amount: patient.deductible_amount || '',
+      secondary_insurance_provider: patient.secondary_insurance_provider || '',
+      secondary_insurance_policy_number: patient.secondary_insurance_policy_number || '',
+      secondary_insurance_group_number: patient.secondary_insurance_group_number || ''
+    });
+    setPatientModalOpen(true);
+  };
+
+  const handleSavePatient = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    const name = patientForm.name ? patientForm.name.trim() : '';
+    if (!name) {
+      alert('Full Name is required.');
+      return;
+    }
+    if (name.length > 20) {
+      alert('Full Name must be 20 characters or less.');
+      return;
+    }
+    if (!patientForm.dob) {
+      alert('Date of Birth is required.');
+      return;
+    }
+    if (!patientForm.mrn || !patientForm.mrn.trim()) {
+      alert('MRN Number is required.');
+      return;
+    }
+    if (!patientForm.phone || patientForm.phone.replace(/\D/g, '').length !== 10) {
+      alert('Phone must be exactly 10 digits.');
+      return;
+    }
+    if (!patientForm.gender) {
+      alert('Gender is required.');
+      return;
+    }
+    if (!patientForm.email || !patientForm.email.trim()) {
+      alert('Email is required.');
+      return;
+    }
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(patientForm.email)) {
+      alert('Invalid email format.');
+      return;
+    }
+    if (!patientForm.address || !patientForm.address.trim()) {
+      alert('Address is required.');
+      return;
+    }
+    if (!patientForm.insurance_provider || !patientForm.insurance_provider.trim()) {
+      alert('Primary Insurance Provider is required.');
+      return;
+    }
+    if (!patientForm.insurance_policy_number || !patientForm.insurance_policy_number.trim()) {
+      alert('Primary Policy Number is required.');
+      return;
+    }
+    if (!patientForm.insurance_type) {
+      alert('Primary Insurance Type is required.');
+      return;
+    }
+    if (!patientForm.subscriber_name || !patientForm.subscriber_name.trim()) {
+      alert('Subscriber Name is required.');
+      return;
+    }
+    if (!patientForm.subscriber_relationship) {
+      alert('Relationship to Subscriber is required.');
+      return;
+    }
+    if (!patientForm.insurance_effective_date) {
+      alert('Effective Date is required.');
+      return;
+    }
+    if (!patientForm.insurance_expiration_date) {
+      alert('Expiration Date is required.');
+      return;
+    }
+    if (new Date(patientForm.insurance_effective_date) >= new Date(patientForm.insurance_expiration_date)) {
+      alert('Effective Date must be before Expiration Date.');
+      return;
+    }
+
+    try {
+      if (editingPatient) {
+        // Update database
+        const updated = await db.updatePatient(editingPatient.id, patientForm);
+        
+        // Update local state
+        setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...patientForm, id: editingPatient.id } : p));
+        alert('Patient updated successfully.');
+      } else {
+        // Insert database
+        const inserted = await db.addPatient(patientForm);
+        
+        // Update local state
+        const newPatient = inserted || { ...patientForm, id: Date.now(), created_at: new Date().toISOString() };
+        setPatients(prev => [newPatient, ...prev]);
+        alert('Patient added successfully.');
+      }
+      setPatientModalOpen(false);
+    } catch (err) {
+      console.error("Database patient write failed, updating locally:", err);
+      // fallback
+      if (editingPatient) {
+        setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...patientForm } : p));
+        alert('Patient updated locally (Database sync failed).');
+      } else {
+        const localId = Date.now();
+        setPatients(prev => [{ ...patientForm, id: localId, created_at: new Date().toISOString() }, ...prev]);
+        alert('Patient added locally (Database sync failed).');
+      }
+      setPatientModalOpen(false);
+    }
+  };
+
+  const handleDeletePatient = async (patient) => {
+    if (!confirm(`Are you sure you want to permanently delete patient ${patient.name}?`)) {
+      return;
+    }
+    try {
+      await db.deletePatient(patient.id);
+      setPatients(prev => prev.filter(p => p.id !== patient.id));
+      alert('Patient deleted successfully.');
+    } catch (err) {
+      console.error("Database patient delete failed, deleting locally:", err);
+      setPatients(prev => prev.filter(p => p.id !== patient.id));
+      alert('Patient deleted locally (Database sync failed).');
+    }
+  };
+
+  const filteredPatients = patients.filter(p => {
+    const q = patientSearchQuery.toLowerCase();
+    return (
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.mrn && p.mrn.toLowerCase().includes(q)) ||
+      (p.insurance_provider && p.insurance_provider.toLowerCase().includes(q))
+    );
+  });
+
+  const totalPages = Math.ceil(filteredPatients.length / patientLimit) || 1;
+  const startIndex = (patientPage - 1) * patientLimit;
+  const endIndex = startIndex + patientLimit;
+  const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, patientPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    if (start > 1) {
+      pages.push(
+        <button key={1} className={`btn-header ${patientPage === 1 ? 'btn-primary' : ''}`} style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }} onClick={() => setPatientPage(1)}>1</button>
+      );
+      if (start > 2) {
+        pages.push(<span key="ellipsis-start" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
+      }
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(
+        <button
+          key={i}
+          className={`btn-header ${patientPage === i ? 'btn-primary' : ''}`}
+          style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }}
+          onClick={() => setPatientPage(i)}
+        >
+          {i}
+        </button>
+      );
+    }
+    
+    if (end < totalPages) {
+      if (end < totalPages - 1) {
+        pages.push(<span key="ellipsis-end" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
+      }
+      pages.push(
+        <button key={totalPages} className={`btn-header ${patientPage === totalPages ? 'btn-primary' : ''}`} style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }} onClick={() => setPatientPage(totalPages)}>{totalPages}</button>
+      );
+    }
+    
+    return pages;
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        backgroundColor: '#050b18',
+        color: '#fff',
+        fontFamily: 'Outfit, sans-serif'
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          borderRadius: '50%',
+          border: '3px solid rgba(59, 130, 246, 0.1)',
+          borderTopColor: '#3b82f6',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '20px'
+        }}></div>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Loading Command Center...</h2>
+        <p style={{ fontSize: '0.85rem', color: '#5e6c84', marginTop: '8px' }}>Connecting to Supabase Database</p>
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}} />
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -1061,15 +1776,15 @@ export default function App() {
         </div>
 
         <nav className="sidebar-menu">
-          <div 
+          <div
             className={`menu-item ${activeTab === 'dashboard' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('dashboard'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><LayoutDashboard size={16} /></div>
             Command Center
           </div>
-          
-          <div 
+
+          <div
             className={`menu-item ${activeTab === 'overview' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('overview'); setSelectedSurgeon(null); }}
           >
@@ -1077,7 +1792,7 @@ export default function App() {
             Executive Overview
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'or' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('or'); setSelectedSurgeon(null); }}
           >
@@ -1085,7 +1800,7 @@ export default function App() {
             OR Performance
           </div>
 
-          <div 
+          <div
             className={`menu-item ${(activeTab === 'surgeons' || selectedSurgeon) ? 'active' : ''}`}
             onClick={() => { setActiveTab('surgeons'); setSelectedSurgeon(null); }}
           >
@@ -1093,7 +1808,15 @@ export default function App() {
             Surgeon Performance
           </div>
 
-          <div 
+          <div
+            className={`menu-item ${activeTab === 'patients' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('patients'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Users size={16} /></div>
+            Patient Management
+          </div>
+
+          <div
             className={`menu-item ${activeTab === 'financial' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('financial'); setSelectedSurgeon(null); }}
           >
@@ -1101,7 +1824,7 @@ export default function App() {
             Financial Performance
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'cpt' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('cpt'); setSelectedSurgeon(null); }}
           >
@@ -1109,7 +1832,7 @@ export default function App() {
             Case Profitability
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'payer' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('payer'); setSelectedSurgeon(null); }}
           >
@@ -1117,7 +1840,7 @@ export default function App() {
             Payer Intelligence
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'supply' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('supply'); setSelectedSurgeon(null); }}
           >
@@ -1125,7 +1848,7 @@ export default function App() {
             Supply Chain
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'cancellations' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('cancellations'); setSelectedSurgeon(null); }}
           >
@@ -1133,7 +1856,7 @@ export default function App() {
             Cancellations
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'reports' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('reports'); setSelectedSurgeon(null); }}
           >
@@ -1141,7 +1864,7 @@ export default function App() {
             Reports & Analytics
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'ai' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('ai'); setSelectedSurgeon(null); }}
           >
@@ -1149,7 +1872,7 @@ export default function App() {
             AI Insights
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'data' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('data'); setSelectedSurgeon(null); }}
           >
@@ -1157,7 +1880,7 @@ export default function App() {
             Data Explorer
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'settings' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('settings'); setSelectedSurgeon(null); }}
           >
@@ -1165,7 +1888,7 @@ export default function App() {
             Settings
           </div>
 
-          <div 
+          <div
             className={`menu-item ${activeTab === 'help' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('help'); setSelectedSurgeon(null); }}
           >
@@ -1196,6 +1919,7 @@ export default function App() {
                   {activeTab === 'overview' && 'Executive Overview'}
                   {activeTab === 'or' && 'OR Performance'}
                   {activeTab === 'surgeons' && 'Surgeon Performance'}
+                  {activeTab === 'patients' && 'Patient Management'}
                   {activeTab === 'financial' && 'Financial Performance'}
                   {activeTab === 'cpt' && 'Case Profitability'}
                   {activeTab === 'payer' && 'Payer Intelligence'}
@@ -1216,6 +1940,7 @@ export default function App() {
                   {activeTab === 'overview' && 'Strategic summaries of health system indicators'}
                   {activeTab === 'or' && 'Deep-dive into room allocation, turnover times, and block wastage'}
                   {activeTab === 'surgeons' && 'Caseloads, turnover performance, and financial contribution by surgeon'}
+                  {activeTab === 'patients' && 'Search, filter, and view patient demographics, health insurances, and medical records'}
                   {activeTab === 'financial' && 'Analysis of revenues, expenses, EBITDA margins, and bottom lines'}
                   {activeTab === 'cpt' && 'Contribution margins, procedure times, and volumes by CPT code'}
                   {activeTab === 'payer' && 'Payer mix contribution margins and reimbursement analytics'}
@@ -1242,1291 +1967,1230 @@ export default function App() {
 
         <section className="page-body">
           {selectedSurgeon ? (
-            <SurgeonProfilePage 
-              surgeonName={selectedSurgeon} 
-              onBack={() => setSelectedSurgeon(null)} 
+            <SurgeonProfilePage
+              surgeonName={selectedSurgeon}
+              onBack={() => setSelectedSurgeon(null)}
               activeProfileTab={profileTab}
               setActiveProfileTab={setProfileTab}
+              surgeonsDetails={surgeonsDetails}
             />
           ) : (
             <>
-          {/* ==========================================
+              {/* ==========================================
               TAB: ASC COMMAND CENTER (MTD CORE)
               ========================================== */}
-          {activeTab === 'dashboard' && (
-            <>
-              {/* 6 KPI Cards Row */}
-              <div className="kpi-row">
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">EBITDA %</span>
-                    <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
-                  </div>
-                  <span className="kpi-value" style={{ color: 'var(--color-red)' }}>-18.9%</span>
-                  <div className="kpi-trend negative">
-                    vs Prior MTD <span className="kpi-trend-change">-6.2%</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,5 L20,10 L40,8 L60,18 L80,22 L100,28" fill="none" stroke="var(--color-red)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">OR Utilization</span>
-                    <div className="kpi-icon-container blue"><Clock size={12} /></div>
-                  </div>
-                  <span className="kpi-value">62.4%</span>
-                  <div className="kpi-trend positive">
-                    vs Prior MTD <span className="kpi-trend-change">58.7%</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,25 Q15,10 30,22 T60,8 T90,12 T100,5" fill="none" stroke="var(--color-blue)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">Profitable Utilization</span>
-                    <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
-                  </div>
-                  <span className="kpi-value">51.3%</span>
-                  <div className="kpi-trend positive">
-                    vs Prior MTD <span className="kpi-trend-change">46.1%</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,25 Q30,12 60,20 T100,8" fill="none" stroke="var(--color-green)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">Revenue per OR Hour</span>
-                    <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
-                  </div>
-                  <span className="kpi-value">$1,102</span>
-                  <div className="kpi-trend positive">
-                    vs Prior MTD <span className="kpi-trend-change">$1,045</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,28 L30,24 L60,18 L100,10" fill="none" stroke="var(--color-green)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">Margin per OR Hour</span>
-                    <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
-                  </div>
-                  <span className="kpi-value" style={{ color: 'var(--color-red)' }}>$208</span>
-                  <div className="kpi-trend negative">
-                    vs Prior MTD <span className="kpi-trend-change">$162</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,10 L30,12 L60,22 L100,28" fill="none" stroke="var(--color-red)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">Avg Turnover (mins)</span>
-                    <div className="kpi-icon-container orange"><Clock size={12} /></div>
-                  </div>
-                  <span className="kpi-value">24</span>
-                  <div className="kpi-trend positive">
-                    vs Prior MTD <span className="kpi-trend-change">28</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,25 L20,20 L40,15 L60,22 L80,18 L100,12" fill="none" stroke="var(--color-orange)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sub-tabs menu */}
-              <div className="subtabs-menu">
-                <button className="subtab-item active" onClick={() => setActiveTab('dashboard')}>Overview</button>
-                <button className="subtab-item" onClick={() => setActiveTab('or')}>OR Performance</button>
-                <button className="subtab-item" onClick={() => setActiveTab('surgeons')}>Surgeon Performance</button>
-                <button className="subtab-item" onClick={() => setActiveTab('financial')}>Financial Performance</button>
-                <button className="subtab-item" onClick={() => setActiveTab('cpt')}>Case Profitability</button>
-                <button className="subtab-item" onClick={() => setActiveTab('cancellations')}>Cancellations</button>
-                <button className="subtab-item" onClick={() => setActiveTab('supply')}>Supply Chain</button>
-                <button className="subtab-item" onClick={() => setActiveTab('ai')}>AI Insights</button>
-              </div>
-
-              {/* Middle Section: Trend, Surgeon and Case Donut Grid */}
-              <div className="three-column-row">
-                
-                {/* OR Utilization Trend */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">OR Utilization Trend</h3>
-                  </div>
-                  <div style={{ width: '100%', height: '220px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={MOCK_OR_UTIL_TREND} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                        <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
-                        <YAxis stroke="#5e6c84" fontSize={10} domain={[0, 100]} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '11px', color: '#fff' }} />
-                        <Line type="monotone" dataKey="util" stroke="var(--color-blue)" strokeWidth={2.5} name="OR Utilization %" dot={{ r: 4 }} />
-                        <Line type="monotone" dataKey="profUtil" stroke="var(--color-green)" strokeWidth={2} name="Profitable Utilization %" dot={{ r: 3 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Surgeon Performance */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Surgeon Performance (MTD)</h3>
-                  </div>
-                  <div style={{ width: '100%', height: '220px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={MOCK_SURGEON_PERF} layout="vertical" margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                        <XAxis type="number" stroke="#5e6c84" fontSize={9} tickLine={false} />
-                        <YAxis dataKey="name" type="category" stroke="#5e6c84" fontSize={9} width={80} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
-                        <Bar 
-                          dataKey="netMargin" 
-                          fill="var(--color-blue)" 
-                          radius={[0, 4, 4, 0]} 
-                          name="Net Margin $" 
-                          onClick={(data) => {
-                            if (data && data.name) {
-                              setSelectedSurgeon(data.name);
-                              setProfileTab('overview');
-                            }
-                          }}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Case Profitability Distribution Donut */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Case Profitability Distribution</h3>
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '220px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '140px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={MOCK_CASE_DIST}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={45}
-                            outerRadius={60}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {MOCK_CASE_DIST.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: '700', color: '#fff' }}>1,248</div>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>Total Cases</div>
+              {activeTab === 'dashboard' && (
+                <>
+                  {/* 6 KPI Cards Row */}
+                  <div className="kpi-row">
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">EBITDA %</span>
+                        <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
+                      </div>
+                      <span className="kpi-value" style={{ color: baseEbitda >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>{baseEbitda}%</span>
+                      <div className="kpi-trend negative">
+                        vs Prior MTD <span className="kpi-trend-change">-6.2%</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,5 L20,10 L40,8 L60,18 L80,22 L100,28" fill="none" stroke="var(--color-red)" strokeWidth="2" />
+                        </svg>
                       </div>
                     </div>
 
-                    <div className="donut-legend-container">
-                      {MOCK_CASE_DIST.map((item, idx) => (
-                        <div className="donut-legend-item" key={idx}>
-                          <div className="donut-legend-label">
-                            <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
-                            <span style={{ fontSize: '0.65rem' }}>{item.name.split(' ')[0]}</span>
-                          </div>
-                          <div className="donut-legend-value">
-                            <span>{item.value}</span>
-                            <span className="donut-legend-pct">{item.percentage}%</span>
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">OR Utilization</span>
+                        <div className="kpi-icon-container blue"><Clock size={12} /></div>
+                      </div>
+                      <span className="kpi-value">{baseOrUtil}%</span>
+                      <div className="kpi-trend positive">
+                        vs Prior MTD <span className="kpi-trend-change">58.7%</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,25 Q15,10 30,22 T60,8 T90,12 T100,5" fill="none" stroke="var(--color-blue)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">Profitable Utilization</span>
+                        <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
+                      </div>
+                      <span className="kpi-value">{baseProfitableUtil}%</span>
+                      <div className="kpi-trend positive">
+                        vs Prior MTD <span className="kpi-trend-change">46.1%</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,25 Q30,12 60,20 T100,8" fill="none" stroke="var(--color-green)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">Revenue per OR Hour</span>
+                        <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
+                      </div>
+                      <span className="kpi-value">${baseRevenuePerHour.toLocaleString()}</span>
+                      <div className="kpi-trend positive">
+                        vs Prior MTD <span className="kpi-trend-change">$1,045</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,28 L30,24 L60,18 L100,10" fill="none" stroke="var(--color-green)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">Margin per OR Hour</span>
+                        <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
+                      </div>
+                      <span className="kpi-value" style={{ color: baseMarginPerHour >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>${baseMarginPerHour.toLocaleString()}</span>
+                      <div className="kpi-trend negative">
+                        vs Prior MTD <span className="kpi-trend-change">$162</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,10 L30,12 L60,22 L100,28" fill="none" stroke="var(--color-red)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">Avg Turnover (mins)</span>
+                        <div className="kpi-icon-container orange"><Clock size={12} /></div>
+                      </div>
+                      <span className="kpi-value">{avgTurnoverGlobal}</span>
+                      <div className="kpi-trend positive">
+                        vs Prior MTD <span className="kpi-trend-change">28</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,25 L20,20 L40,15 L60,22 L80,18 L100,12" fill="none" stroke="var(--color-orange)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sub-tabs menu */}
+                  <div className="subtabs-menu">
+                    <button className="subtab-item active" onClick={() => setActiveTab('dashboard')}>Overview</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('or')}>OR Performance</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('surgeons')}>Surgeon Performance</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('patients')}>Patient Management</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('financial')}>Financial Performance</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('cpt')}>Case Profitability</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('cancellations')}>Cancellations</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('supply')}>Supply Chain</button>
+                    <button className="subtab-item" onClick={() => setActiveTab('ai')}>AI Insights</button>
+                  </div>
+
+                  {/* Middle Section: Trend, Surgeon and Case Donut Grid */}
+                  <div className="three-column-row">
+
+                    {/* OR Utilization Trend */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">OR Utilization Trend</h3>
+                      </div>
+                      <div style={{ width: '100%', height: '220px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={MOCK_OR_UTIL_TREND} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                            <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
+                            <YAxis stroke="#5e6c84" fontSize={10} domain={[0, 100]} tickLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '11px', color: '#fff' }} />
+                            <Line type="monotone" dataKey="util" stroke="var(--color-blue)" strokeWidth={2.5} name="OR Utilization %" dot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="profUtil" stroke="var(--color-green)" strokeWidth={2} name="Profitable Utilization %" dot={{ r: 3 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Surgeon Performance */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Surgeon Performance (MTD)</h3>
+                      </div>
+                      <div style={{ width: '100%', height: '220px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={surgeonPerf} layout="vertical" margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                            <XAxis type="number" stroke="#5e6c84" fontSize={9} tickLine={false} />
+                            <YAxis dataKey="name" type="category" stroke="#5e6c84" fontSize={9} width={80} tickLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
+                            <Bar
+                              dataKey="netMargin"
+                              fill="var(--color-blue)"
+                              radius={[0, 4, 4, 0]}
+                              name="Net Margin $"
+                              onClick={(data) => {
+                                if (data && data.name) {
+                                  setSelectedSurgeon(data.name);
+                                  setProfileTab('overview');
+                                }
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Case Profitability Distribution Donut */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Case Profitability Distribution</h3>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '220px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', height: '140px' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={caseDist}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={45}
+                                outerRadius={60}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {caseDist.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: '700', color: '#fff' }}>1,248</div>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>Total Cases</div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-              </div>
-
-              {/* Lower Section: Supply cost breakdown, AI suggestions and Cancellation Insights */}
-              <div className="three-column-row">
-                
-                {/* Supply Cost Breakdown */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Supply Cost Breakdown (MTD)</h3>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '8px', height: '200px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '130px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={MOCK_SUPPLY_BREAKDOWN}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={55}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {MOCK_SUPPLY_BREAKDOWN.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>$329.7k</div>
-                        <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cost</div>
+                        <div className="donut-legend-container">
+                          {caseDist.map((item, idx) => (
+                            <div className="donut-legend-item" key={idx}>
+                              <div className="donut-legend-label">
+                                <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
+                                <span style={{ fontSize: '0.65rem' }}>{item.name.split(' ')[0]}</span>
+                              </div>
+                              <div className="donut-legend-value">
+                                <span>{item.value}</span>
+                                <span className="donut-legend-pct">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="donut-legend-container">
-                      {MOCK_SUPPLY_BREAKDOWN.map((item, idx) => (
-                        <div className="donut-legend-item" key={idx}>
-                          <div className="donut-legend-label">
-                            <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
-                            <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
+                  </div>
+
+                  {/* Lower Section: Supply cost breakdown, AI suggestions and Cancellation Insights */}
+                  <div className="three-column-row">
+
+                    {/* Supply Cost Breakdown */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Supply Cost Breakdown (MTD)</h3>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '8px', height: '200px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', height: '130px' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={supplyBreakdown}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={55}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {supplyBreakdown.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>$329.7k</div>
+                            <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cost</div>
                           </div>
-                          <div className="donut-legend-value">
-                            <span className="donut-legend-pct">{item.percentage}%</span>
+                        </div>
+
+                        <div className="donut-legend-container">
+                          {supplyBreakdown.map((item, idx) => (
+                            <div className="donut-legend-item" key={idx}>
+                              <div className="donut-legend-label">
+                                <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
+                                <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
+                              </div>
+                              <div className="donut-legend-value">
+                                <span className="donut-legend-pct">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('supply'); }}>View Supply Chain Analytics →</a>
+                    </div>
+
+                    {/* AI Recommendations */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title"><Sparkles size={14} className="text-blue" /> AI Recommendations</h3>
+                        <span className="ai-badge">3 New</span>
+                      </div>
+
+                      <div className="ai-recommendations-list" style={{ display: 'flex', flexDirection: 'column', gap: '2px', height: '180px', overflowY: 'auto' }}>
+                        <div className="ai-recommendation-item">
+                          <span className="ai-rec-icon">⚡</span>
+                          <div className="ai-rec-details">
+                            <div className="ai-rec-header">
+                              Optimize Block Utilization
+                              <span className="ai-rec-impact high">High Impact</span>
+                            </div>
+                            <span className="ai-rec-desc">3 OR blocks show &lt; 50% utilization. Potential to add 12-15 cases.</span>
+                            <span className="ai-rec-est">Est. Impact: $18,400 monthly</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('supply'); }}>View Supply Chain Analytics →</a>
-                </div>
 
-                {/* AI Recommendations */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title"><Sparkles size={14} className="text-blue" /> AI Recommendations</h3>
-                    <span className="ai-badge">3 New</span>
-                  </div>
-
-                  <div className="ai-recommendations-list" style={{ display: 'flex', flexDirection: 'column', gap: '2px', height: '180px', overflowY: 'auto' }}>
-                    <div className="ai-recommendation-item">
-                      <span className="ai-rec-icon">⚡</span>
-                      <div className="ai-rec-details">
-                        <div className="ai-rec-header">
-                          Optimize Block Utilization
-                          <span className="ai-rec-impact high">High Impact</span>
+                        <div className="ai-recommendation-item">
+                          <span className="ai-rec-icon">💲</span>
+                          <div className="ai-rec-details">
+                            <div className="ai-rec-header">
+                              Review Supply Costs
+                              <span className="ai-rec-impact med">Medium Impact</span>
+                            </div>
+                            <span className="ai-rec-desc">Implant costs up 12% vs prior month for similar cases.</span>
+                            <span className="ai-rec-est">Est. Impact: $8,200 monthly</span>
+                          </div>
                         </div>
-                        <span className="ai-rec-desc">3 OR blocks show &lt; 50% utilization. Potential to add 12-15 cases.</span>
-                        <span className="ai-rec-est">Est. Impact: $18,400 monthly</span>
-                      </div>
-                    </div>
 
-                    <div className="ai-recommendation-item">
-                      <span className="ai-rec-icon">💲</span>
-                      <div className="ai-rec-details">
-                        <div className="ai-rec-header">
-                          Review Supply Costs
-                          <span className="ai-rec-impact med">Medium Impact</span>
+                        <div className="ai-recommendation-item">
+                          <span className="ai-rec-icon">⏳</span>
+                          <div className="ai-rec-details">
+                            <div className="ai-rec-header">
+                              Reduce Turnover Time
+                              <span className="ai-rec-impact med">Medium Impact</span>
+                            </div>
+                            <span className="ai-rec-desc">3 ORs have turnover &gt; 30 mins. Best practice: 20-25 mins.</span>
+                            <span className="ai-rec-est">Est. Impact: $14,600 monthly</span>
+                          </div>
                         </div>
-                        <span className="ai-rec-desc">Implant costs up 12% vs prior month for similar cases.</span>
-                        <span className="ai-rec-est">Est. Impact: $8,200 monthly</span>
                       </div>
+                      <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('ai'); }}>View All Recommendations →</a>
                     </div>
 
-                    <div className="ai-recommendation-item">
-                      <span className="ai-rec-icon">⏳</span>
-                      <div className="ai-rec-details">
-                        <div className="ai-rec-header">
-                          Reduce Turnover Time
-                          <span className="ai-rec-impact med">Medium Impact</span>
+                    {/* Cancellation Recovery Insights */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Cancellation Recovery Insights</h3>
+                      </div>
+
+                      <div className="cancel-recovery-header">
+                        <div className="cancel-stat-box">
+                          <span className="cancel-stat-num">12</span>
+                          <span className="cancel-stat-label">Cancelled Cases (MTD)</span>
+                          <span className="cancel-stat-comparison">vs Prior MTD 8</span>
                         </div>
-                        <span className="ai-rec-desc">3 ORs have turnover &gt; 30 mins. Best practice: 20-25 mins.</span>
-                        <span className="ai-rec-est">Est. Impact: $14,600 monthly</span>
+                        <div className="cancel-stat-box">
+                          <span className="cancel-stat-num" style={{ color: 'var(--color-green)' }}>$24,850</span>
+                          <span className="cancel-stat-label">Revenue Impact</span>
+                          <span className="cancel-stat-comparison">vs Prior MTD $16,200</span>
+                        </div>
                       </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div className="cancel-progress-row">
+                          <div className="cancel-progress-labels">
+                            <span className="cancel-progress-name">Patient Decision (42%)</span>
+                            <span className="cancel-progress-val">$10,450</span>
+                          </div>
+                          <div className="cancel-progress-bar-container">
+                            <div className="cancel-progress-bar-fill" style={{ width: '42%' }} />
+                          </div>
+                        </div>
+
+                        <div className="cancel-progress-row">
+                          <div className="cancel-progress-labels">
+                            <span className="cancel-progress-name">Insurance Issues (25%)</span>
+                            <span className="cancel-progress-val">$6,200</span>
+                          </div>
+                          <div className="cancel-progress-bar-container">
+                            <div className="cancel-progress-bar-fill" style={{ width: '25%' }} />
+                          </div>
+                        </div>
+
+                        <div className="cancel-progress-row">
+                          <div className="cancel-progress-labels">
+                            <span className="cancel-progress-name">Medical Clearance (17%)</span>
+                            <span className="cancel-progress-val">$4,100</span>
+                          </div>
+                          <div className="cancel-progress-bar-container">
+                            <div className="cancel-progress-bar-fill" style={{ width: '17%' }} />
+                          </div>
+                        </div>
+                      </div>
+                      <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '6px' }} onClick={(e) => { e.preventDefault(); setActiveTab('cancellations'); }}>View Cancellation Analytics →</a>
+                    </div>
+
+                  </div>
+
+                  {/* Bottom Table: Profitability Summary */}
+                  <div className="dashboard-card">
+                    <div className="card-header">
+                      <h3 className="card-title">Profitability Summary (MTD)</h3>
+                      <span className="card-subtitle-note">Last updated: May 29, 2026 8:30 AM</span>
+                    </div>
+
+                    <div className="custom-table-container">
+                      <table className="custom-table">
+                        <thead>
+                          <tr>
+                            <th>Location</th>
+                            <th>Cases</th>
+                            <th>Revenue</th>
+                            <th>Total Costs</th>
+                            <th>Net Margin $</th>
+                            <th>Net Margin %</th>
+                            <th>OR Utilization %</th>
+                            <th>Profitable Util %</th>
+                            <th>Rev per OR Hour</th>
+                            <th>Margin per OR Hour</th>
+                            <th>Trend</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {profitabilitySummary.map(sum => (
+                            <tr key={sum.location}>
+                              <td style={{ fontWeight: '600' }}>{sum.location}</td>
+                              <td>{sum.cases}</td>
+                              <td>${sum.rev.toLocaleString()}</td>
+                              <td>${sum.cost.toLocaleString()}</td>
+                              <td style={{ color: 'var(--color-green)', fontWeight: '600' }}>${sum.margin.toLocaleString()}</td>
+                              <td>{sum.marginPct}%</td>
+                              <td>{sum.util}%</td>
+                              <td>{sum.profUtil}%</td>
+                              <td>${sum.revHour.toLocaleString()}</td>
+                              <td>${sum.marginHour.toLocaleString()}</td>
+                              <td><span style={{ color: 'var(--color-green)' }}>▲</span></td>
+                            </tr>
+                          ))}
+                          <tr className="total-row">
+                            <td>Total</td>
+                            <td>1,534</td>
+                            <td>$1,898,090</td>
+                            <td>$1,734,826</td>
+                            <td style={{ color: 'var(--color-green)' }}>$163,264</td>
+                            <td>8.6%</td>
+                            <td>62.4%</td>
+                            <td>51.3%</td>
+                            <td>$1,102</td>
+                            <td>$208</td>
+                            <td><span style={{ color: 'var(--color-green)' }}>▲</span></td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('ai'); }}>View All Recommendations →</a>
-                </div>
+                </>
+              )}
 
-                {/* Cancellation Recovery Insights */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Cancellation Recovery Insights</h3>
-                  </div>
-
-                  <div className="cancel-recovery-header">
-                    <div className="cancel-stat-box">
-                      <span className="cancel-stat-num">12</span>
-                      <span className="cancel-stat-label">Cancelled Cases (MTD)</span>
-                      <span className="cancel-stat-comparison">vs Prior MTD 8</span>
-                    </div>
-                    <div className="cancel-stat-box">
-                      <span className="cancel-stat-num" style={{ color: 'var(--color-green)' }}>$24,850</span>
-                      <span className="cancel-stat-label">Revenue Impact</span>
-                      <span className="cancel-stat-comparison">vs Prior MTD $16,200</span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div className="cancel-progress-row">
-                      <div className="cancel-progress-labels">
-                        <span className="cancel-progress-name">Patient Decision (42%)</span>
-                        <span className="cancel-progress-val">$10,450</span>
-                      </div>
-                      <div className="cancel-progress-bar-container">
-                        <div className="cancel-progress-bar-fill" style={{ width: '42%' }} />
-                      </div>
-                    </div>
-
-                    <div className="cancel-progress-row">
-                      <div className="cancel-progress-labels">
-                        <span className="cancel-progress-name">Insurance Issues (25%)</span>
-                        <span className="cancel-progress-val">$6,200</span>
-                      </div>
-                      <div className="cancel-progress-bar-container">
-                        <div className="cancel-progress-bar-fill" style={{ width: '25%' }} />
-                      </div>
-                    </div>
-
-                    <div className="cancel-progress-row">
-                      <div className="cancel-progress-labels">
-                        <span className="cancel-progress-name">Medical Clearance (17%)</span>
-                        <span className="cancel-progress-val">$4,100</span>
-                      </div>
-                      <div className="cancel-progress-bar-container">
-                        <div className="cancel-progress-bar-fill" style={{ width: '17%' }} />
-                      </div>
-                    </div>
-                  </div>
-                  <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '6px' }} onClick={(e) => { e.preventDefault(); setActiveTab('cancellations'); }}>View Cancellation Analytics →</a>
-                </div>
-
-              </div>
-
-              {/* Bottom Table: Profitability Summary */}
-              <div className="dashboard-card">
-                <div className="card-header">
-                  <h3 className="card-title">Profitability Summary (MTD)</h3>
-                  <span className="card-subtitle-note">Last updated: May 29, 2026 8:30 AM</span>
-                </div>
-
-                <div className="custom-table-container">
-                  <table className="custom-table">
-                    <thead>
-                      <tr>
-                        <th>Location</th>
-                        <th>Cases</th>
-                        <th>Revenue</th>
-                        <th>Total Costs</th>
-                        <th>Net Margin $</th>
-                        <th>Net Margin %</th>
-                        <th>OR Utilization %</th>
-                        <th>Profitable Util %</th>
-                        <th>Rev per OR Hour</th>
-                        <th>Margin per OR Hour</th>
-                        <th>Trend</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {MOCK_PROFITABILITY_SUMMARY.map(sum => (
-                        <tr key={sum.location}>
-                          <td style={{ fontWeight: '600' }}>{sum.location}</td>
-                          <td>{sum.cases}</td>
-                          <td>${sum.rev.toLocaleString()}</td>
-                          <td>${sum.cost.toLocaleString()}</td>
-                          <td style={{ color: 'var(--color-green)', fontWeight: '600' }}>${sum.margin.toLocaleString()}</td>
-                          <td>{sum.marginPct}%</td>
-                          <td>{sum.util}%</td>
-                          <td>{sum.profUtil}%</td>
-                          <td>${sum.revHour.toLocaleString()}</td>
-                          <td>${sum.marginHour.toLocaleString()}</td>
-                          <td><span style={{ color: 'var(--color-green)' }}>▲</span></td>
-                        </tr>
-                      ))}
-                      <tr className="total-row">
-                        <td>Total</td>
-                        <td>1,534</td>
-                        <td>$1,898,090</td>
-                        <td>$1,734,826</td>
-                        <td style={{ color: 'var(--color-green)' }}>$163,264</td>
-                        <td>8.6%</td>
-                        <td>62.4%</td>
-                        <td>51.3%</td>
-                        <td>$1,102</td>
-                        <td>$208</td>
-                        <td><span style={{ color: 'var(--color-green)' }}>▲</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* ==========================================
+              {/* ==========================================
               TAB: EXECUTIVE OVERVIEW
               ========================================== */}
-          {activeTab === 'overview' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              {/* 4 KPI Cards Row */}
-              <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">Net Revenue (MTD)</span>
-                    <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
-                  </div>
-                  <span className="kpi-value">$1,898,090</span>
-                  <div className="kpi-trend positive">
-                    vs Target MTD <span className="kpi-trend-change">+4.2%</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,28 L30,22 L60,14 L100,5" fill="none" stroke="var(--color-green)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
+              {activeTab === 'overview' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">Operating Margin</span>
-                    <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
-                  </div>
-                  <span className="kpi-value">$163,264</span>
-                  <div className="kpi-trend positive">
-                    Margin Ratio <span className="kpi-trend-change">8.6%</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,25 Q30,12 60,18 T100,8" fill="none" stroke="var(--color-green)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">Avg Contribution / Case</span>
-                    <div className="kpi-icon-container blue"><Stethoscope size={12} /></div>
-                  </div>
-                  <span className="kpi-value">$1,237</span>
-                  <div className="kpi-trend negative">
-                    vs Last Month <span className="kpi-trend-change">-1.2%</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,10 L35,15 L70,25 L100,28" fill="none" stroke="var(--color-red)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card-header">
-                    <span className="kpi-label">EBITDA %</span>
-                    <div className="kpi-icon-container orange"><DollarSign size={12} /></div>
-                  </div>
-                  <span className="kpi-value">34.2%</span>
-                  <div className="kpi-trend positive">
-                    vs Target MTD <span className="kpi-trend-change">+1.5%</span>
-                  </div>
-                  <div className="sparkline-container">
-                    <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                      <path d="M0,25 Q15,10 40,22 T80,8 T100,5" fill="none" stroke="var(--color-blue)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid Section: Weekly Financial Trends vs Specialty Splits */}
-              <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
-                
-                {/* Financial Trends combination chart */}
-                <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div className="card-header">
-                    <h3 className="card-title">Weekly Revenue, Costs & Margin</h3>
-                  </div>
-                  <div style={{ width: '100%', height: '240px', marginTop: '10px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={MOCK_EXEC_FINANCIALS_TREND} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
-                        <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
-                        <YAxis stroke="#5e6c84" fontSize={10} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '11px', color: '#fff' }} />
-                        <Legend />
-                        <Bar dataKey="revenue" fill="var(--color-blue)" name="Gross Revenue" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="cost" fill="var(--color-grey)" name="Operating Costs" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Specialty Case Distribution Donut */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Specialty Case Distribution</h3>
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '240px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '140px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={MOCK_SPECIALTY_DIST}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={45}
-                            outerRadius={60}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {MOCK_SPECIALTY_DIST.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#fff' }}>1,534</div>
-                        <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cases</div>
+                  {/* 4 KPI Cards Row */}
+                  <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">Net Revenue (MTD)</span>
+                        <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
+                      </div>
+                      <span className="kpi-value">$1,898,090</span>
+                      <div className="kpi-trend positive">
+                        vs Target MTD <span className="kpi-trend-change">+4.2%</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,28 L30,22 L60,14 L100,5" fill="none" stroke="var(--color-green)" strokeWidth="2" />
+                        </svg>
                       </div>
                     </div>
 
-                    <div className="donut-legend-container">
-                      {MOCK_SPECIALTY_DIST.map((item, idx) => (
-                        <div className="donut-legend-item" key={idx}>
-                          <div className="donut-legend-label">
-                            <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
-                            <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
-                          </div>
-                          <div className="donut-legend-value">
-                            <span>{item.value}</span>
-                            <span className="donut-legend-pct">{item.percentage}%</span>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">Operating Margin</span>
+                        <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
+                      </div>
+                      <span className="kpi-value">$163,264</span>
+                      <div className="kpi-trend positive">
+                        Margin Ratio <span className="kpi-trend-change">8.6%</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,25 Q30,12 60,18 T100,8" fill="none" stroke="var(--color-green)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">Avg Contribution / Case</span>
+                        <div className="kpi-icon-container blue"><Stethoscope size={12} /></div>
+                      </div>
+                      <span className="kpi-value">$1,237</span>
+                      <div className="kpi-trend negative">
+                        vs Last Month <span className="kpi-trend-change">-1.2%</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,10 L35,15 L70,25 L100,28" fill="none" stroke="var(--color-red)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">EBITDA %</span>
+                        <div className="kpi-icon-container orange"><DollarSign size={12} /></div>
+                      </div>
+                      <span className="kpi-value">34.2%</span>
+                      <div className="kpi-trend positive">
+                        vs Target MTD <span className="kpi-trend-change">+1.5%</span>
+                      </div>
+                      <div className="sparkline-container">
+                        <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
+                          <path d="M0,25 Q15,10 40,22 T80,8 T100,5" fill="none" stroke="var(--color-blue)" strokeWidth="2" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-              </div>
+                  {/* Grid Section: Weekly Financial Trends vs Specialty Splits */}
+                  <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
 
-              {/* AI Strategic briefing panel */}
-              <div 
-                style={{ 
-                  backgroundColor: 'rgba(59, 130, 246, 0.05)', 
-                  border: '1px solid var(--border-color)', 
-                  borderLeft: '4px solid var(--color-blue)',
-                  borderRadius: '8px', 
-                  padding: '16px 20px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ color: 'var(--color-blue)', fontSize: '1.5rem' }}>
-                    <Sparkles />
+                    {/* Financial Trends combination chart */}
+                    <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div className="card-header">
+                        <h3 className="card-title">Weekly Revenue, Costs & Margin</h3>
+                      </div>
+                      <div style={{ width: '100%', height: '240px', marginTop: '10px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={MOCK_EXEC_FINANCIALS_TREND} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
+                            <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
+                            <YAxis stroke="#5e6c84" fontSize={10} tickLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '11px', color: '#fff' }} />
+                            <Legend />
+                            <Bar dataKey="revenue" fill="var(--color-blue)" name="Gross Revenue" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="cost" fill="var(--color-grey)" name="Operating Costs" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Specialty Case Distribution Donut */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Specialty Case Distribution</h3>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '240px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', height: '140px' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={specialtyDist}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={45}
+                                outerRadius={60}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {specialtyDist.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#fff' }}>1,534</div>
+                            <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cases</div>
+                          </div>
+                        </div>
+
+                        <div className="donut-legend-container">
+                          {specialtyDist.map((item, idx) => (
+                            <div className="donut-legend-item" key={idx}>
+                              <div className="donut-legend-label">
+                                <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
+                                <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
+                              </div>
+                              <div className="donut-legend-value">
+                                <span>{item.value}</span>
+                                <span className="donut-legend-pct">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
-                  <div>
-                    <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.9rem' }}>
-                      Executive Strategic Action Brief
-                    </h4>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: '1.3' }}>
-                      1. Orthopedic implant card consolidation shows <strong>$45,000 savings opportunity</strong>.<br />
-                      2. West ASC has turnover times averaging 24m (facility target is 20m). Corrective staffing is requested.<br />
-                      3. Pre-authorization backlog indicates high cancellation hazard for next week.
-                    </p>
+
+                  {/* AI Strategic briefing panel */}
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                      border: '1px solid var(--border-color)',
+                      borderLeft: '4px solid var(--color-blue)',
+                      borderRadius: '8px',
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ color: 'var(--color-blue)', fontSize: '1.5rem' }}>
+                        <Sparkles />
+                      </div>
+                      <div>
+                        <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.9rem' }}>
+                          Executive Strategic Action Brief
+                        </h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: '1.3' }}>
+                          1. Orthopedic implant card consolidation shows <strong>$45,000 savings opportunity</strong>.<br />
+                          2. West ASC has turnover times averaging 24m (facility target is 20m). Corrective staffing is requested.<br />
+                          3. Pre-authorization backlog indicates high cancellation hazard for next week.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      className="btn-header btn-primary"
+                      onClick={() => { setActiveTab('ai'); alert('Navigated to AI Prescriptive Action Center.'); }}
+                    >
+                      Go to Action Hub
+                    </button>
                   </div>
+
+                  {/* Facility Comparative Scoreboard table */}
+                  <div className="dashboard-card">
+                    <div className="card-header">
+                      <h3 className="card-title">ASC Facility Scorecard</h3>
+                      <span className="card-subtitle-note">Last updated: May 29, 2026</span>
+                    </div>
+
+                    <div className="custom-table-container">
+                      <table className="custom-table">
+                        <thead>
+                          <tr>
+                            <th>Facility Location</th>
+                            <th>Completed Cases</th>
+                            <th>OR Utilization %</th>
+                            <th>Profitable Util %</th>
+                            <th>Gross Revenue</th>
+                            <th>Direct Cost</th>
+                            <th>Net Margin</th>
+                            <th>Cancellations</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facilityComparative.map(facility => (
+                            <tr key={facility.name}>
+                              <td style={{ fontWeight: '600' }}>{facility.name}</td>
+                              <td>{facility.cases}</td>
+                              <td>{facility.util}%</td>
+                              <td>{facility.profitUtil}%</td>
+                              <td>${facility.revenue.toLocaleString()}</td>
+                              <td>${facility.directCost.toLocaleString()}</td>
+                              <td style={{ color: 'var(--color-green)', fontWeight: '600' }}>${facility.netMargin.toLocaleString()}</td>
+                              <td style={{ color: facility.cancellations > 4 ? 'var(--color-red)' : 'var(--text-primary)' }}>{facility.cancellations} cases</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                 </div>
-                <button 
-                  className="btn-header btn-primary"
-                  onClick={() => { setActiveTab('ai'); alert('Navigated to AI Prescriptive Action Center.'); }}
-                >
-                  Go to Action Hub
-                </button>
-              </div>
+              )}
 
-              {/* Facility Comparative Scoreboard table */}
-              <div className="dashboard-card">
-                <div className="card-header">
-                  <h3 className="card-title">ASC Facility Scorecard</h3>
-                  <span className="card-subtitle-note">Last updated: May 29, 2026</span>
-                </div>
-
-                <div className="custom-table-container">
-                  <table className="custom-table">
-                    <thead>
-                      <tr>
-                        <th>Facility Location</th>
-                        <th>Completed Cases</th>
-                        <th>OR Utilization %</th>
-                        <th>Profitable Util %</th>
-                        <th>Gross Revenue</th>
-                        <th>Direct Cost</th>
-                        <th>Net Margin</th>
-                        <th>Cancellations</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {MOCK_FACILITY_COMPARATIVE.map(facility => (
-                        <tr key={facility.name}>
-                          <td style={{ fontWeight: '600' }}>{facility.name}</td>
-                          <td>{facility.cases}</td>
-                          <td>{facility.util}%</td>
-                          <td>{facility.profitUtil}%</td>
-                          <td>${facility.revenue.toLocaleString()}</td>
-                          <td>${facility.directCost.toLocaleString()}</td>
-                          <td style={{ color: 'var(--color-green)', fontWeight: '600' }}>${facility.netMargin.toLocaleString()}</td>
-                          <td style={{ color: facility.cancellations > 4 ? 'var(--color-red)' : 'var(--text-primary)' }}>{facility.cancellations} cases</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* ==========================================
+              {/* ==========================================
               TAB: OR PERFORMANCE
               ========================================== */}
-          {activeTab === 'or' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                <div className="kpi-card">
-                  <span className="kpi-label">Average Turnover Time</span>
-                  <span className="kpi-value">22 mins</span>
-                  <span className="kpi-trend positive">↗ -3 mins vs last month</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Block Time Leakage</span>
-                  <span className="kpi-value">14.2 hrs</span>
-                  <span className="kpi-trend negative">↘ +1.2 hrs wastage</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Gaps Detected (&gt;30m)</span>
-                  <span className="kpi-value">8 Gaps</span>
-                  <span className="kpi-trend positive">↗ Reduced from 12</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Overtime Hours</span>
-                  <span className="kpi-value">3.5 hrs</span>
-                  <span className="kpi-trend positive">↗ -2.1 hrs overtime</span>
-                </div>
-              </div>
-
-              <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Room Utilization % by OR</h3>
+              {activeTab === 'or' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Average Turnover Time</span>
+                      <span className="kpi-value">22 mins</span>
+                      <span className="kpi-trend positive">↗ -3 mins vs last month</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Block Time Leakage</span>
+                      <span className="kpi-value">14.2 hrs</span>
+                      <span className="kpi-trend negative">↘ +1.2 hrs wastage</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Gaps Detected (&gt;30m)</span>
+                      <span className="kpi-value">8 Gaps</span>
+                      <span className="kpi-trend positive">↗ Reduced from 12</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Overtime Hours</span>
+                      <span className="kpi-value">3.5 hrs</span>
+                      <span className="kpi-trend positive">↗ -2.1 hrs overtime</span>
+                    </div>
                   </div>
-                  <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '20px 0' }}>
-                    {[
-                      { room: 'OR 1', val: 86, color: 'var(--color-blue)' },
-                      { room: 'OR 2', val: 79, color: 'var(--color-blue)' },
-                      { room: 'OR 3', val: 82, color: 'var(--color-blue)' },
-                      { room: 'OR 4', val: 71, color: 'var(--color-green)' },
-                      { room: 'OR 5', val: 88, color: 'var(--color-blue)' },
-                      { room: 'OR 6', val: 12, color: 'var(--color-red)' }
-                    ].map(item => (
-                      <div key={item.room} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', height: '100%' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', height: '180px', width: '32px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ height: `${item.val}%`, width: '100%', backgroundColor: item.color }} />
-                        </div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: '600' }}>{item.room}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.val}%</span>
+
+                  <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Room Utilization % by OR</h3>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Under-Utilization Root Causes</h3>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Late Starts (Surgeon delay)</span>
-                      <span style={{ fontWeight: '600' }}>32%</span>
-                    </div>
-                    <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '32%', backgroundColor: 'var(--color-blue)' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Turnover Overruns (Staff/Clean)</span>
-                      <span style={{ fontWeight: '600' }}>26%</span>
-                    </div>
-                    <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '26%', backgroundColor: 'var(--color-blue)' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Short Case Spacing Gaps</span>
-                      <span style={{ fontWeight: '600' }}>22%</span>
-                    </div>
-                    <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '22%', backgroundColor: 'var(--color-green)' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Unfilled Block Time</span>
-                      <span style={{ fontWeight: '600' }}>20%</span>
-                    </div>
-                    <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '20%', backgroundColor: 'var(--color-orange)' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 3: Visual Pie / Donut Charts for Operational Performance */}
-              <div className="three-column-row">
-                
-                {/* Under-Utilization Root Causes Pie */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Root Cause Distribution</h3>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '130px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
-                          <Pie
-                            data={MOCK_OR_ROOT_CAUSES_PIE}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={55}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {MOCK_OR_ROOT_CAUSES_PIE.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>100%</div>
-                        <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Delays</div>
+                      <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '20px 0' }}>
+                        {[
+                          { room: 'OR 1', val: 86, color: 'var(--color-blue)' },
+                          { room: 'OR 2', val: 79, color: 'var(--color-blue)' },
+                          { room: 'OR 3', val: 82, color: 'var(--color-blue)' },
+                          { room: 'OR 4', val: 71, color: 'var(--color-green)' },
+                          { room: 'OR 5', val: 88, color: 'var(--color-blue)' },
+                          { room: 'OR 6', val: 12, color: 'var(--color-red)' }
+                        ].map(item => (
+                          <div key={item.room} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', height: '100%' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-end', height: '180px', width: '32px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ height: `${item.val}%`, width: '100%', backgroundColor: item.color }} />
+                            </div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: '600' }}>{item.room}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.val}%</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    <div className="donut-legend-container">
-                      {MOCK_OR_ROOT_CAUSES_PIE.map((item, idx) => (
-                        <div className="donut-legend-item" key={idx}>
-                          <div className="donut-legend-label">
-                            <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
-                            <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
-                          </div>
-                          <div className="donut-legend-value">
-                            <span className="donut-legend-pct">{item.percentage}%</span>
-                          </div>
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Under-Utilization Root Causes</h3>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Late Starts (Surgeon delay)</span>
+                          <span style={{ fontWeight: '600' }}>32%</span>
                         </div>
-                      ))}
+                        <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '32%', backgroundColor: 'var(--color-blue)' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Turnover Overruns (Staff/Clean)</span>
+                          <span style={{ fontWeight: '600' }}>26%</span>
+                        </div>
+                        <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '26%', backgroundColor: 'var(--color-blue)' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Short Case Spacing Gaps</span>
+                          <span style={{ fontWeight: '600' }}>22%</span>
+                        </div>
+                        <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '22%', backgroundColor: 'var(--color-green)' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Unfilled Block Time</span>
+                          <span style={{ fontWeight: '600' }}>20%</span>
+                        </div>
+                        <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '20%', backgroundColor: 'var(--color-orange)' }} />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* OR Block Allocation Donut */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">OR Block Allocations</h3>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '130px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
-                          <Pie
-                            data={MOCK_OR_BLOCK_ALLOC_PIE}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={55}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {MOCK_OR_BLOCK_ALLOC_PIE.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#fff' }}>14.2h</div>
-                        <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Leakage</div>
+                  {/* Row 3: Visual Pie / Donut Charts for Operational Performance */}
+                  <div className="three-column-row">
+
+                    {/* Under-Utilization Root Causes Pie */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Root Cause Distribution</h3>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', height: '130px' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
+                              <Pie
+                                data={MOCK_OR_ROOT_CAUSES_PIE}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={55}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {MOCK_OR_ROOT_CAUSES_PIE.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>100%</div>
+                            <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Delays</div>
+                          </div>
+                        </div>
+
+                        <div className="donut-legend-container">
+                          {MOCK_OR_ROOT_CAUSES_PIE.map((item, idx) => (
+                            <div className="donut-legend-item" key={idx}>
+                              <div className="donut-legend-label">
+                                <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
+                                <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
+                              </div>
+                              <div className="donut-legend-value">
+                                <span className="donut-legend-pct">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="donut-legend-container">
-                      {MOCK_OR_BLOCK_ALLOC_PIE.map((item, idx) => (
-                        <div className="donut-legend-item" key={idx}>
-                          <div className="donut-legend-label">
-                            <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
-                            <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
-                          </div>
-                          <div className="donut-legend-value">
-                            <span className="donut-legend-pct">{item.percentage}%</span>
+                    {/* OR Block Allocation Donut */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">OR Block Allocations</h3>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', height: '130px' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
+                              <Pie
+                                data={MOCK_OR_BLOCK_ALLOC_PIE}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={55}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {MOCK_OR_BLOCK_ALLOC_PIE.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#fff' }}>14.2h</div>
+                            <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Leakage</div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Turnover Efficiency splits Pie */}
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Turnover Efficiency Splits</h3>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '130px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
-                          <Pie
-                            data={MOCK_OR_TURNOVER_EFF_PIE}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={55}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {MOCK_OR_TURNOVER_EFF_PIE.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>22m</div>
-                        <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Avg Time</div>
+                        <div className="donut-legend-container">
+                          {MOCK_OR_BLOCK_ALLOC_PIE.map((item, idx) => (
+                            <div className="donut-legend-item" key={idx}>
+                              <div className="donut-legend-label">
+                                <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
+                                <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
+                              </div>
+                              <div className="donut-legend-value">
+                                <span className="donut-legend-pct">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="donut-legend-container">
-                      {MOCK_OR_TURNOVER_EFF_PIE.map((item, idx) => (
-                        <div className="donut-legend-item" key={idx}>
-                          <div className="donut-legend-label">
-                            <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
-                            <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
-                          </div>
-                          <div className="donut-legend-value">
-                            <span className="donut-legend-pct">{item.percentage}%</span>
+                    {/* Turnover Efficiency splits Pie */}
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Turnover Efficiency Splits</h3>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', height: '130px' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
+                              <Pie
+                                data={MOCK_OR_TURNOVER_EFF_PIE}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={55}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {MOCK_OR_TURNOVER_EFF_PIE.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>22m</div>
+                            <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Avg Time</div>
                           </div>
                         </div>
-                      ))}
+
+                        <div className="donut-legend-container">
+                          {MOCK_OR_TURNOVER_EFF_PIE.map((item, idx) => (
+                            <div className="donut-legend-item" key={idx}>
+                              <div className="donut-legend-label">
+                                <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
+                                <span style={{ fontSize: '0.65rem' }}>{item.name}</span>
+                              </div>
+                              <div className="donut-legend-value">
+                                <span className="donut-legend-pct">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
+
                   </div>
                 </div>
+              )}
 
-              </div>
-            </div>
-          )}
-
-          {/* ==========================================
+              {/* ==========================================
               TAB: SURGEON PERFORMANCE
               ========================================== */}
-          {activeTab === 'surgeons' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="dashboard-card">
-                <div className="card-header">
-                  <h3 className="card-title">Surgeon Efficiency & Financial Contribution</h3>
-                  <button className="btn-header">Print Reports</button>
-                </div>
+              {activeTab === 'surgeons' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div className="dashboard-card">
+                    <div className="card-header">
+                      <h3 className="card-title">Surgeon Efficiency & Financial Contribution</h3>
+                      <button className="btn-header">Print Reports</button>
+                    </div>
 
-                <div className="custom-table-container">
-                  <table className="custom-table">
-                    <thead>
-                      <tr>
-                        <th>Surgeon</th>
-                        <th>Cases Done</th>
-                        <th>Avg Procedure Duration</th>
-                        <th>Avg Turnover Time</th>
-                        <th>Supply Variance</th>
-                        <th>Total Revenue</th>
-                        <th>Total Supplies</th>
-                        <th>Net Margin Contribution</th>
-                        <th>Avg Margin / Case</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { name: 'Dr. David Smith', cases: 48, proced: '68 mins', turn: '18 mins', variance: '+18.4%', rev: 616416, supply: 163200, margin: 263450, avg: 5488, color: '#3b82f6' },
-                        { name: 'Dr. Sarah Lee', cases: 36, proced: '52 mins', turn: '14 mins', variance: '-2.1%', rev: 327780, supply: 34200, margin: 215630, avg: 5989, color: '#10b981' },
-                        { name: 'Dr. Michael Patel', cases: 41, proced: '88 mins', turn: '24 mins', variance: '+31.2%', rev: 418300, supply: 122100, margin: 142910, avg: 3485, color: '#f59e0b' },
-                        { name: 'Dr. James Johnson', cases: 28, proced: '110 mins', turn: '29 mins', variance: '+8.4%', rev: 531200, supply: 184500, margin: 157850, avg: 5637, color: '#8b5cf6' },
-                        { name: 'Dr. Emily Davis', cases: 31, proced: '48 mins', turn: '16 mins', variance: '+12.6%', rev: 141020, supply: 32000, margin: 85230, avg: 2749, color: '#ec4899' }
-                      ].map(surg => (
-                        <tr 
-                          key={surg.name}
-                          onClick={() => { setSelectedSurgeon(surg.name); setProfileTab('overview'); }}
-                          style={{ cursor: 'pointer' }}
-                          className="clickable-row"
+                    <div className="custom-table-container">
+                      <table className="custom-table">
+                        <thead>
+                          <tr>
+                            <th>Surgeon</th>
+                            <th>Cases Done</th>
+                            <th>Avg Procedure Duration</th>
+                            <th>Avg Turnover Time</th>
+                            <th>Supply Variance</th>
+                            <th>Total Revenue</th>
+                            <th>Total Supplies</th>
+                            <th>Net Margin Contribution</th>
+                            <th>Avg Margin / Case</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {surgeonTableData.map(surg => (
+                            <tr
+                              key={surg.name}
+                              onClick={() => { setSelectedSurgeon(surg.name); setProfileTab('overview'); }}
+                              style={{ cursor: 'pointer' }}
+                              className="clickable-row"
+                            >
+                              <td>
+                                <div className="doctor-avatar-row">
+                                  <div className="doctor-tiny-avatar" style={{ backgroundColor: surg.color }}></div>
+                                  <span style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{surg.name}</span>
+                                </div>
+                              </td>
+                              <td>{surg.cases}</td>
+                              <td>{surg.proced}</td>
+                              <td style={{ color: parseInt(surg.turn) > 20 ? 'var(--color-orange)' : 'var(--text-primary)' }}>{surg.turn}</td>
+                              <td style={{ color: surg.variance.startsWith('+') ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
+                                {surg.variance}
+                              </td>
+                              <td>${surg.rev.toLocaleString()}</td>
+                              <td>${surg.supply.toLocaleString()}</td>
+                              <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${surg.margin.toLocaleString()}</td>
+                              <td style={{ fontWeight: '600' }}>${surg.avg.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ==========================================
+              TAB: PATIENT MANAGEMENT
+              ========================================== */}
+              {activeTab === 'patients' && (
+                <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="card-header" style={{ marginBottom: '4px' }}>
+                    <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Users size={16} style={{ color: 'var(--color-blue)' }} />
+                      ASC Database Patient Directory
+                    </h3>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Showing {filteredPatients.length} of {patients.length} records
+                      </span>
+                      <div style={{ position: 'relative' }}>
+                        <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+                        <input
+                          type="text"
+                          placeholder="Search name, MRN, provider..."
+                          className="date-range-selector"
+                          style={{ paddingLeft: '30px', width: '260px' }}
+                          value={patientSearchQuery}
+                          onChange={(e) => {
+                            setPatientSearchQuery(e.target.value);
+                            setPatientPage(1);
+                          }}
+                        />
+                      </div>
+                      {patientSearchQuery && (
+                        <button 
+                          className="btn-header" 
+                          onClick={() => {
+                            setPatientSearchQuery('');
+                            setPatientPage(1);
+                          }}
+                          style={{ minWidth: 'fit-content' }}
                         >
-                          <td>
-                            <div className="doctor-avatar-row">
-                              <div className="doctor-tiny-avatar" style={{ backgroundColor: surg.color }}></div>
-                              <span style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{surg.name}</span>
-                            </div>
-                          </td>
-                          <td>{surg.cases}</td>
-                          <td>{surg.proced}</td>
-                          <td style={{ color: parseInt(surg.turn) > 20 ? 'var(--color-orange)' : 'var(--text-primary)' }}>{surg.turn}</td>
-                          <td style={{ color: surg.variance.startsWith('+') ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
-                            {surg.variance}
-                          </td>
-                          <td>${surg.rev.toLocaleString()}</td>
-                          <td>${surg.supply.toLocaleString()}</td>
-                          <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${surg.margin.toLocaleString()}</td>
-                          <td style={{ fontWeight: '600' }}>${surg.avg.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
+                          Clear
+                        </button>
+                      )}
+                      <button 
+                        className="btn-header btn-primary" 
+                        onClick={handleOpenAddPatient}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content' }}
+                      >
+                        <Plus size={14} /> Add Patient
+                      </button>
+                    </div>
+                  </div>
 
-          {/* ==========================================
+                  <div className="custom-table-container" style={{ overflowX: 'hidden' }}>
+                    <table className="custom-table">
+                      <thead>
+                        <tr>
+                          <th>MRN</th>
+                          <th>Patient Name</th>
+                          <th>DOB</th>
+                          <th>Gender</th>
+                          <th>Insurance Provider</th>
+                          <th style={{ textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedPatients.length > 0 ? (
+                          paginatedPatients.map(patient => (
+                            <tr key={patient.id || patient.mrn} className="clickable-row">
+                              <td style={{ fontWeight: '600', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
+                                #{patient.mrn}
+                              </td>
+                              <td style={{ fontWeight: '600', color: '#fff' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{ 
+                                    width: '28px', 
+                                    height: '28px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: patient.gender === 'Female' ? 'rgba(236, 72, 153, 0.12)' : 'rgba(59, 130, 246, 0.12)', 
+                                    color: patient.gender === 'Female' ? 'var(--color-pink)' : 'var(--color-blue)', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '700',
+                                    border: `1px solid ${patient.gender === 'Female' ? 'rgba(236, 72, 153, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`
+                                  }}>
+                                    {patient.name ? patient.name.charAt(0) : '?'}
+                                  </div>
+                                  {patient.name}
+                                </div>
+                              </td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{patient.dob}</td>
+                              <td>
+                                <span style={{
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: '600',
+                                  backgroundColor: patient.gender === 'Female' ? 'rgba(236, 72, 153, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                                  color: patient.gender === 'Female' ? 'var(--color-pink)' : 'var(--color-blue)',
+                                  border: `1px solid ${patient.gender === 'Female' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(59, 130, 246, 0.15)'}`
+                                }}>
+                                  {patient.gender}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: '500' }}>{patient.insurance_provider}</td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                  <button 
+                                    onClick={() => handleOpenEditPatient(patient)} 
+                                    className="btn-header"
+                                    style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)' }}
+                                    title="Edit Patient"
+                                  >
+                                    <Edit size={12} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeletePatient(patient)} 
+                                    className="btn-header"
+                                    style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)' }}
+                                    title="Delete Patient"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                              <Users size={32} style={{ opacity: 0.2, marginBottom: '12px' }} />
+                              <div style={{ fontSize: '0.9rem', fontWeight: '600' }}>No patients match search criteria</div>
+                              <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>Try adjusting your keyword filter or clear the query</div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Limit & Pagination Controls Footer */}
+                  <div className="table-footer" style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    marginTop: '10px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--border-light)',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>Rows per page:</span>
+                      <select
+                        className="date-range-selector"
+                        style={{ height: '32px', background: 'var(--bg-card)', padding: '2px 8px', width: '70px', cursor: 'pointer' }}
+                        value={patientLimit}
+                        onChange={(e) => {
+                          setPatientLimit(Number(e.target.value));
+                          setPatientPage(1);
+                        }}
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                      <span style={{ marginLeft: '12px' }}>
+                        Showing {filteredPatients.length > 0 ? startIndex + 1 : 0}–{Math.min(filteredPatients.length, endIndex)} of {filteredPatients.length} records
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        className="btn-header"
+                        style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: patientPage === 1 ? 'not-allowed' : 'pointer', opacity: patientPage === 1 ? 0.5 : 1 }}
+                        disabled={patientPage === 1}
+                        onClick={() => setPatientPage(prev => Math.max(1, prev - 1))}
+                      >
+                        Previous
+                      </button>
+                      
+                      {renderPageNumbers()}
+
+                      <button
+                        className="btn-header"
+                        style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: patientPage === totalPages ? 'not-allowed' : 'pointer', opacity: patientPage === totalPages ? 0.5 : 1 }}
+                        disabled={patientPage === totalPages}
+                        onClick={() => setPatientPage(prev => Math.min(totalPages, prev + 1))}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ==========================================
               TAB: FINANCIAL PERFORMANCE
               ========================================== */}
-          {activeTab === 'financial' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="dashboard-card">
-                <div className="card-header">
-                  <h3 className="card-title">Facility Financial Analytics</h3>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Visual ledger summaries of monthly expenditures, room utility margins, and net EBITDA profit indicators.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* ==========================================
-              TAB: CASE PROFITABILITY
-              ========================================== */}
-          {activeTab === 'cpt' && (
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3 className="card-title">Ambulatory Surgery Code Financial Base</h3>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ position: 'relative' }}>
-                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
-                    <input 
-                      type="text" 
-                      placeholder="Search CPT code..." 
-                      className="date-range-selector" 
-                      style={{ paddingLeft: '30px' }}
-                    />
-                  </div>
-                  <button className="btn-header">Add CPT Code</button>
-                </div>
-              </div>
-
-              <div className="custom-table-container">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>CPT Code</th>
-                      <th>Description</th>
-                      <th>Avg Duration</th>
-                      <th>Avg Turnover</th>
-                      <th>Facility Fee</th>
-                      <th>Medicare Rate</th>
-                      <th>Labor Cost</th>
-                      <th>Implants / Supplies</th>
-                      <th>Contrib. Margin</th>
-                      <th>EBITDA %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { code: '27130', desc: 'Total Knee Replacement', time: 120, turn: 25, fee: 22125, med: 18500, labor: 1800, supply: 11000, margin: 9325, pct: 42.1 },
-                      { code: '29827', desc: 'Knee Scope / Arthroscopy', time: 60, turn: 15, fee: 12842, med: 10200, labor: 900, supply: 5219, margin: 6723, pct: 52.3 },
-                      { code: '27447', desc: 'Cataract Surgery', time: 60, turn: 15, fee: 9105, med: 7800, labor: 900, supply: 3050, margin: 5155, pct: 56.6 },
-                      { code: '23430', desc: 'Laparoscopic Cholecystectomy', time: 90, turn: 20, fee: 8732, med: 7100, labor: 1350, supply: 3000, margin: 4382, pct: 50.1 },
-                      { code: '29824', desc: 'Shoulder Arthroscopy', time: 90, turn: 20, fee: 11230, med: 9100, labor: 1350, supply: 5200, margin: 4680, pct: 41.6 },
-                      { code: '63030', desc: 'Carpal Tunnel Release', time: 45, turn: 15, fee: 3420, med: 2900, labor: 675, supply: 850, margin: 1895, pct: 55.4 },
-                      { code: '49505', desc: 'Inguinal Hernia Repair', time: 90, turn: 20, fee: 10200, med: 8200, labor: 1350, supply: 3000, margin: 5850, pct: 57.3 }
-                    ].map(cpt => (
-                      <tr key={cpt.code}>
-                        <td style={{ fontWeight: '600' }}>{cpt.code}</td>
-                        <td>{cpt.desc}</td>
-                        <td>{cpt.time} mins</td>
-                        <td>{cpt.turn} mins</td>
-                        <td>${cpt.fee.toLocaleString()}</td>
-                        <td>${cpt.med.toLocaleString()}</td>
-                        <td>${cpt.labor.toLocaleString()}</td>
-                        <td>${cpt.supply.toLocaleString()}</td>
-                        <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${cpt.margin.toLocaleString()}</td>
-                        <td style={{ fontWeight: '600' }}>{cpt.pct}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ==========================================
-              TAB: PAYER INTELLIGENCE
-              ========================================== */}
-          {activeTab === 'payer' && (
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3 className="card-title">Payer Intelligence</h3>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Reimbursement cycles, collection logs, and margin details by insurance provider (Medicare, Commercial, etc.).
-              </p>
-            </div>
-          )}
-
-          {/* ==========================================
-              TAB: SUPPLY CHAIN
-              ========================================== */}
-          {activeTab === 'supply' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              {/* Supply KPI insights */}
-              <div className="kpi-row" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
-                <div className="kpi-card">
-                  <span className="kpi-label">Annual Standardization Saving Opportunity</span>
-                  <span className="kpi-value" style={{ color: 'var(--color-green)' }}>$84,500</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Standardizing implant suppliers & sutures</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Implant Supply Variance</span>
-                  <span className="kpi-value" style={{ color: 'var(--color-red)' }}>+14.8%</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Above preference card baseline standard</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Waste Reduction Score</span>
-                  <span className="kpi-value">92 / 100</span>
-                  <span className="kpi-trend positive">↗ +4pts vs last quarter</span>
-                </div>
-              </div>
-
-              {/* Preference cards & surgeon variance breakdown */}
-              {PREFERENCE_CARDS.map(card => (
-                <div className="dashboard-card" key={card.procedure}>
-                  <div className="card-header">
-                    <h3 className="card-title"><Package size={16} /> Preference Card Analysis: {card.procedure}</h3>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>Standard Cost Base: ${card.standardCost}</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '20px' }}>
-                    <div>
-                      <h4 style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Standard Supply Item List</h4>
-                      <div className="custom-table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '6px' }}>
-                        <table className="custom-table" style={{ fontSize: '0.8rem' }}>
-                          <thead>
-                            <tr>
-                              <th>Item Name</th>
-                              <th>Qty</th>
-                              <th>Unit Cost</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {card.items.map(item => (
-                              <tr key={item.name}>
-                                <td>{item.name}</td>
-                                <td>{item.qty}</td>
-                                <td>${item.cost}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+              {activeTab === 'financial' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div className="dashboard-card">
+                    <div className="card-header">
+                      <h3 className="card-title">Facility Financial Analytics</h3>
                     </div>
-
-                    <div>
-                      <h4 style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Surgeon Utilization Variance</h4>
-                      <div className="custom-table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '6px' }}>
-                        <table className="custom-table" style={{ fontSize: '0.8rem' }}>
-                          <thead>
-                            <tr>
-                              <th>Surgeon</th>
-                              <th>Actual Cost</th>
-                              <th>Variance %</th>
-                              <th>Items Opened</th>
-                              <th>Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {card.surgeons.map(surg => (
-                              <tr 
-                                key={surg.name}
-                                onClick={() => { setSelectedSurgeon(surg.name); setProfileTab('supply'); }}
-                                style={{ cursor: 'pointer' }}
-                                className="clickable-row"
-                              >
-                                <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{surg.name}</td>
-                                <td>${surg.actualCost}</td>
-                                <td style={{ color: surg.variance > 0 ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
-                                  {surg.variance > 0 ? `+${surg.variance}%` : `${surg.variance}%`}
-                                </td>
-                                <td>{surg.supplyItems} items</td>
-                                <td>
-                                  {surg.variance > 10 && (
-                                    <button 
-                                      className="btn-header" 
-                                      style={{ padding: '2px 6px', fontSize: '0.7rem', borderColor: 'var(--color-orange)', color: 'var(--color-orange)' }}
-                                      onClick={(e) => { e.stopPropagation(); alert(`Standardization recommendation email sent to ${surg.name}`); }}
-                                    >
-                                      Standardize
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ==========================================
-              TAB: CANCELLATIONS
-              ========================================== */}
-          {activeTab === 'cancellations' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                <div className="kpi-card">
-                  <span className="kpi-label">Cancellation Rate</span>
-                  <span className="kpi-value" style={{ color: 'var(--color-red)' }}>6.2%</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Facility average target &lt; 5.0%</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Lost Contrib. Margin</span>
-                  <span className="kpi-value" style={{ color: 'var(--color-red)' }}>$48,200</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Based on last 30 days cancellations</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Cancelled Cases</span>
-                  <span className="kpi-value">14 Cases</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total cases cancelled this month</span>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Avg Lead Notification Time</span>
-                  <span className="kpi-value">4.5 hours</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Time before scheduled start</span>
-                </div>
-              </div>
-
-              {/* Recovery Optimizer alerts */}
-              <div 
-                style={{ 
-                  backgroundColor: cancellationActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
-                  border: `1px solid ${cancellationActive ? 'var(--color-red)' : 'var(--color-green)'}`, 
-                  borderRadius: '12px', 
-                  padding: '16px 20px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  marginBottom: '10px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ color: cancellationActive ? 'var(--color-red)' : 'var(--color-green)', fontSize: '1.25rem' }}>
-                    {cancellationActive ? <AlertTriangle /> : <CheckCircle />}
-                  </div>
-                  <div>
-                    <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.95rem' }}>
-                      {cancellationActive ? 'Operational Cancellation Anomaly' : 'Vacancy Successfully Filled'}
-                    </h4>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                      {optimizerMessage}
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      Visual ledger summaries of monthly expenditures, room utility margins, and net EBITDA profit indicators.
                     </p>
                   </div>
                 </div>
+              )}
 
-                {cancellationActive ? (
-                  <button 
-                    className="btn-header btn-primary"
-                    onClick={() => setShowAutoSuggest(true)}
-                  >
-                    <Sparkles size={14} style={{ marginRight: '6px' }} /> Run Action Engine
-                  </button>
-                ) : (
-                  <button 
-                    className="btn-header"
-                    onClick={resetCancellationSim}
-                  >
-                    <RotateCcw size={14} style={{ marginRight: '6px' }} /> Reset Simulation
-                  </button>
-                )}
-              </div>
-
-              {showAutoSuggest && (
-                <div className="dashboard-card" style={{ border: '1px solid var(--color-blue)', boxShadow: '0 0 15px rgba(59, 130, 246, 0.2)', marginBottom: '10px' }}>
+              {/* ==========================================
+              TAB: CASE PROFITABILITY
+              ========================================== */}
+              {activeTab === 'cpt' && (
+                <div className="dashboard-card">
                   <div className="card-header">
-                    <h3 className="card-title" style={{ color: 'var(--color-blue)' }}><Sparkles size={16} /> Action Engine: Vacant Slot Replacements</h3>
+                    <h3 className="card-title">Ambulatory Surgery Code Financial Base</h3>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+                        <input
+                          type="text"
+                          placeholder="Search CPT code..."
+                          className="date-range-selector"
+                          style={{ paddingLeft: '30px' }}
+                        />
+                      </div>
+                      <button className="btn-header">Add CPT Code</button>
+                    </div>
                   </div>
+
                   <div className="custom-table-container">
                     <table className="custom-table">
                       <thead>
                         <tr>
-                          <th>Patient Code</th>
-                          <th>CPT / Description</th>
-                          <th>Surgeon</th>
-                          <th>Duration</th>
-                          <th>Revenue</th>
-                          <th>Supply Cost</th>
-                          <th>Implant Cost</th>
+                          <th>CPT Code</th>
+                          <th>Description</th>
+                          <th>Avg Duration</th>
+                          <th>Avg Turnover</th>
+                          <th>Facility Fee</th>
+                          <th>Medicare Rate</th>
+                          <th>Labor Cost</th>
+                          <th>Implants / Supplies</th>
                           <th>Contrib. Margin</th>
-                          <th>Action</th>
+                          <th>EBITDA %</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {WAITLIST_CASES.map(wc => (
-                          <tr key={wc.id}>
-                            <td style={{ fontWeight: '600' }}>#{wc.id}</td>
-                            <td>
-                              <div style={{ fontWeight: '600' }}>CPT {wc.code}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{wc.desc}</div>
-                            </td>
-                            <td>{wc.surgeon}</td>
-                            <td>{wc.duration} mins</td>
-                            <td>${wc.rev.toLocaleString()}</td>
-                            <td>${wc.supplies.toLocaleString()}</td>
-                            <td>${wc.implants.toLocaleString()}</td>
-                            <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${wc.margin.toLocaleString()}</td>
-                            <td>
-                              <button 
-                                className="btn-header btn-primary" 
-                                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                onClick={() => handleSimulateResolve(wc)}
-                              >
-                                Fill Slot
-                              </button>
-                            </td>
+                        {cptTableData.map(cpt => (
+                          <tr key={cpt.code}>
+                            <td style={{ fontWeight: '600' }}>{cpt.code}</td>
+                            <td>{cpt.desc}</td>
+                            <td>{cpt.time} mins</td>
+                            <td>{cpt.turn} mins</td>
+                            <td>${cpt.fee.toLocaleString()}</td>
+                            <td>${cpt.med.toLocaleString()}</td>
+                            <td>${cpt.labor.toLocaleString()}</td>
+                            <td>${cpt.supply.toLocaleString()}</td>
+                            <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${cpt.margin.toLocaleString()}</td>
+                            <td style={{ fontWeight: '600' }}>{cpt.pct}%</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2535,200 +3199,445 @@ export default function App() {
                 </div>
               )}
 
-              <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
+              {/* ==========================================
+              TAB: PAYER INTELLIGENCE
+              ========================================== */}
+              {activeTab === 'payer' && (
                 <div className="dashboard-card">
                   <div className="card-header">
-                    <h3 className="card-title">Recent Cancellations & Revenue Loss</h3>
+                    <h3 className="card-title">Payer Intelligence</h3>
                   </div>
-                  <div className="custom-table-container">
-                    <table className="custom-table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Procedure</th>
-                          <th>Surgeon</th>
-                          <th>Reason</th>
-                          <th>Estimated Lost Margin</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          { date: 'May 12', desc: 'Gallbladder (CPT 23430)', surg: 'Dr. Michael Patel', reason: 'Patient No-Show', loss: 3450 },
-                          { date: 'May 10', desc: 'Shoulder Arthroscopy', surg: 'Dr. Sarah Lee', reason: 'Incomplete Pre-Op Clearance', loss: 4200 },
-                          { date: 'May 8', desc: 'Carpal Tunnel Release', surg: 'Dr. James Johnson', reason: 'Insurance Pre-Auth Refused', loss: 1620 },
-                          { date: 'May 5', desc: 'Hernia Repair', surg: 'Dr. Michael Patel', reason: 'Patient Medical Anomaly (Elevated BP)', loss: 3750 }
-                        ].map((c, i) => (
-                          <tr 
-                            key={i}
-                            onClick={() => { setSelectedSurgeon(c.surg); setProfileTab('schedule'); }}
-                            style={{ cursor: 'pointer' }}
-                            className="clickable-row"
-                          >
-                            <td>{c.date}</td>
-                            <td style={{ fontWeight: '600' }}>{c.desc}</td>
-                            <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.surg}</td>
-                            <td style={{ color: 'var(--color-orange)' }}>{c.reason}</td>
-                            <td style={{ color: 'var(--color-red)', fontWeight: '600' }}>-${c.loss.toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Reimbursement cycles, collection logs, and margin details by insurance provider (Medicare, Commercial, etc.).
+                  </p>
+                </div>
+              )}
+
+              {/* ==========================================
+              TAB: SUPPLY CHAIN
+              ========================================== */}
+              {activeTab === 'supply' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                  {/* Supply KPI insights */}
+                  <div className="kpi-row" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Annual Standardization Saving Opportunity</span>
+                      <span className="kpi-value" style={{ color: 'var(--color-green)' }}>$84,500</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Standardizing implant suppliers & sutures</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Implant Supply Variance</span>
+                      <span className="kpi-value" style={{ color: 'var(--color-red)' }}>+14.8%</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Above preference card baseline standard</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Waste Reduction Score</span>
+                      <span className="kpi-value">92 / 100</span>
+                      <span className="kpi-trend positive">↗ +4pts vs last quarter</span>
+                    </div>
+                  </div>
+
+                  {/* Preference cards & surgeon variance breakdown */}
+                  {PREFERENCE_CARDS.map(card => (
+                    <div className="dashboard-card" key={card.procedure}>
+                      <div className="card-header">
+                        <h3 className="card-title"><Package size={16} /> Preference Card Analysis: {card.procedure}</h3>
+                        <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>Standard Cost Base: ${card.standardCost}</span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '20px' }}>
+                        <div>
+                          <h4 style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Standard Supply Item List</h4>
+                          <div className="custom-table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                            <table className="custom-table" style={{ fontSize: '0.8rem' }}>
+                              <thead>
+                                <tr>
+                                  <th>Item Name</th>
+                                  <th>Qty</th>
+                                  <th>Unit Cost</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {card.items.map(item => (
+                                  <tr key={item.name}>
+                                    <td>{item.name}</td>
+                                    <td>{item.qty}</td>
+                                    <td>${item.cost}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Surgeon Utilization Variance</h4>
+                          <div className="custom-table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                            <table className="custom-table" style={{ fontSize: '0.8rem' }}>
+                              <thead>
+                                <tr>
+                                  <th>Surgeon</th>
+                                  <th>Actual Cost</th>
+                                  <th>Variance %</th>
+                                  <th>Items Opened</th>
+                                  <th>Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {card.surgeons.map(surg => (
+                                  <tr
+                                    key={surg.name}
+                                    onClick={() => { setSelectedSurgeon(surg.name); setProfileTab('supply'); }}
+                                    style={{ cursor: 'pointer' }}
+                                    className="clickable-row"
+                                  >
+                                    <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{surg.name}</td>
+                                    <td>${surg.actualCost}</td>
+                                    <td style={{ color: surg.variance > 0 ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
+                                      {surg.variance > 0 ? `+${surg.variance}%` : `${surg.variance}%`}
+                                    </td>
+                                    <td>{surg.supplyItems} items</td>
+                                    <td>
+                                      {surg.variance > 10 && (
+                                        <button
+                                          className="btn-header"
+                                          style={{ padding: '2px 6px', fontSize: '0.7rem', borderColor: 'var(--color-orange)', color: 'var(--color-orange)' }}
+                                          onClick={(e) => { e.stopPropagation(); alert(`Standardization recommendation email sent to ${surg.name}`); }}
+                                        >
+                                          Standardize
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ==========================================
+              TAB: CANCELLATIONS
+              ========================================== */}
+              {activeTab === 'cancellations' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Cancellation Rate</span>
+                      <span className="kpi-value" style={{ color: 'var(--color-red)' }}>6.2%</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Facility average target &lt; 5.0%</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Lost Contrib. Margin</span>
+                      <span className="kpi-value" style={{ color: 'var(--color-red)' }}>$48,200</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Based on last 30 days cancellations</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Cancelled Cases</span>
+                      <span className="kpi-value">14 Cases</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total cases cancelled this month</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Avg Lead Notification Time</span>
+                      <span className="kpi-value">4.5 hours</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Time before scheduled start</span>
+                    </div>
+                  </div>
+
+                  {/* Recovery Optimizer alerts */}
+                  <div
+                    style={{
+                      backgroundColor: cancellationActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                      border: `1px solid ${cancellationActive ? 'var(--color-red)' : 'var(--color-green)'}`,
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ color: cancellationActive ? 'var(--color-red)' : 'var(--color-green)', fontSize: '1.25rem' }}>
+                        {cancellationActive ? <AlertTriangle /> : <CheckCircle />}
+                      </div>
+                      <div>
+                        <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.95rem' }}>
+                          {cancellationActive ? 'Operational Cancellation Anomaly' : 'Vacancy Successfully Filled'}
+                        </h4>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                          {optimizerMessage}
+                        </p>
+                      </div>
+                    </div>
+
+                    {cancellationActive ? (
+                      <button
+                        className="btn-header btn-primary"
+                        onClick={() => setShowAutoSuggest(true)}
+                      >
+                        <Sparkles size={14} style={{ marginRight: '6px' }} /> Run Action Engine
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-header"
+                        onClick={resetCancellationSim}
+                      >
+                        <RotateCcw size={14} style={{ marginRight: '6px' }} /> Reset Simulation
+                      </button>
+                    )}
+                  </div>
+
+                  {showAutoSuggest && (
+                    <div className="dashboard-card" style={{ border: '1px solid var(--color-blue)', boxShadow: '0 0 15px rgba(59, 130, 246, 0.2)', marginBottom: '10px' }}>
+                      <div className="card-header">
+                        <h3 className="card-title" style={{ color: 'var(--color-blue)' }}><Sparkles size={16} /> Action Engine: Vacant Slot Replacements</h3>
+                      </div>
+                      <div className="custom-table-container">
+                        <table className="custom-table">
+                          <thead>
+                            <tr>
+                              <th>Patient Code</th>
+                              <th>CPT / Description</th>
+                              <th>Surgeon</th>
+                              <th>Duration</th>
+                              <th>Revenue</th>
+                              <th>Supply Cost</th>
+                              <th>Implant Cost</th>
+                              <th>Contrib. Margin</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {WAITLIST_CASES.map(wc => (
+                              <tr key={wc.id}>
+                                <td style={{ fontWeight: '600' }}>#{wc.id}</td>
+                                <td>
+                                  <div style={{ fontWeight: '600' }}>CPT {wc.code}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{wc.desc}</div>
+                                </td>
+                                <td>{wc.surgeon}</td>
+                                <td>{wc.duration} mins</td>
+                                <td>${wc.rev.toLocaleString()}</td>
+                                <td>${wc.supplies.toLocaleString()}</td>
+                                <td>${wc.implants.toLocaleString()}</td>
+                                <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${wc.margin.toLocaleString()}</td>
+                                <td>
+                                  <button
+                                    className="btn-header btn-primary"
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                    onClick={() => handleSimulateResolve(wc)}
+                                  >
+                                    Fill Slot
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Recent Cancellations & Revenue Loss</h3>
+                      </div>
+                      <div className="custom-table-container">
+                        <table className="custom-table">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Procedure</th>
+                              <th>Surgeon</th>
+                              <th>Reason</th>
+                              <th>Estimated Lost Margin</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { date: 'May 12', desc: 'Gallbladder (CPT 23430)', surg: 'Dr. Walsh Mark', reason: 'Patient No-Show', loss: 3450 },
+                              { date: 'May 10', desc: 'Shoulder Arthroscopy', surg: 'Dr. Gardner Paul', reason: 'Incomplete Pre-Op Clearance', loss: 4200 },
+                              { date: 'May 8', desc: 'Carpal Tunnel Release', surg: 'Dr. Bonett Andrew', reason: 'Insurance Pre-Auth Refused', loss: 1620 },
+                              { date: 'May 5', desc: 'Hernia Repair', surg: 'Dr. Walsh Mark', reason: 'Patient Medical Anomaly (Elevated BP)', loss: 3750 }
+                            ].map((c, i) => (
+                              <tr
+                                key={i}
+                                onClick={() => { setSelectedSurgeon(c.surg); setProfileTab('schedule'); }}
+                                style={{ cursor: 'pointer' }}
+                                className="clickable-row"
+                              >
+                                <td>{c.date}</td>
+                                <td style={{ fontWeight: '600' }}>{c.desc}</td>
+                                <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.surg}</td>
+                                <td style={{ color: 'var(--color-orange)' }}>{c.reason}</td>
+                                <td style={{ color: 'var(--color-red)', fontWeight: '600' }}>-${c.loss.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="dashboard-card">
+                      <div className="card-header">
+                        <h3 className="card-title">Cancellations by Reason</h3>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Medical Issues (Pre-Op clearance/elevated vitals)</span>
+                          <span style={{ fontWeight: '600' }}>42%</span>
+                        </div>
+                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '42%', backgroundColor: 'var(--color-red)' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Insurance / Authorization issues</span>
+                          <span style={{ fontWeight: '600' }}>28%</span>
+                        </div>
+                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '28%', backgroundColor: 'var(--color-red)' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Patient No-Show / Late cancellation</span>
+                          <span style={{ fontWeight: '600' }}>20%</span>
+                        </div>
+                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '20%', backgroundColor: 'var(--color-orange)' }} />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span>Administrative / Scheduling conflict</span>
+                          <span style={{ fontWeight: '600' }}>10%</span>
+                        </div>
+                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '10%', backgroundColor: 'var(--color-grey)' }} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">Cancellations by Reason</h3>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Medical Issues (Pre-Op clearance/elevated vitals)</span>
-                      <span style={{ fontWeight: '600' }}>42%</span>
-                    </div>
-                    <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '42%', backgroundColor: 'var(--color-red)' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Insurance / Authorization issues</span>
-                      <span style={{ fontWeight: '600' }}>28%</span>
-                    </div>
-                    <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '28%', backgroundColor: 'var(--color-red)' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Patient No-Show / Late cancellation</span>
-                      <span style={{ fontWeight: '600' }}>20%</span>
-                    </div>
-                    <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '20%', backgroundColor: 'var(--color-orange)' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Administrative / Scheduling conflict</span>
-                      <span style={{ fontWeight: '600' }}>10%</span>
-                    </div>
-                    <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: '10%', backgroundColor: 'var(--color-grey)' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ==========================================
+              {/* ==========================================
               TAB: REPORTS & ANALYTICS
               ========================================== */}
-          {activeTab === 'reports' && (
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3 className="card-title">Reports & Analytics</h3>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Export monthly clinical logs, surgeon score sheets, and billing ledgers.
-              </p>
-            </div>
-          )}
+              {activeTab === 'reports' && (
+                <div className="dashboard-card">
+                  <div className="card-header">
+                    <h3 className="card-title">Reports & Analytics</h3>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Export monthly clinical logs, surgeon score sheets, and billing ledgers.
+                  </p>
+                </div>
+              )}
 
-          {/* ==========================================
+              {/* ==========================================
               TAB: AI INSIGHTS
               ========================================== */}
-          {activeTab === 'ai' && (
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3 className="card-title"><Sparkles size={18} /> Prescriptive AI Actions Hub</h3>
-              </div>
+              {activeTab === 'ai' && (
+                <div className="dashboard-card">
+                  <div className="card-header">
+                    <h3 className="card-title"><Sparkles size={18} /> Prescriptive AI Actions Hub</h3>
+                  </div>
 
-              <div className="ai-recommendations-list">
-                <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-blue)', backgroundColor: 'rgba(59,130,246,0.05)', borderRadius: '4px', marginBottom: '10px' }}>
-                  <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Schedule Optimization Suggestion</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    OR 2 is scheduled at 81% utilization, but has two 45-minute gaps. Moving Cataract cases of Dr. Lee to OR 3 frees up OR 2 block time from 1:30 PM onwards, enabling a 3.5 hour orthopedic slot.
-                  </p>
-                  <button className="btn-header btn-primary" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px' }} onClick={() => alert('Applied recommendation: Shifting cases.')}>Apply Auto-Shift</button>
+                  <div className="ai-recommendations-list">
+                    <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-blue)', backgroundColor: 'rgba(59,130,246,0.05)', borderRadius: '4px', marginBottom: '10px' }}>
+                      <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Schedule Optimization Suggestion</h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        OR 2 is scheduled at 81% utilization, but has two 45-minute gaps. Moving Cataract cases of Dr. Gardner to OR 3 frees up OR 2 block time from 1:30 PM onwards, enabling a 3.5 hour orthopedic slot.
+                      </p>
+                      <button className="btn-header btn-primary" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px' }} onClick={() => alert('Applied recommendation: Shifting cases.')}>Apply Auto-Shift</button>
+                    </div>
+
+                    <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-green)', backgroundColor: 'rgba(16,185,129,0.05)', borderRadius: '4px', marginBottom: '10px' }}>
+                      <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Preference Card Cost Reduction</h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Dr. Malinoski Kelly spends an average of $250 more on anchors/sutures than Dr. Bonett Andrew for CPT 29827. Swapping to the standard anchor brand will save the facility $12,000 based on his annual caseload.
+                      </p>
+                      <button className="btn-header" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px', color: 'var(--color-green)', borderColor: 'var(--color-green)' }} onClick={() => alert('Sent standardization alert to Dr. Malinoski.')}>Initiate Standardization</button>
+                    </div>
+
+                    <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-orange)', backgroundColor: 'rgba(245,158,11,0.05)', borderRadius: '4px' }}>
+                      <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Cancellation Hazard Notice</h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Three patients scheduled for May 14 have outstanding pre-auth codes. There is an 80% risk of cancellation. Auto-reminders have been generated for billing staff to contact insurers.
+                      </p>
+                      <button className="btn-header" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px', color: 'var(--color-orange)', borderColor: 'var(--color-orange)' }} onClick={() => alert('Sent high priority alerts to Billing Desk.')}>Send Staff Reminders</button>
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-green)', backgroundColor: 'rgba(16,185,129,0.05)', borderRadius: '4px', marginBottom: '10px' }}>
-                  <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Preference Card Cost Reduction</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    Dr. David Smith spends an average of $250 more on anchors/sutures than Dr. James Johnson for CPT 29827. Swapping to the standard anchor brand will save the facility $12,000 based on his annual caseload.
-                  </p>
-                  <button className="btn-header" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px', color: 'var(--color-green)', borderColor: 'var(--color-green)' }} onClick={() => alert('Sent standardization alert to Dr. Smith.')}>Initiate Standardization</button>
-                </div>
-
-                <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-orange)', backgroundColor: 'rgba(245,158,11,0.05)', borderRadius: '4px' }}>
-                  <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Cancellation Hazard Notice</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    Three patients scheduled for May 14 have outstanding pre-auth codes. There is an 80% risk of cancellation. Auto-reminders have been generated for billing staff to contact insurers.
-                  </p>
-                  <button className="btn-header" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px', color: 'var(--color-orange)', borderColor: 'var(--color-orange)' }} onClick={() => alert('Sent high priority alerts to Billing Desk.')}>Send Staff Reminders</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ==========================================
+              {/* ==========================================
               TAB: DATA EXPLORER
               ========================================== */}
-          {activeTab === 'data' && (
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3 className="card-title">Ad-hoc Data Explorer</h3>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Query facility databases and build customized tabular grids.
-              </p>
-            </div>
-          )}
+              {activeTab === 'data' && (
+                <div className="dashboard-card">
+                  <div className="card-header">
+                    <h3 className="card-title">Ad-hoc Data Explorer</h3>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Query facility databases and build customized tabular grids.
+                  </p>
+                </div>
+              )}
 
-          {/* ==========================================
+              {/* ==========================================
               TAB: SETTINGS
               ========================================== */}
-          {activeTab === 'settings' && (
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3 className="card-title">ASC Settings Configuration</h3>
-              </div>
+              {activeTab === 'settings' && (
+                <div className="dashboard-card">
+                  <div className="card-header">
+                    <h3 className="card-title">ASC Settings Configuration</h3>
+                  </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '0.9rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                  <span>OR Baseline Cost / Hour</span>
-                  <input type="text" value="$1,500" className="date-range-selector" style={{ width: '150px' }} readOnly />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '0.9rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
+                      <span>OR Baseline Cost / Hour</span>
+                      <input type="text" value="$1,500" className="date-range-selector" style={{ width: '150px' }} readOnly />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
+                      <span>Staff Labor Cost / Hour</span>
+                      <input type="text" value="$450" className="date-range-selector" style={{ width: '150px' }} readOnly />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
+                      <span>Default Turnover Allocation</span>
+                      <input type="text" value="25 mins" className="date-range-selector" style={{ width: '150px' }} readOnly />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
+                      <span>Supabase Sync Host</span>
+                      <input type="text" value="https://supabase.medicalai.co" className="date-range-selector" style={{ width: '300px' }} readOnly />
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                  <span>Staff Labor Cost / Hour</span>
-                  <input type="text" value="$450" className="date-range-selector" style={{ width: '150px' }} readOnly />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                  <span>Default Turnover Allocation</span>
-                  <input type="text" value="25 mins" className="date-range-selector" style={{ width: '150px' }} readOnly />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                  <span>Supabase Sync Host</span>
-                  <input type="text" value="https://supabase.medicalai.co" className="date-range-selector" style={{ width: '300px' }} readOnly />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ==========================================
+              {/* ==========================================
               TAB: HELP & SUPPORT
               ========================================== */}
-          {activeTab === 'help' && (
-            <div className="dashboard-card">
-              <div className="card-header">
-                <h3 className="card-title">Help & Support Desk</h3>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Access operational manuals and contact support engineers.
-              </p>
-            </div>
-          )}
+              {activeTab === 'help' && (
+                <div className="dashboard-card">
+                  <div className="card-header">
+                    <h3 className="card-title">Help & Support Desk</h3>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Access operational manuals and contact support engineers.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </section>
@@ -2788,9 +3697,365 @@ export default function App() {
               </div>
 
               <div style={{ backgroundColor: 'rgba(59,130,246,0.05)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '10px', marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                <span style={{ fontWeight: '700', color: '#fff' }}>Decision Engine Insight:</span> This case contributes <strong>${Math.round(selectedCase.margin / ( (selectedCase.endMin - selectedCase.startMin) / 60 )).toLocaleString()} / OR Hour</strong>. Implants represent the highest cost driver at {Math.round((selectedCase.implants / selectedCase.revenue) * 100)}% of total revenue.
+                <span style={{ fontWeight: '700', color: '#fff' }}>Decision Engine Insight:</span> This case contributes <strong>${Math.round(selectedCase.margin / ((selectedCase.endMin - selectedCase.startMin) / 60)).toLocaleString()} / OR Hour</strong>. Implants represent the highest cost driver at {Math.round((selectedCase.implants / selectedCase.revenue) * 100)}% of total revenue.
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL: ADD / EDIT PATIENT
+          ========================================== */}
+      {patientModalOpen && (
+        <div className="modal-overlay" onClick={() => setPatientModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '600px', maxWidth: '95%' }}>
+            <div className="modal-header">
+              <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={18} style={{ color: 'var(--color-blue)' }} />
+                {editingPatient ? 'Edit Patient Record' : 'Add New Patient Record'}
+              </h3>
+              <button className="modal-close" onClick={() => setPatientModalOpen(false)}>×</button>
+            </div>
+
+            <form onSubmit={handleSavePatient} className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '6px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Basic Information Section */}
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
+                  Basic Information
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. DOE, JOHN"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.name}
+                      onChange={(e) => setPatientForm({ ...patientForm, name: e.target.value.toUpperCase() })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Date of Birth *</label>
+                    <input
+                      type="date"
+                      required
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.dob}
+                      onChange={(e) => setPatientForm({ ...patientForm, dob: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>MRN Number *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Medical Record Number"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.mrn}
+                      onChange={(e) => setPatientForm({ ...patientForm, mrn: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Phone *</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="10-digit number"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setPatientForm({ ...patientForm, phone: val });
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Gender *</label>
+                    <select
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px', background: 'var(--bg-card)' }}
+                      value={patientForm.gender}
+                      onChange={(e) => setPatientForm({ ...patientForm, gender: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Non-Binary">Non-Binary</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information Section */}
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
+                  Contact Information
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Email Address *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="patient@example.com"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.email}
+                      onChange={(e) => setPatientForm({ ...patientForm, email: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Address *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="123 Main St, City, State ZIP"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.address}
+                      onChange={(e) => setPatientForm({ ...patientForm, address: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Insurance Section */}
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
+                  Primary Insurance Information
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Insurance Provider *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Blue Cross"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.insurance_provider}
+                      onChange={(e) => setPatientForm({ ...patientForm, insurance_provider: e.target.value })}
+                      list="insurance-providers"
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Policy Number *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Policy/Member ID"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.insurance_policy_number}
+                      onChange={(e) => setPatientForm({ ...patientForm, insurance_policy_number: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Group Number</label>
+                    <input
+                      type="text"
+                      placeholder="Group ID"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.insurance_group_number}
+                      onChange={(e) => setPatientForm({ ...patientForm, insurance_group_number: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Insurance Type *</label>
+                    <select
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px', background: 'var(--bg-card)' }}
+                      value={patientForm.insurance_type}
+                      onChange={(e) => setPatientForm({ ...patientForm, insurance_type: e.target.value })}
+                      required
+                    >
+                      <option value="Primary">Primary</option>
+                      <option value="Secondary">Secondary</option>
+                      <option value="Medicare">Medicare</option>
+                      <option value="Medicaid">Medicaid</option>
+                      <option value="Private">Private</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Subscriber Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Policy holder name"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.subscriber_name}
+                      onChange={(e) => setPatientForm({ ...patientForm, subscriber_name: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Relationship to Subscriber *</label>
+                    <select
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px', background: 'var(--bg-card)' }}
+                      value={patientForm.subscriber_relationship}
+                      onChange={(e) => setPatientForm({ ...patientForm, subscriber_relationship: e.target.value })}
+                      required
+                    >
+                      <option value="Self">Self</option>
+                      <option value="Spouse">Spouse</option>
+                      <option value="Child">Child</option>
+                      <option value="Parent">Parent</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Effective Date *</label>
+                    <input
+                      type="date"
+                      required
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.insurance_effective_date}
+                      onChange={(e) => setPatientForm({ ...patientForm, insurance_effective_date: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Expiration Date *</label>
+                    <input
+                      type="date"
+                      required
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.insurance_expiration_date}
+                      onChange={(e) => setPatientForm({ ...patientForm, insurance_expiration_date: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Copay Amount</label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.copay_amount}
+                      onChange={(e) => setPatientForm({ ...patientForm, copay_amount: e.target.value })}
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Deductible Amount</label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.deductible_amount}
+                      onChange={(e) => setPatientForm({ ...patientForm, deductible_amount: e.target.value })}
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Secondary Insurance Section */}
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
+                  Secondary Insurance (Optional)
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Secondary Provider</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Aetna"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.secondary_insurance_provider}
+                      onChange={(e) => setPatientForm({ ...patientForm, secondary_insurance_provider: e.target.value })}
+                      list="insurance-providers"
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Secondary Policy Number</label>
+                    <input
+                      type="text"
+                      placeholder="Secondary ID"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.secondary_insurance_policy_number}
+                      onChange={(e) => setPatientForm({ ...patientForm, secondary_insurance_policy_number: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Secondary Group Number</label>
+                    <input
+                      type="text"
+                      placeholder="Secondary Group ID"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={patientForm.secondary_insurance_group_number}
+                      onChange={(e) => setPatientForm({ ...patientForm, secondary_insurance_group_number: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Insurance Providers Datalist */}
+              <datalist id="insurance-providers">
+                <option value="UnitedHealthcare" />
+                <option value="Cigna Healthcare" />
+                <option value="Aetna" />
+                <option value="Blue Cross Blue Shield" />
+                <option value="Humana" />
+                <option value="Medicare" />
+                <option value="Medicaid" />
+                <option value="Kaiser Permanente" />
+                <option value="Anthem" />
+                <option value="Tricare" />
+              </datalist>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+                <button
+                  type="button"
+                  className="btn-header"
+                  onClick={() => setPatientModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-header btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <CheckCircle size={14} /> Save Patient
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
