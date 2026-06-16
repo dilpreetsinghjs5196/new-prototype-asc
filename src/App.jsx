@@ -1623,20 +1623,26 @@ export default function App() {
       return;
     }
 
+    const dbPayload = {
+      ...patientForm,
+      copay_amount: patientForm.copay_amount === '' || patientForm.copay_amount === null || patientForm.copay_amount === undefined ? null : parseFloat(patientForm.copay_amount),
+      deductible_amount: patientForm.deductible_amount === '' || patientForm.deductible_amount === null || patientForm.deductible_amount === undefined ? null : parseFloat(patientForm.deductible_amount)
+    };
+
     try {
       if (editingPatient) {
         // Update database
-        const updated = await db.updatePatient(editingPatient.id, patientForm);
+        const updated = await db.updatePatient(editingPatient.id, dbPayload);
         
         // Update local state
-        setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...patientForm, id: editingPatient.id } : p));
+        setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...dbPayload, id: editingPatient.id } : p));
         alert('Patient updated successfully.');
       } else {
         // Insert database
-        const inserted = await db.addPatient(patientForm);
+        const inserted = await db.addPatient(dbPayload);
         
         // Update local state
-        const newPatient = inserted || { ...patientForm, id: Date.now(), created_at: new Date().toISOString() };
+        const newPatient = inserted || { ...dbPayload, id: Date.now(), created_at: new Date().toISOString() };
         setPatients(prev => [newPatient, ...prev]);
         alert('Patient added successfully.');
       }
@@ -1645,11 +1651,11 @@ export default function App() {
       console.error("Database patient write failed, updating locally:", err);
       // fallback
       if (editingPatient) {
-        setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...patientForm } : p));
+        setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...dbPayload } : p));
         alert('Patient updated locally (Database sync failed).');
       } else {
         const localId = Date.now();
-        setPatients(prev => [{ ...patientForm, id: localId, created_at: new Date().toISOString() }, ...prev]);
+        setPatients(prev => [{ ...dbPayload, id: localId, created_at: new Date().toISOString() }, ...prev]);
         alert('Patient added locally (Database sync failed).');
       }
       setPatientModalOpen(false);
