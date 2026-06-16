@@ -1524,7 +1524,7 @@ export default function App() {
   const handleOpenEditPatient = (patient) => {
     setEditingPatient(patient);
     setPatientForm({
-      name: patient.name || '',
+      name: patient.name ? patient.name.trim() : '',
       dob: patient.dob || '',
       mrn: patient.mrn || '',
       phone: patient.phone || '',
@@ -1625,6 +1625,7 @@ export default function App() {
 
     const dbPayload = {
       ...patientForm,
+      name: patientForm.name ? patientForm.name.trim() : '',
       copay_amount: patientForm.copay_amount === '' || patientForm.copay_amount === null || patientForm.copay_amount === undefined ? null : parseFloat(patientForm.copay_amount),
       deductible_amount: patientForm.deductible_amount === '' || patientForm.deductible_amount === null || patientForm.deductible_amount === undefined ? null : parseFloat(patientForm.deductible_amount)
     };
@@ -3019,9 +3020,9 @@ export default function App() {
                                     fontWeight: '700',
                                     border: `1px solid ${patient.gender === 'Female' ? 'rgba(236, 72, 153, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`
                                   }}>
-                                    {patient.name ? patient.name.charAt(0) : '?'}
+                                    {patient.name ? patient.name.trim().charAt(0) : '?'}
                                   </div>
-                                  {patient.name}
+                                  {patient.name ? patient.name.trim() : ''}
                                 </div>
                               </td>
                               <td style={{ whiteSpace: 'nowrap' }}>{patient.dob}</td>
