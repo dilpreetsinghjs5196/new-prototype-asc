@@ -1,0 +1,648 @@
+import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
+import { db } from '../lib/supabase';
+import './ORBlockSchedule.css';
+
+// Rooms displayed in the grid
+const ROOMS = ['OR 1'];
+
+/** Helper: format a Date object as YYYY‑MM‑DD */
+const formatDate = date => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+const COLORS = [
+    { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' }, // Blue
+    { border: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' }, // Emerald
+    { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' }, // Violet
+    { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' }, // Amber
+    { border: '#f43f5e', bg: 'rgba(244, 63, 94, 0.12)' }, // Rose
+    { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' }, // Cyan
+    { border: '#f97316', bg: 'rgba(249, 115, 22, 0.12)' }, // Orange
+    { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.12)' }, // Indigo
+    { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.12)' }, // Pink
+    { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.12)' }, // Teal
+];
+
+const getProviderColor = (name) => {
+    if (!name) return COLORS[0];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % COLORS.length;
+    return COLORS[index];
+};
+
+/** Helper: get day name (Monday‑Friday) */
+const getDayName = date =>
+    ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
+
+/** Helper: Convert HHMM to HH:MM for input */
+const toInputTime = (str) => {
+    if (!str) return '';
+    if (str.includes(':')) return str;
+    if (str.length === 4) return `${str.slice(0, 2)}:${str.slice(2)}`;
+    return str;
+};
+
+/** Helper: Convert HH:MM to HHMM for storage */
+const toStorageTime = (str) => {
+    if (!str) return '';
+    return str.replace(':', '');
+};
+
+/** Helper: Calculate duration in minutes between two HHMM times */
+const calcDuration = (start, end) => {
+    if (!start || !end) return 0;
+    const cleanTime = (t) => t.replace(/:/g, '').padEnd(4, '0').substring(0, 4);
+    const s = cleanTime(start);
+    const e = cleanTime(end);
+
+    const sH = parseInt(s.substring(0, 2));
+    const sM = parseInt(s.substring(2, 4));
+    const eH = parseInt(e.substring(0, 2));
+    const eM = parseInt(e.substring(2, 4));
+
+    let diff = (eH * 60 + eM) - (sH * 60 + sM);
+    // If end time is before start time, assume it spans to the next day
+    if (diff < 0) diff += 1440;
+    return diff;
+};
+
+/** Helper: Get week of month (First, Second, etc.) */
+const getWeekOfMonth = (date) => {
+    const day = date.getDate();
+    const week = Math.ceil(day / 7);
+    const map = { 1: 'Week 1', 2: 'Week 2', 3: 'Week 3', 4: 'Week 4', 5: 'Week 5' };
+    return map[week] || 'First';
+};
+
+const ORBlockSchedule = ({ surgeons = [], embedded = false }) => {
+    // ----- State -----------------------------------------------------------
+    const [schedule, setSchedule] = useState([]); // [{id, date, room_name, provider_name, start_time, end_time}]
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // selectedCell identifies the context (Date + Room)
+    const [selectedCell, setSelectedCell] = useState(null); // {date, room, blocks: []}
+
+    // editingBlock identifies the specific block being added/edited within that cell
+    const [editingBlock, setEditingBlock] = useState(null); // null = list view, {} = add mode, {id...} = edit mode
+
+    const [formData, setFormData] = useState({ provider_name: '', start_time: '', end_time: '' });
+    const [selectedDate, setSelectedDate] = useState(''); // YYYY‑MM‑DD for modal date picker
+    const [currentMonth, setCurrentMonth] = useState(new Date()); // month shown in the grid
+
+    // Chart State
+    const [showDailyChart, setShowDailyChart] = useState(false);
+    const [selectedRoomChart, setSelectedRoomChart] = useState('All');
+
+    // ----- Load schedule ----------------------------------------------------
+    useEffect(() => {
+        loadSchedule();
+    }, []);
+
+    const loadSchedule = async () => {
+        try {
+            setLoading(true);
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const isMock = !supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co';
+            if (isMock) {
+                // Mock data spread across the current month
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth() + 1).padStart(2, '0');
+                const d = String(today.getDate()).padStart(2, '0');
+                const mock = [
+                    { id: 1, date: `${y}-${m}-${d}`, room_name: 'OR 1', provider_name: 'Dr. Bonett Andrew', start_time: '1200', end_time: '1600' },
+                    { id: 2, date: `${y}-${m}-${d}`, room_name: 'OR 1', provider_name: 'Dr. Malinoski Kelly', start_time: '0730', end_time: '1300' },
+                    { id: 3, date: `${y}-${m}-02`, room_name: 'OR 1', provider_name: 'Dr. Walsh Mark', start_time: '0730', end_time: '1600' },
+                    { id: 4, date: `${y}-${m}-02`, room_name: 'OR 1', provider_name: 'Dr. Gardner Paul', start_time: '0730', end_time: '1600' }
+                ];
+                setSchedule(mock);
+                setLoading(false);
+                return;
+            }
+            const data = await db.getORBlockSchedule();
+            setSchedule(data);
+        } catch (err) {
+            console.error('Failed to load schedule', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ----- Helpers --------------------------------------------------------
+    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+    const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+    // Returns ARRAY of blocks for a cell, sorted by start_time
+    const getCellBlocks = (dateStr, room) => {
+        return schedule
+            .filter(item => item.date === dateStr && item.room_name === room)
+            .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    };
+
+    // ----- UI Handlers -----------------------------------------------------
+    const handleCellClick = (dateStr, room) => {
+        const blocks = getCellBlocks(dateStr, room);
+        setSelectedCell({ date: dateStr, room, blocks });
+        setSelectedDate(dateStr);
+        setEditingBlock(null); // Mode: List View
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedCell(null);
+        setEditingBlock(null);
+        setSelectedDate('');
+        setFormData({ provider_name: '', start_time: '', end_time: '' });
+    };
+
+    const handleAddNewBlock = () => {
+        setEditingBlock({}); // Empty object = New Block Mode
+        setFormData({ provider_name: '', start_time: '', end_time: '' });
+    };
+
+    const handleEditBlock = (block) => {
+        setEditingBlock(block); // Existing object = Edit Mode
+        setFormData({
+            provider_name: block.provider_name || '',
+            start_time: toInputTime(block.start_time),
+            end_time: toInputTime(block.end_time)
+        });
+    };
+
+    const handleChange = e => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSave = async e => {
+        e.preventDefault();
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const isMock = !supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co';
+
+        // Parse date to correctly identify Day of Week
+        const [y, m, d] = (selectedDate || selectedCell.date).split('-').map(Number);
+        const localDate = new Date(y, m - 1, d);
+
+        const payload = {
+            date: selectedDate || selectedCell.date,
+            room_name: selectedCell.room,
+            day_of_week: getDayName(localDate),
+            week_of_month: getWeekOfMonth(localDate),
+            provider_name: formData.provider_name,
+            start_time: toStorageTime(formData.start_time),
+            end_time: toStorageTime(formData.end_time)
+        };
+
+        try {
+            if (editingBlock && editingBlock.id) {
+                // Update existing
+                if (isMock) {
+                    setSchedule(prev => prev.map(item => (item.id === editingBlock.id ? { ...item, ...payload } : item)));
+                } else {
+                    await db.updateORBlockSchedule(editingBlock.id, payload);
+                    await loadSchedule();
+                }
+                await Swal.fire({ title: 'Updated!', icon: 'success', timer: 1000, showConfirmButton: false, background: 'var(--bg-card)', color: '#fff' });
+            } else {
+                // Create new
+                if (isMock) {
+                    setSchedule(prev => [...prev, { ...payload, id: Date.now() }]);
+                } else {
+                    await db.addORBlockSchedule(payload);
+                    await loadSchedule();
+                }
+                await Swal.fire({ title: 'Added!', icon: 'success', timer: 1000, showConfirmButton: false, background: 'var(--bg-card)', color: '#fff' });
+            }
+            setEditingBlock(null);
+        } catch (err) {
+            console.error('Error saving block:', err);
+            Swal.fire({ title: 'Error!', text: 'Could not save block.', icon: 'error', background: 'var(--bg-card)', color: '#fff' });
+        }
+    };
+
+    const handleDelete = async (id) => {
+        const confirm = await Swal.fire({
+            title: 'Remove Block?',
+            text: 'This cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, remove it!',
+            background: 'var(--bg-card)',
+            color: '#fff'
+        });
+        if (!confirm.isConfirmed) return;
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const isMock = !supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co';
+
+        try {
+            if (isMock) {
+                setSchedule(prev => prev.filter(item => item.id !== id));
+            } else {
+                await db.deleteORBlockSchedule(id);
+                await loadSchedule();
+            }
+            await Swal.fire({ title: 'Removed!', icon: 'success', timer: 1000, showConfirmButton: false, background: 'var(--bg-card)', color: '#fff' });
+        } catch (err) {
+            console.error(err);
+            Swal.fire({ title: 'Error!', icon: 'error', text: 'Could not delete block.', background: 'var(--bg-card)', color: '#fff' });
+        }
+    };
+
+    const prevMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    const nextMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+
+    /** Render the Gap Indicator between two blocks */
+    const renderGap = (prevBlock, currentBlock) => {
+        if (!prevBlock) return null;
+        const gapMins = calcDuration(prevBlock.end_time, currentBlock.start_time);
+
+        // 0 or negative gap means overlap or touching
+        if (gapMins <= 0) return null;
+
+        let gapClass = 'gap-green';
+        if (gapMins > 30) gapClass = 'gap-yellow';
+        if (gapMins > 60) gapClass = 'gap-red';
+
+        return (
+            <div className={`gap-indicator ${gapClass}`} title={`${gapMins} min turnover`}>
+                {gapMins}m Gap
+            </div>
+        );
+    };
+
+    // ----- Calculate Monthly Metrics -----
+    const totalBlocks = schedule.filter(s => {
+        if (!s.date) return false;
+        const [y, m] = s.date.split('-').map(Number);
+        return (m - 1) === currentMonth.getMonth() && y === currentMonth.getFullYear();
+    }).length;
+
+    // ----- Calculate Chart Data (Allocation) -----
+    let blockStats = [];
+    if (showDailyChart) {
+        const DAILY_CAPACITY = 480; // 8 hours (07:00 - 15:00)
+
+        const targetDate = new Date(); // Today
+        const start = new Date(targetDate); start.setHours(0, 0, 0, 0);
+        const end = new Date(targetDate); end.setHours(23, 59, 59, 999);
+
+        // Filter relevant blocks for THIS DAY
+        const relevantBlocks = schedule.filter(b => {
+            if (!b.date) return false;
+            const [y, m, dNum] = b.date.split('-').map(Number);
+            const blockDate = new Date(y, m - 1, dNum);
+
+            const timeMatch = blockDate >= start && blockDate <= end;
+            const roomMatch = selectedRoomChart === 'All' ? true : b.room_name === selectedRoomChart;
+            return timeMatch && roomMatch;
+        });
+
+        const surgeonAllocations = {};
+        let totalAllocatedMinutes = 0;
+
+        relevantBlocks.forEach(block => {
+            const duration = calcDuration(block.start_time, block.end_time);
+            const name = block.provider_name || 'Unknown';
+            surgeonAllocations[name] = (surgeonAllocations[name] || 0) + duration;
+            totalAllocatedMinutes += duration;
+        });
+
+        // Calculate Capacity for ONE Day
+        let businessDays = 0;
+        const day = targetDate.getDay();
+        if (day !== 0 && day !== 6) businessDays = 1;
+
+        const multiplier = selectedRoomChart === 'All' ? ROOMS.length : 1;
+        const totalCapacity = businessDays * multiplier * DAILY_CAPACITY;
+        const gapMinutes = Math.max(0, totalCapacity - totalAllocatedMinutes);
+
+        blockStats = Object.entries(surgeonAllocations).map(([name, mins]) => ({
+            name,
+            value: mins,
+            color: getProviderColor(name).border
+        }));
+
+        if (gapMinutes > 0) {
+            blockStats.push({ name: 'Gap / Unused', value: gapMinutes, color: 'rgba(255, 255, 255, 0.06)' });
+        }
+
+        const grandTotal = totalAllocatedMinutes + gapMinutes;
+        blockStats.forEach(s => {
+            s.percentage = grandTotal > 0 ? (s.value / grandTotal) * 100 : 0;
+        });
+        blockStats.sort((a, b) => b.value - a.value);
+    }
+
+    return (
+        <div className={`or-schedule-container fade-in ${embedded ? 'embedded' : ''}`}>
+            <div className="or-schedule-header">
+                <div>
+                    <h2 className="or-schedule-title">OR Block Schedule</h2>
+                    <div className="header-metrics">
+                        <span className="metric-badge">Total Blocks: {totalBlocks}</span>
+                        <button
+                            className={`btn-toggle-chart ${showDailyChart ? 'active' : ''}`}
+                            onClick={() => setShowDailyChart(!showDailyChart)}
+                        >
+                            {showDailyChart ? 'Hide Allocation' : 'Daily Allocation'}
+                        </button>
+                    </div>
+                </div>
+                <div className="month-nav">
+                    <button className="btn-nav" onClick={prevMonth}>←</button>
+                    <span className="month-label">
+                        {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button className="btn-nav" onClick={nextMonth}>→</button>
+                </div>
+            </div>
+
+            {/* Daily Allocation Chart Section */}
+            {showDailyChart && (
+                <div className="chart-section-container">
+                    <div className="chart-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                            <h3>OR Block Schedule Allocation (daily)</h3>
+                            <select
+                                className="filter-select"
+                                value={selectedRoomChart}
+                                onChange={(e) => setSelectedRoomChart(e.target.value)}
+                            >
+                                <option value="All">All Rooms</option>
+                                {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(Surgeons vs Gap Time)</span>
+                    </div>
+
+                    <div className="utilization-chart-container">
+                        {blockStats.length === 0 ? (
+                            <div style={{ padding: '2rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                No data for this month
+                            </div>
+                        ) : (
+                            <div className="pie-chart-wrapper">
+                                <div
+                                    className="pie-chart"
+                                    style={{
+                                        background: `conic-gradient(${blockStats.reduce((acc, item, index) => {
+                                            const prevPerc = index === 0 ? 0 : blockStats.slice(0, index).reduce((p, i) => p + i.percentage, 0);
+                                            return `${acc}${index > 0 ? ',' : ''} ${item.color} ${prevPerc}% ${prevPerc + item.percentage}%`;
+                                        }, '')})`
+                                    }}
+                                >
+                                    <div className="donut-hole"></div>
+                                </div>
+
+                                <div className="chart-legend-grid">
+                                    {blockStats.map((item, index) => (
+                                        <div key={index} className="legend-item">
+                                            <span className="legend-dot" style={{ background: item.color }}></span>
+                                            <div className="legend-info">
+                                                <span className="legend-name">{item.name}</span>
+                                                <span className="legend-val">
+                                                    {Math.round(item.percentage)}% ({Math.round(item.value / 60 * 10) / 10} hrs)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="schedule-grid-wrapper">
+                <div className="schedule-grid" style={{ '--rooms-count': ROOMS.length }}>
+                    {/* Header */}
+                    <div className="grid-header-row">
+                        <div className="grid-header-cell">Date</div>
+                        {ROOMS.map(room => (
+                            <div key={room} className="grid-header-cell">{room}</div>
+                        ))}
+                    </div>
+
+                    {/* Body rows – Grouped by Day of Week */}
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(dayName => {
+                        const datesForDay = monthDays.filter(day => {
+                            const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                            return getDayName(dateObj) === dayName;
+                        });
+
+                        if (datesForDay.length === 0) return null;
+
+                        return (
+                            <React.Fragment key={dayName}>
+                                <div className="grid-group-header">
+                                    {dayName}s
+                                </div>
+                                {datesForDay.map(day => {
+                                    const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                    const dateStr = formatDate(dateObj);
+                                    return (
+                                        <div key={day} className="grid-row">
+                                            <div className="row-label">
+                                                <span className="date-text">
+                                                    <span className="month-name">
+                                                        {dateObj.toLocaleString('default', { month: 'short' })}
+                                                    </span>
+                                                    {day}
+                                                </span>
+                                                <span className="week-label">{getWeekOfMonth(dateObj)}</span>
+                                            </div>
+                                            {ROOMS.map(room => {
+                                                const blocks = getCellBlocks(dateStr, room);
+                                                return (
+                                                    <div
+                                                        key={room}
+                                                        className="grid-cell"
+                                                        onClick={() => handleCellClick(dateStr, room)}
+                                                    >
+                                                        {blocks.length > 0 ? (
+                                                            <div className="block-list">
+                                                                {blocks.map((block, idx) => {
+                                                                    const colorStyle = getProviderColor(block.provider_name);
+                                                                    return (
+                                                                        <React.Fragment key={block.id}>
+                                                                            {idx > 0 && renderGap(blocks[idx - 1], block)}
+                                                                            <div
+                                                                                className="block-item"
+                                                                                style={{
+                                                                                    borderLeftColor: colorStyle.border,
+                                                                                    backgroundColor: colorStyle.bg
+                                                                                }}
+                                                                            >
+                                                                                <div className="cell-provider">
+                                                                                    {block.provider_name}
+                                                                                </div>
+                                                                                <div className="cell-time">
+                                                                                    {block.start_time && block.end_time
+                                                                                        ? `${toInputTime(block.start_time)} - ${toInputTime(block.end_time)}`
+                                                                                        : 'All Day'}
+                                                                                </div>
+                                                                            </div>
+                                                                        </React.Fragment>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="empty-cell-placeholder" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', opacity: 0.5, textAlign: 'center', margin: 'auto' }}>+ Add Block</div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })}
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {isModalOpen && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                        <div className="modal-header">
+                            <h3 style={{ color: '#fff' }}>{selectedCell?.date} - {selectedCell?.room}</h3>
+                            <button className="modal-close" onClick={handleCloseModal}>×</button>
+                        </div>
+
+                        {/* VIEW MODE: LIST BLOCKS */}
+                        {!editingBlock && (
+                            <>
+                                <div className="modal-block-list">
+                                    {getCellBlocks(selectedCell.date, selectedCell.room).length === 0 ? (
+                                        <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No blocks scheduled.</p>
+                                    ) : (
+                                        getCellBlocks(selectedCell.date, selectedCell.room).map(block => {
+                                            const colorStyle = getProviderColor(block.provider_name);
+                                            return (
+                                                <div
+                                                    key={block.id}
+                                                    className="modal-block-item"
+                                                    style={{
+                                                        borderLeft: `4px solid ${colorStyle.border}`,
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                                                        borderColor: 'var(--border-color)'
+                                                    }}
+                                                >
+                                                    <div className="modal-block-info">
+                                                        <h4 style={{ color: '#fff' }}>{block.provider_name}</h4>
+                                                        <p>
+                                                            {block.start_time && block.end_time
+                                                                ? `${toInputTime(block.start_time)} - ${toInputTime(block.end_time)}`
+                                                                : <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Full Day Block</span>}
+                                                        </p>
+                                                    </div>
+                                                    <div className="modal-block-actions">
+                                                        <button
+                                                            className="btn-icon edit"
+                                                            style={{ color: 'var(--color-blue)' }}
+                                                            onClick={() => handleEditBlock(block)}
+                                                            title="Edit"
+                                                        >
+                                                            ✎
+                                                        </button>
+                                                        <button
+                                                            className="btn-icon delete"
+                                                            style={{ color: 'var(--color-red)' }}
+                                                            onClick={() => handleDelete(block.id)}
+                                                            title="Delete"
+                                                        >
+                                                            🗑
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                                <button className="btn-add-block" onClick={handleAddNewBlock}>
+                                    + Add Surgeon Block
+                                </button>
+                                <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                                    <button className="btn-header" onClick={handleCloseModal}>Close</button>
+                                </div>
+                            </>
+                        )}
+
+                        {/* EDIT/ADD MODE: FORM */}
+                        {editingBlock && (
+                            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Surgeon / Provider</label>
+                                    <select
+                                        name="provider_name"
+                                        value={formData.provider_name}
+                                        onChange={handleChange}
+                                        className="filter-select"
+                                        style={{ height: '38px', width: '100%' }}
+                                        required
+                                    >
+                                        <option value="">Select Surgeon</option>
+                                        {surgeons.map(surgeon => (
+                                            <option key={surgeon.id} value={surgeon.name}>
+                                                {surgeon.name} {surgeon.specialty ? `- ${surgeon.specialty}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Start Time</label>
+                                        <input
+                                            type="time"
+                                            name="start_time"
+                                            value={formData.start_time}
+                                            onChange={handleChange}
+                                            className="filter-select"
+                                            style={{ height: '38px', width: '100%' }}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>End Time</label>
+                                        <input
+                                            type="time"
+                                            name="end_time"
+                                            value={formData.end_time}
+                                            onChange={handleChange}
+                                            className="filter-select"
+                                            style={{ height: '38px', width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+                                {formData.start_time && formData.end_time && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                        Duration: {Math.floor(calcDuration(formData.start_time, formData.end_time) / 60)}h {calcDuration(formData.start_time, formData.end_time) % 60}m
+                                    </div>
+                                )}
+                                <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+                                    <button type="button" className="btn-header" onClick={() => setEditingBlock(null)}>
+                                        Back
+                                    </button>
+                                    <button type="submit" className="btn-header btn-primary">
+                                        {editingBlock.id ? 'Save Changes' : 'Add Block'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default ORBlockSchedule;

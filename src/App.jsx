@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './lib/supabase';
+import SurgeryScheduler from './components/SurgeryScheduler';
 import {
   ResponsiveContainer,
   LineChart,
@@ -45,7 +46,8 @@ import {
   Users,
   Edit,
   Trash2,
-  Plus
+  Plus,
+  CalendarDays
 } from 'lucide-react';
 
 // ==========================================
@@ -1059,6 +1061,27 @@ export default function App() {
   const [patientLimit, setPatientLimit] = useState(10);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState(null);
+
+  // CPT Codes List State (for SurgeryScheduler)
+  const [cptCodesList, setCptCodesList] = useState([]);
+
+  // Surgeon Management State
+  const [surgeonsList, setSurgeonsList] = useState([]);
+  const [surgeonSearchQuery, setSurgeonSearchQuery] = useState('');
+  const [surgeonPage, setSurgeonPage] = useState(1);
+  const [surgeonLimit, setSurgeonLimit] = useState(10);
+  const [surgeonModalOpen, setSurgeonModalOpen] = useState(false);
+  const [editingSurgeon, setEditingSurgeon] = useState(null);
+  const [surgeonForm, setSurgeonForm] = useState({
+    firstname: '',
+    lastname: '',
+    specialty: '',
+    license_number: '',
+    phone: '',
+    email: '',
+    password: '',
+    countryCode: '+1'
+  });
   const [patientForm, setPatientForm] = useState({
     name: '',
     dob: '',
@@ -1136,6 +1159,9 @@ export default function App() {
           return `Dr. ${last} ${first}`.trim();
         };
 
+        // Store CPT codes in state for SurgeryScheduler
+        setCptCodesList(loadedCPTList);
+
         // 1. Process surgeries list
         const mappedSurgeries = loadedSurgeries.map(surg => {
           const doctorName = formatDoctorName(surg.surgeons) || surg.doctor_name || 'Unknown Surgeon';
@@ -1144,7 +1170,14 @@ export default function App() {
           const implants = Number(surg.implants_cost || 0);
           const labor = Number(surg.actual_labor_cost || 0);
           const roomCost = Number(surg.actual_room_cost || 0);
-          const margin = revenue - (supplies + implants + labor + roomCost);
+          const meds = Number(surg.medications_cost || 0);
+          // Parse tray_cost from DB column or from notes fallback
+          let trayCost = Number(surg.tray_cost || 0);
+          if (trayCost === 0 && surg.notes) {
+            const m = surg.notes.match(/\[Tray Cost:\s*([\d.]+)\]/);
+            if (m) trayCost = parseFloat(m[1]);
+          }
+          const margin = revenue - (supplies + implants + labor + roomCost + meds + trayCost);
           
           let marginType = 'med';
           if (margin > 1000) marginType = 'high';
@@ -1183,11 +1216,37 @@ export default function App() {
             implants,
             labor,
             roomCost,
-            margin
+            margin,
+            date: surg.date,
+            duration_minutes: duration,
+            turnover_time: surg.turnover_time !== undefined && surg.turnover_time !== null ? surg.turnover_time : 20,
+            // Raw DB fields forwarded so SurgeryScheduler can display them
+            patient_id: surg.patient_id,
+            surgeon_id: surg.surgeon_id,
+            doctor_name: surg.doctor_name,
+            start_time: surg.start_time,
+            cpt_codes: surg.cpt_codes,
+            supplies_cost: supplies,
+            implants_cost: implants,
+            medications_cost: meds,
+            tray_cost: surg.tray_cost,
+            actual_start_time: surg.actual_start_time,
+            actual_end_time: surg.actual_end_time,
+            actual_duration_minutes: surg.actual_duration_minutes,
+            actual_labor_cost: labor,
+            actual_room_cost: roomCost,
+            expected_reimbursement: revenue,
+            write_off: surg.write_off,
+            is_probono: surg.is_probono,
+            or_room: surg.or_room,
+            status: surg.status || 'scheduled',
+            notes: surg.notes,
+            patients: surg.patients
           };
         });
         setSurgeries(mappedSurgeries);
         setPatients(loadedPatients);
+        setSurgeonsList(loadedSurgeons);
 
         // 2. Process surgeons details
         const surgeonsDetailsObj = {};
@@ -1205,19 +1264,22 @@ export default function App() {
             metrics: {
               cases: 0,
               avgDuration: 0,
-              avgTurnover: s.years_of_experience ? Math.max(12, 30 - s.years_of_experience) : 20,
-              supplyVariance: s.is_cosmetic_surgeon ? '-2.5%' : '+12.4%', 
+              avgTurnover: 0,
+              totalTurnover: 0,
+              totalRevenue: 0,
+              totalSupplies: 0,
+              supplyVariance: '0.0%',
               netMargin: 0,
               avgMargin: 0,
               onTimeStart: 90 + (s.id % 8),
               utilization: 65 + (s.id % 20)
             },
             caseHistory: [
-              { name: 'Jan', cases: 8, margin: 40000, revenue: 80000 },
-              { name: 'Feb', cases: 10, margin: 50000, revenue: 100000 },
-              { name: 'Mar', cases: 12, margin: 60000, revenue: 120000 },
-              { name: 'Apr', cases: 14, margin: 68000, revenue: 135000 },
-              { name: 'May', cases: 15, margin: 70000, revenue: 145000 }
+              { name: 'Jan', cases: 0, margin: 0, revenue: 0 },
+              { name: 'Feb', cases: 0, margin: 0, revenue: 0 },
+              { name: 'Mar', cases: 0, margin: 0, revenue: 0 },
+              { name: 'Apr', cases: 0, margin: 0, revenue: 0 },
+              { name: 'May', cases: 0, margin: 0, revenue: 0 }
             ],
             payerMix: [
               { name: 'Commercial', value: 20, revenue: 200000, margin: 145000, color: 'var(--color-blue)' },
@@ -1246,8 +1308,14 @@ export default function App() {
               color: '#3b82f6',
               status: 'Active',
               npi: 'NPI-N/A',
-              metrics: { cases: 0, avgDuration: 0, avgTurnover: 20, supplyVariance: '+0%', netMargin: 0, avgMargin: 0, onTimeStart: 90, utilization: 75 },
-              caseHistory: [],
+              metrics: { cases: 0, avgDuration: 0, avgTurnover: 0, totalTurnover: 0, totalRevenue: 0, totalSupplies: 0, supplyVariance: '0.0%', netMargin: 0, avgMargin: 0, onTimeStart: 90, utilization: 75 },
+              caseHistory: [
+                { name: 'Jan', cases: 0, margin: 0, revenue: 0 },
+                { name: 'Feb', cases: 0, margin: 0, revenue: 0 },
+                { name: 'Mar', cases: 0, margin: 0, revenue: 0 },
+                { name: 'Apr', cases: 0, margin: 0, revenue: 0 },
+                { name: 'May', cases: 0, margin: 0, revenue: 0 }
+              ],
               payerMix: [
                 { name: 'Commercial', value: 1, revenue: surg.revenue * 0.6, margin: surg.margin * 0.6, color: 'var(--color-blue)' },
                 { name: 'Medicare', value: 1, revenue: surg.revenue * 0.4, margin: surg.margin * 0.4, color: 'var(--color-green)' }
@@ -1261,15 +1329,24 @@ export default function App() {
 
           const sd = surgeonsDetailsObj[doc];
           sd.metrics.cases += 1;
-          sd.metrics.avgDuration += surg.duration_minutes || (surg.endMin - surg.startMin);
+          sd.metrics.avgDuration += surg.duration_minutes || 0;
           sd.metrics.netMargin += surg.margin;
+          sd.metrics.totalRevenue = (sd.metrics.totalRevenue || 0) + surg.revenue;
+          sd.metrics.totalSupplies = (sd.metrics.totalSupplies || 0) + surg.supplies;
+          sd.metrics.totalTurnover = (sd.metrics.totalTurnover || 0) + surg.turnover_time;
           
           // update case history actual
-          const monthIdx = 4; // May
-          if (sd.caseHistory[monthIdx]) {
-            sd.caseHistory[monthIdx].cases = sd.metrics.cases;
-            sd.caseHistory[monthIdx].margin = sd.metrics.netMargin;
-            sd.caseHistory[monthIdx].revenue = (sd.caseHistory[monthIdx].revenue || 0) + surg.revenue;
+          let monthIdx = -1;
+          if (surg.date) {
+            const monthStr = surg.date.substring(5, 7);
+            monthIdx = parseInt(monthStr, 10) - 1;
+          }
+          if (monthIdx >= 0 && monthIdx < 5) {
+            if (sd.caseHistory[monthIdx]) {
+              sd.caseHistory[monthIdx].cases += 1;
+              sd.caseHistory[monthIdx].margin += surg.margin;
+              sd.caseHistory[monthIdx].revenue += surg.revenue;
+            }
           }
 
           // add to cpt breakdown
@@ -1284,12 +1361,21 @@ export default function App() {
           cptItem.margin += surg.margin;
         });
 
+        const totalSuppliesGlobal = mappedSurgeries.reduce((sum, s) => sum + s.supplies, 0);
+        const avgSupplyGlobal = mappedSurgeries.length > 0 ? totalSuppliesGlobal / mappedSurgeries.length : 1;
+
         // Finish average metric calculations
         Object.keys(surgeonsDetailsObj).forEach(name => {
           const sd = surgeonsDetailsObj[name];
           if (sd.metrics.cases > 0) {
             sd.metrics.avgDuration = Math.round(sd.metrics.avgDuration / sd.metrics.cases);
             sd.metrics.avgMargin = Math.round(sd.metrics.netMargin / sd.metrics.cases);
+            sd.metrics.avgTurnover = Math.round(sd.metrics.totalTurnover / sd.metrics.cases);
+            
+            const surgeonAvgSupply = sd.metrics.totalSupplies / sd.metrics.cases;
+            const variancePct = ((surgeonAvgSupply - avgSupplyGlobal) / avgSupplyGlobal) * 100;
+            sd.metrics.supplyVariance = (variancePct >= 0 ? '+' : '') + variancePct.toFixed(1) + '%';
+
             sd.cptBreakdown.forEach(c => {
               c.avgTime = Math.round(c.avgTime / c.cases);
             });
@@ -1300,14 +1386,14 @@ export default function App() {
         // 3. Process Table list for Surgeons performance
         const surgeonTableMapped = Object.keys(surgeonsDetailsObj).map(name => {
           const sd = surgeonsDetailsObj[name];
-          const rev = sd.caseHistory[4] ? sd.caseHistory[4].revenue || (sd.metrics.netMargin * 2.1) : (sd.metrics.netMargin * 2.1);
-          const supplyCost = rev - sd.metrics.netMargin;
+          const rev = sd.metrics.totalRevenue || 0;
+          const supplyCost = sd.metrics.totalSupplies || 0;
           return {
             name: sd.name,
             cases: sd.metrics.cases,
             proced: `${sd.metrics.avgDuration} mins`,
             turn: `${sd.metrics.avgTurnover} mins`,
-            variance: sd.metrics.supplyVariance,
+            variance: sd.metrics.supplyVariance || '0.0%',
             rev,
             supply: supplyCost,
             margin: sd.metrics.netMargin,
@@ -1678,6 +1764,145 @@ export default function App() {
     }
   };
 
+  const handleOpenAddSurgeon = () => {
+    setEditingSurgeon(null);
+    setSurgeonForm({
+      firstname: '',
+      lastname: '',
+      specialty: '',
+      license_number: '',
+      phone: '',
+      email: '',
+      password: '',
+      countryCode: '+1'
+    });
+    setSurgeonModalOpen(true);
+  };
+
+  const handleOpenEditSurgeon = (s) => {
+    setEditingSurgeon(s);
+    
+    // Parse phone number
+    let phoneStr = s.phone || '';
+    let country = '+1';
+    if (phoneStr.startsWith('+')) {
+      const parts = phoneStr.split(' ');
+      if (parts.length > 1) {
+        country = parts[0];
+        phoneStr = parts.slice(1).join('');
+      } else {
+        const digits = phoneStr.replace(/\D/g, '');
+        if (digits.length > 10) {
+          phoneStr = digits.slice(-10);
+        } else {
+          phoneStr = digits;
+        }
+      }
+    }
+    phoneStr = phoneStr.replace(/\D/g, '').slice(0, 10);
+
+    setSurgeonForm({
+      firstname: s.firstname || '',
+      lastname: s.lastname || '',
+      specialty: s.specialty || '',
+      license_number: s.license_number || '',
+      phone: phoneStr,
+      email: s.email || '',
+      password: s.password || 'surgeon123',
+      countryCode: country
+    });
+    setSurgeonModalOpen(true);
+  };
+
+  const handleSaveSurgeon = async (e) => {
+    e.preventDefault();
+
+    // Validation
+    const first = surgeonForm.firstname ? surgeonForm.firstname.trim() : '';
+    const last = surgeonForm.lastname ? surgeonForm.lastname.trim() : '';
+    const spec = surgeonForm.specialty ? surgeonForm.specialty.trim() : '';
+    const lic = surgeonForm.license_number ? surgeonForm.license_number.trim() : '';
+    const phone = surgeonForm.phone ? surgeonForm.phone.replace(/\D/g, '') : '';
+    const email = surgeonForm.email ? surgeonForm.email.trim() : '';
+    const password = surgeonForm.password ? surgeonForm.password.trim() : '';
+
+    if (!first) { alert('First Name is required.'); return; }
+    if (first.length > 20) { alert('First Name must be 20 characters or less.'); return; }
+    if (!last) { alert('Last Name is required.'); return; }
+    if (last.length > 20) { alert('Last Name must be 20 characters or less.'); return; }
+    if (!spec) { alert('Specialty is required.'); return; }
+    if (!lic) { alert('License / NPI is required.'); return; }
+    if (phone.length !== 10) { alert('Phone must be exactly 10 digits.'); return; }
+    if (!email) { alert('Email is required.'); return; }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) { alert('Invalid email format.'); return; }
+    if (!password) { alert('Password is required.'); return; }
+
+    const fullPhone = `${surgeonForm.countryCode} ${phone}`;
+    
+    // Format full name expected by dashboard: 'Dr. Lastname Firstname'
+    const docName = `Dr. ${last} ${first}`.trim();
+    
+    const dbPayload = {
+      firstname: first,
+      lastname: last,
+      specialty: spec,
+      license_number: lic,
+      phone: fullPhone,
+      email: email,
+      password: password
+    };
+
+    try {
+      if (editingSurgeon) {
+        // Update DB
+        const updated = await db.updateSurgeon(editingSurgeon.id, dbPayload);
+        
+        // Update local state list
+        const updatedSurgeon = updated || { ...dbPayload, id: editingSurgeon.id };
+        setSurgeonsList(prev => prev.map(s => s.id === editingSurgeon.id ? updatedSurgeon : s));
+        alert('Surgeon updated successfully.');
+      } else {
+        // Insert DB
+        const inserted = await db.addSurgeon(dbPayload);
+        
+        // Update local state list
+        const newSurgeon = inserted || { ...dbPayload, id: Date.now(), created_at: new Date().toISOString() };
+        setSurgeonsList(prev => [newSurgeon, ...prev]);
+        alert('Surgeon added successfully.');
+      }
+      setSurgeonModalOpen(false);
+    } catch (err) {
+      console.error("Database surgeon write failed, updating locally:", err);
+      if (editingSurgeon) {
+        setSurgeonsList(prev => prev.map(s => s.id === editingSurgeon.id ? { ...s, ...dbPayload } : s));
+        alert('Surgeon updated locally (Database sync failed).');
+      } else {
+        const localId = Date.now();
+        setSurgeonsList(prev => [{ ...dbPayload, id: localId, created_at: new Date().toISOString() }, ...prev]);
+        alert('Surgeon added locally (Database sync failed).');
+      }
+      setSurgeonModalOpen(false);
+    }
+  };
+
+  const handleDeleteSurgeon = async (s) => {
+    const displayName = `${s.firstname || ''} ${s.lastname || ''}`.trim() || s.name;
+    if (!confirm(`Are you sure you want to permanently delete surgeon ${displayName}?`)) {
+      return;
+    }
+    try {
+      await db.deleteSurgeon(s.id);
+      setSurgeonsList(prev => prev.filter(item => item.id !== s.id));
+      alert('Surgeon deleted successfully.');
+    } catch (err) {
+      console.error("Database surgeon delete failed, deleting locally:", err);
+      setSurgeonsList(prev => prev.filter(item => item.id !== s.id));
+      alert('Surgeon deleted locally (Database sync failed).');
+    }
+  };
+
   const filteredPatients = patients.filter(p => {
     const q = patientSearchQuery.toLowerCase();
     return (
@@ -1733,6 +1958,67 @@ export default function App() {
       );
     }
     
+    return pages;
+  };
+
+  // Surgeon pagination & filtering
+  const filteredSurgeons = surgeonsList.filter(s => {
+    const q = surgeonSearchQuery.toLowerCase();
+    const fullName = `${s.firstname || ''} ${s.lastname || ''}`.toLowerCase();
+    return (
+      (fullName.includes(q)) ||
+      (s.specialty && s.specialty.toLowerCase().includes(q)) ||
+      (s.license_number && s.license_number.toLowerCase().includes(q)) ||
+      (s.email && s.email.toLowerCase().includes(q)) ||
+      (s.phone && s.phone.toLowerCase().includes(q))
+    );
+  });
+
+  const surgeonTotalPages = Math.ceil(filteredSurgeons.length / surgeonLimit) || 1;
+  const surgeonStartIndex = (surgeonPage - 1) * surgeonLimit;
+  const surgeonEndIndex = surgeonStartIndex + surgeonLimit;
+  const paginatedSurgeons = filteredSurgeons.slice(surgeonStartIndex, surgeonEndIndex);
+
+  const renderSurgeonPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, surgeonPage - Math.floor(maxVisible / 2));
+    let end = Math.min(surgeonTotalPages, start + maxVisible - 1);
+    
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    if (start > 1) {
+      pages.push(
+        <button key={1} className={`btn-header ${surgeonPage === 1 ? 'btn-primary' : ''}`} style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }} onClick={() => setSurgeonPage(1)}>1</button>
+      );
+      if (start > 2) {
+        pages.push(<span key="ellipsis-start" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
+      }
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(
+        <button
+          key={i}
+          className={`btn-header ${surgeonPage === i ? 'btn-primary' : ''}`}
+          style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }}
+          onClick={() => setSurgeonPage(i)}
+        >
+          {i}
+        </button>
+      );
+    }
+    
+    if (end < surgeonTotalPages) {
+      if (end < surgeonTotalPages - 1) {
+        pages.push(<span key="ellipsis-end" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
+      }
+      pages.push(
+        <button key={surgeonTotalPages} className={`btn-header ${surgeonPage === surgeonTotalPages ? 'btn-primary' : ''}`} style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }} onClick={() => setSurgeonPage(surgeonTotalPages)}>{surgeonTotalPages}</button>
+      );
+    }
     return pages;
   };
 
@@ -1824,6 +2110,14 @@ export default function App() {
           </div>
 
           <div
+            className={`menu-item ${activeTab === 'surgeons_manage' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('surgeons_manage'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><UserCheck size={16} /></div>
+            Surgeon Management
+          </div>
+
+          <div
             className={`menu-item ${activeTab === 'financial' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('financial'); setSelectedSurgeon(null); }}
           >
@@ -1869,6 +2163,14 @@ export default function App() {
           >
             <div className="menu-item-icon"><BookOpen size={16} /></div>
             Reports & Analytics
+          </div>
+
+          <div
+            className={`menu-item ${activeTab === 'scheduler' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('scheduler'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><CalendarDays size={16} /></div>
+            Surgery Log & OR
           </div>
 
           <div
@@ -1937,6 +2239,7 @@ export default function App() {
                   {activeTab === 'data' && 'Data Explorer'}
                   {activeTab === 'settings' && 'System Configuration Settings'}
                   {activeTab === 'help' && 'Help & Support'}
+                  {activeTab === 'scheduler' && 'Surgery Log & OR Schedule'}
                 </>
               )}
             </h1>
@@ -1958,6 +2261,7 @@ export default function App() {
                   {activeTab === 'data' && 'Ad-hoc data querying and reports builder'}
                   {activeTab === 'settings' && 'Manage operational baseline costs, roles, and integrations'}
                   {activeTab === 'help' && 'Support desk and user guides'}
+                  {activeTab === 'scheduler' && 'Schedule, track, and analyze surgical cases with full cost and OR time data'}
                 </>
               )}
             </span>
@@ -3132,6 +3436,187 @@ export default function App() {
                 </div>
               )}
 
+              {activeTab === 'surgeons_manage' && (
+                <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="card-header" style={{ marginBottom: '4px' }}>
+                    <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <UserCheck size={16} style={{ color: 'var(--color-blue)' }} />
+                      ASC Database Surgeon Directory
+                    </h3>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Showing {filteredSurgeons.length} of {surgeonsList.length} records
+                      </span>
+                      <div style={{ position: 'relative' }}>
+                        <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+                        <input
+                          type="text"
+                          placeholder="Search name, NPI, specialty..."
+                          className="date-range-selector"
+                          style={{ paddingLeft: '30px', width: '260px' }}
+                          value={surgeonSearchQuery}
+                          onChange={(e) => {
+                            setSurgeonSearchQuery(e.target.value);
+                            setSurgeonPage(1);
+                          }}
+                        />
+                      </div>
+                      {surgeonSearchQuery && (
+                        <button 
+                          className="btn-header" 
+                          onClick={() => {
+                            setSurgeonSearchQuery('');
+                            setSurgeonPage(1);
+                          }}
+                          style={{ minWidth: 'fit-content' }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                      <button 
+                        className="btn-header btn-primary" 
+                        onClick={handleOpenAddSurgeon}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content' }}
+                      >
+                        <Plus size={14} /> Add Surgeon
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="custom-table-container" style={{ overflowX: 'hidden' }}>
+                    <table className="custom-table">
+                      <thead>
+                        <tr>
+                          <th>NPI / License</th>
+                          <th>Surgeon Name</th>
+                          <th>Specialty</th>
+                          <th>Email</th>
+                          <th>Phone</th>
+                          <th style={{ textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedSurgeons.length > 0 ? (
+                          paginatedSurgeons.map(surgeon => (
+                            <tr key={surgeon.id} className="clickable-row">
+                              <td style={{ fontWeight: '600', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
+                                {surgeon.license_number}
+                              </td>
+                              <td style={{ fontWeight: '600', color: '#fff' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{ 
+                                    width: '28px', 
+                                    height: '28px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: 'rgba(139, 92, 246, 0.12)', 
+                                    color: '#8b5cf6', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '700',
+                                    border: '1px solid rgba(139, 92, 246, 0.2)'
+                                  }}>
+                                    {surgeon.firstname ? surgeon.firstname.trim().charAt(0) : '?'}
+                                  </div>
+                                  {surgeon.name || `Dr. ${surgeon.lastname || ''} ${surgeon.firstname || ''}`}
+                                </div>
+                              </td>
+                              <td style={{ fontWeight: '500' }}>{surgeon.specialty}</td>
+                              <td>{surgeon.email}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{surgeon.phone}</td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                  <button 
+                                    onClick={() => handleOpenEditSurgeon(surgeon)} 
+                                    className="btn-header"
+                                    style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)' }}
+                                    title="Edit Surgeon"
+                                  >
+                                    <Edit size={12} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteSurgeon(surgeon)} 
+                                    className="btn-header"
+                                    style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)' }}
+                                    title="Delete Surgeon"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                              <UserCheck size={32} style={{ opacity: 0.2, marginBottom: '12px' }} />
+                              <div style={{ fontSize: '0.9rem', fontWeight: '600' }}>No surgeons match search criteria</div>
+                              <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>Try adjusting your keyword filter or clear the query</div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Limit & Pagination Controls Footer */}
+                  <div className="table-footer" style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    marginTop: '10px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--border-light)',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>Rows per page:</span>
+                      <select
+                        className="date-range-selector"
+                        style={{ height: '32px', background: 'var(--bg-card)', padding: '2px 8px', width: '70px', cursor: 'pointer' }}
+                        value={surgeonLimit}
+                        onChange={(e) => {
+                          setSurgeonLimit(Number(e.target.value));
+                          setSurgeonPage(1);
+                        }}
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                      <span style={{ marginLeft: '12px' }}>
+                        Showing {filteredSurgeons.length > 0 ? surgeonStartIndex + 1 : 0}–{Math.min(filteredSurgeons.length, surgeonEndIndex)} of {filteredSurgeons.length} records
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        className="btn-header"
+                        style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: surgeonPage === 1 ? 'not-allowed' : 'pointer', opacity: surgeonPage === 1 ? 0.5 : 1 }}
+                        disabled={surgeonPage === 1}
+                        onClick={() => setSurgeonPage(prev => Math.max(1, prev - 1))}
+                      >
+                        Previous
+                      </button>
+                      
+                      {renderSurgeonPageNumbers()}
+
+                      <button
+                        className="btn-header"
+                        style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: surgeonPage === surgeonTotalPages ? 'not-allowed' : 'pointer', opacity: surgeonPage === surgeonTotalPages ? 0.5 : 1 }}
+                        disabled={surgeonPage === surgeonTotalPages}
+                        onClick={() => setSurgeonPage(prev => Math.min(surgeonTotalPages, prev + 1))}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ==========================================
               TAB: FINANCIAL PERFORMANCE
               ========================================== */}
@@ -3645,6 +4130,32 @@ export default function App() {
                   </p>
                 </div>
               )}
+
+              {/* ==========================================
+              TAB: SURGERY LOG & OR SCHEDULE
+              ========================================== */}
+              {activeTab === 'scheduler' && (
+                <SurgeryScheduler
+                  patients={patients}
+                  surgeons={surgeonsList}
+                  cptCodes={cptCodesList}
+                  surgeries={surgeries}
+                  onSchedule={async (surgData) => {
+                    const newSurg = await db.addSurgery(surgData);
+                    if (newSurg) {
+                      setSurgeries(prev => [{ ...surgData, id: newSurg.id, status: newSurg.status || 'scheduled' }, ...prev]);
+                    }
+                  }}
+                  onUpdate={async (id, updates) => {
+                    await db.updateSurgery(id, updates);
+                    setSurgeries(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+                  }}
+                  onDelete={async (id) => {
+                    await db.deleteSurgery(id);
+                    setSurgeries(prev => prev.filter(s => s.id !== id));
+                  }}
+                />
+              )}
             </>
           )}
         </section>
@@ -4060,6 +4571,168 @@ export default function App() {
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <CheckCircle size={14} /> Save Patient
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL: ADD / EDIT SURGEON
+          ========================================== */}
+      {surgeonModalOpen && (
+        <div className="modal-overlay" onClick={() => setSurgeonModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '600px', maxWidth: '95%' }}>
+            <div className="modal-header">
+              <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <UserCheck size={18} style={{ color: 'var(--color-blue)' }} />
+                {editingSurgeon ? 'Edit Surgeon Profile' : 'Register New Surgeon'}
+              </h3>
+              <button className="modal-close" onClick={() => setSurgeonModalOpen(false)}>×</button>
+            </div>
+
+            <form onSubmit={handleSaveSurgeon} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Personal Information */}
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
+                  Personal Details
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>First Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. John"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={surgeonForm.firstname}
+                      onChange={(e) => setSurgeonForm({ ...surgeonForm, firstname: e.target.value })}
+                      maxLength={20}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Last Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Doe"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={surgeonForm.lastname}
+                      onChange={(e) => setSurgeonForm({ ...surgeonForm, lastname: e.target.value })}
+                      maxLength={20}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Specialty *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. General Surgery"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={surgeonForm.specialty}
+                      onChange={(e) => setSurgeonForm({ ...surgeonForm, specialty: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>License / NPI *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. MD-99001"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={surgeonForm.license_number}
+                      onChange={(e) => setSurgeonForm({ ...surgeonForm, license_number: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
+                  Contact & Credentials
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Phone *</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <select
+                        className="date-range-selector"
+                        style={{ width: '85px', height: '36px', background: 'var(--bg-card)', padding: '2px 8px' }}
+                        value={surgeonForm.countryCode}
+                        onChange={(e) => setSurgeonForm({ ...surgeonForm, countryCode: e.target.value })}
+                      >
+                        <option value="+1">+1 (US)</option>
+                        <option value="+44">+44 (UK)</option>
+                        <option value="+91">+91 (IN)</option>
+                        <option value="+61">+61 (AU)</option>
+                        <option value="+81">+81 (JP)</option>
+                        <option value="+49">+49 (DE)</option>
+                        <option value="+33">+33 (FR)</option>
+                      </select>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="10 digit number"
+                        className="date-range-selector"
+                        style={{ flex: 1, height: '36px' }}
+                        value={surgeonForm.phone}
+                        onChange={(e) => setSurgeonForm({ ...surgeonForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Email *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="surgeon@hospital.com"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={surgeonForm.email}
+                      onChange={(e) => setSurgeonForm({ ...surgeonForm, email: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Password *</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Set surgeon login password"
+                      className="date-range-selector"
+                      style={{ width: '100%', height: '36px' }}
+                      value={surgeonForm.password}
+                      onChange={(e) => setSurgeonForm({ ...surgeonForm, password: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+                <button
+                  type="button"
+                  className="btn-header"
+                  onClick={() => setSurgeonModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-header btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <CheckCircle size={14} /> Save Surgeon
                 </button>
               </div>
             </form>

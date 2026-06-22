@@ -85,5 +85,100 @@ export const db = {
       .eq('id', id);
     if (error) throw error;
     return true;
+  },
+
+  // Add a new surgeon
+  async addSurgeon(surgeon) {
+    const { data, error } = await supabase
+      .from('surgeons')
+      .insert([surgeon])
+      .select();
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  // Update an existing surgeon
+  async updateSurgeon(id, updates) {
+    const { data, error } = await supabase
+      .from('surgeons')
+      .update(updates)
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  // Delete a surgeon
+  async deleteSurgeon(id) {
+    const { error } = await supabase
+      .from('surgeons')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  },
+
+  // Add a new surgery
+  async addSurgery(surgery) {
+    const { data, error } = await supabase
+      .from('surgeries')
+      .insert([surgery])
+      .select();
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  // Update an existing surgery
+  async updateSurgery(id, updates) {
+    const { data, error } = await supabase
+      .from('surgeries')
+      .update(updates)
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  // Delete a surgery
+  async deleteSurgery(id) {
+    const { error } = await supabase
+      .from('surgeries')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  },
+
+  // Add a new OR block schedule
+  async addORBlockSchedule(schedule) {
+    const { data, error } = await supabase
+      .from('or_block_schedule')
+      .insert([schedule])
+      .select()
+      .single();
+    if (error) throw error;
+    return data || null;
+  },
+
+  // Update an existing OR block schedule
+  async updateORBlockSchedule(id, updates) {
+    const { data, error } = await supabase
+      .from('or_block_schedule')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data || null;
+  },
+
+  // Delete an OR block schedule
+  async deleteORBlockSchedule(id) {
+    const { error } = await supabase
+      .from('or_block_schedule')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
   }
 };
