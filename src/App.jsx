@@ -1104,7 +1104,7 @@ export default function App() {
     secondary_insurance_policy_number: '',
     secondary_insurance_group_number: ''
   });
-  
+
   const [surgeonTableData, setSurgeonTableData] = useState([
     { name: 'Dr. Malinoski Kelly', cases: 48, proced: '68 mins', turn: '18 mins', variance: '+18.4%', rev: 616416, supply: 163200, margin: 263450, avg: 5488, color: '#3b82f6' },
     { name: 'Dr. Gardner Paul', cases: 36, proced: '52 mins', turn: '14 mins', variance: '-2.1%', rev: 327780, supply: 34200, margin: 215630, avg: 5989, color: '#10b981' },
@@ -1112,7 +1112,7 @@ export default function App() {
     { name: 'Dr. Bonett Andrew', cases: 28, proced: '110 mins', turn: '29 mins', variance: '+8.4%', rev: 531200, supply: 184500, margin: 157850, avg: 5637, color: '#8b5cf6' },
     { name: 'Dr. Baccaro Leopoldo', cases: 31, proced: '48 mins', turn: '16 mins', variance: '+12.6%', rev: 141020, supply: 32000, margin: 85230, avg: 2749, color: '#ec4899' }
   ]);
-  
+
   const [cptTableData, setCptTableData] = useState([
     { code: '27130', desc: 'Total Knee Replacement', time: 120, turn: 25, fee: 22125, med: 18500, labor: 1800, supply: 11000, margin: 9325, pct: 42.1 },
     { code: '29827', desc: 'Knee Scope / Arthroscopy', time: 60, turn: 15, fee: 12842, med: 10200, labor: 900, supply: 5219, margin: 6723, pct: 52.3 },
@@ -1137,7 +1137,7 @@ export default function App() {
       try {
         setLoading(true);
         console.log("Loading Supabase tables...");
-        
+
         const [loadedSurgeons, loadedSurgeries, loadedPatients, loadedCPTList] = await Promise.all([
           db.getSurgeons(),
           db.getSurgeries(),
@@ -1178,7 +1178,7 @@ export default function App() {
             if (m) trayCost = parseFloat(m[1]);
           }
           const margin = revenue - (supplies + implants + labor + roomCost + meds + trayCost);
-          
+
           let marginType = 'med';
           if (margin > 1000) marginType = 'high';
           else if (margin < 0) marginType = 'low';
@@ -1251,7 +1251,7 @@ export default function App() {
         // 2. Process surgeons details
         const surgeonsDetailsObj = {};
         const surgeonColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'];
-        
+
         loadedSurgeons.forEach((s, idx) => {
           const fullName = formatDoctorName(s);
           surgeonsDetailsObj[fullName] = {
@@ -1334,7 +1334,7 @@ export default function App() {
           sd.metrics.totalRevenue = (sd.metrics.totalRevenue || 0) + surg.revenue;
           sd.metrics.totalSupplies = (sd.metrics.totalSupplies || 0) + surg.supplies;
           sd.metrics.totalTurnover = (sd.metrics.totalTurnover || 0) + surg.turnover_time;
-          
+
           // update case history actual
           let monthIdx = -1;
           if (surg.date) {
@@ -1371,7 +1371,7 @@ export default function App() {
             sd.metrics.avgDuration = Math.round(sd.metrics.avgDuration / sd.metrics.cases);
             sd.metrics.avgMargin = Math.round(sd.metrics.netMargin / sd.metrics.cases);
             sd.metrics.avgTurnover = Math.round(sd.metrics.totalTurnover / sd.metrics.cases);
-            
+
             const surgeonAvgSupply = sd.metrics.totalSupplies / sd.metrics.cases;
             const variancePct = ((surgeonAvgSupply - avgSupplyGlobal) / avgSupplyGlobal) * 100;
             sd.metrics.supplyVariance = (variancePct >= 0 ? '+' : '') + variancePct.toFixed(1) + '%';
@@ -1636,7 +1636,7 @@ export default function App() {
 
   const handleSavePatient = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     const name = patientForm.name ? patientForm.name.trim() : '';
     if (!name) {
@@ -1720,14 +1720,14 @@ export default function App() {
       if (editingPatient) {
         // Update database
         const updated = await db.updatePatient(editingPatient.id, dbPayload);
-        
+
         // Update local state
         setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...dbPayload, id: editingPatient.id } : p));
         alert('Patient updated successfully.');
       } else {
         // Insert database
         const inserted = await db.addPatient(dbPayload);
-        
+
         // Update local state
         const newPatient = inserted || { ...dbPayload, id: Date.now(), created_at: new Date().toISOString() };
         setPatients(prev => [newPatient, ...prev]);
@@ -1781,7 +1781,7 @@ export default function App() {
 
   const handleOpenEditSurgeon = (s) => {
     setEditingSurgeon(s);
-    
+
     // Parse phone number
     let phoneStr = s.phone || '';
     let country = '+1';
@@ -1834,16 +1834,16 @@ export default function App() {
     if (!lic) { alert('License / NPI is required.'); return; }
     if (phone.length !== 10) { alert('Phone must be exactly 10 digits.'); return; }
     if (!email) { alert('Email is required.'); return; }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) { alert('Invalid email format.'); return; }
     if (!password) { alert('Password is required.'); return; }
 
     const fullPhone = `${surgeonForm.countryCode} ${phone}`;
-    
+
     // Format full name expected by dashboard: 'Dr. Lastname Firstname'
     const docName = `Dr. ${last} ${first}`.trim();
-    
+
     const dbPayload = {
       firstname: first,
       lastname: last,
@@ -1858,7 +1858,7 @@ export default function App() {
       if (editingSurgeon) {
         // Update DB
         const updated = await db.updateSurgeon(editingSurgeon.id, dbPayload);
-        
+
         // Update local state list
         const updatedSurgeon = updated || { ...dbPayload, id: editingSurgeon.id };
         setSurgeonsList(prev => prev.map(s => s.id === editingSurgeon.id ? updatedSurgeon : s));
@@ -1866,7 +1866,7 @@ export default function App() {
       } else {
         // Insert DB
         const inserted = await db.addSurgeon(dbPayload);
-        
+
         // Update local state list
         const newSurgeon = inserted || { ...dbPayload, id: Date.now(), created_at: new Date().toISOString() };
         setSurgeonsList(prev => [newSurgeon, ...prev]);
@@ -1922,11 +1922,11 @@ export default function App() {
     const maxVisible = 5;
     let start = Math.max(1, patientPage - Math.floor(maxVisible / 2));
     let end = Math.min(totalPages, start + maxVisible - 1);
-    
+
     if (end - start + 1 < maxVisible) {
       start = Math.max(1, end - maxVisible + 1);
     }
-    
+
     if (start > 1) {
       pages.push(
         <button key={1} className={`btn-header ${patientPage === 1 ? 'btn-primary' : ''}`} style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }} onClick={() => setPatientPage(1)}>1</button>
@@ -1935,7 +1935,7 @@ export default function App() {
         pages.push(<span key="ellipsis-start" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
       }
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(
         <button
@@ -1948,7 +1948,7 @@ export default function App() {
         </button>
       );
     }
-    
+
     if (end < totalPages) {
       if (end < totalPages - 1) {
         pages.push(<span key="ellipsis-end" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
@@ -1957,7 +1957,7 @@ export default function App() {
         <button key={totalPages} className={`btn-header ${patientPage === totalPages ? 'btn-primary' : ''}`} style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }} onClick={() => setPatientPage(totalPages)}>{totalPages}</button>
       );
     }
-    
+
     return pages;
   };
 
@@ -1984,11 +1984,11 @@ export default function App() {
     const maxVisible = 5;
     let start = Math.max(1, surgeonPage - Math.floor(maxVisible / 2));
     let end = Math.min(surgeonTotalPages, start + maxVisible - 1);
-    
+
     if (end - start + 1 < maxVisible) {
       start = Math.max(1, end - maxVisible + 1);
     }
-    
+
     if (start > 1) {
       pages.push(
         <button key={1} className={`btn-header ${surgeonPage === 1 ? 'btn-primary' : ''}`} style={{ height: '32px', width: '32px', padding: 0, minWidth: 'auto', justifyContent: 'center' }} onClick={() => setSurgeonPage(1)}>1</button>
@@ -1997,7 +1997,7 @@ export default function App() {
         pages.push(<span key="ellipsis-start" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
       }
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(
         <button
@@ -2010,7 +2010,7 @@ export default function App() {
         </button>
       );
     }
-    
+
     if (end < surgeonTotalPages) {
       if (end < surgeonTotalPages - 1) {
         pages.push(<span key="ellipsis-end" style={{ padding: '0 4px', alignSelf: 'center' }}>...</span>);
@@ -2045,7 +2045,8 @@ export default function App() {
         }}></div>
         <h2 style={{ fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Loading Command Center...</h2>
         <p style={{ fontSize: '0.85rem', color: '#5e6c84', marginTop: '8px' }}>Connecting to Supabase Database</p>
-        <style dangerouslySetInnerHTML={{__html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           @keyframes spin {
             to { transform: rotate(360deg); }
           }
@@ -2091,6 +2092,14 @@ export default function App() {
           >
             <div className="menu-item-icon"><Clock size={16} /></div>
             OR Performance
+          </div>
+
+          <div
+            className={`menu-item ${activeTab === 'scheduler' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('scheduler'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><CalendarDays size={16} /></div>
+            Surgery Log & OR
           </div>
 
           <div
@@ -2163,14 +2172,6 @@ export default function App() {
           >
             <div className="menu-item-icon"><BookOpen size={16} /></div>
             Reports & Analytics
-          </div>
-
-          <div
-            className={`menu-item ${activeTab === 'scheduler' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('scheduler'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><CalendarDays size={16} /></div>
-            Surgery Log & OR
           </div>
 
           <div
@@ -3269,8 +3270,8 @@ export default function App() {
                         />
                       </div>
                       {patientSearchQuery && (
-                        <button 
-                          className="btn-header" 
+                        <button
+                          className="btn-header"
                           onClick={() => {
                             setPatientSearchQuery('');
                             setPatientPage(1);
@@ -3280,8 +3281,8 @@ export default function App() {
                           Clear
                         </button>
                       )}
-                      <button 
-                        className="btn-header btn-primary" 
+                      <button
+                        className="btn-header btn-primary"
                         onClick={handleOpenAddPatient}
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content' }}
                       >
@@ -3311,14 +3312,14 @@ export default function App() {
                               </td>
                               <td style={{ fontWeight: '600', color: '#fff' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <div style={{ 
-                                    width: '28px', 
-                                    height: '28px', 
-                                    borderRadius: '50%', 
-                                    backgroundColor: patient.gender === 'Female' ? 'rgba(236, 72, 153, 0.12)' : 'rgba(59, 130, 246, 0.12)', 
-                                    color: patient.gender === 'Female' ? 'var(--color-pink)' : 'var(--color-blue)', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                  <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    backgroundColor: patient.gender === 'Female' ? 'rgba(236, 72, 153, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                                    color: patient.gender === 'Female' ? 'var(--color-pink)' : 'var(--color-blue)',
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     justifyContent: 'center',
                                     fontSize: '0.8rem',
                                     fontWeight: '700',
@@ -3346,16 +3347,16 @@ export default function App() {
                               <td style={{ fontWeight: '500' }}>{patient.insurance_provider}</td>
                               <td>
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                  <button 
-                                    onClick={() => handleOpenEditPatient(patient)} 
+                                  <button
+                                    onClick={() => handleOpenEditPatient(patient)}
                                     className="btn-header"
                                     style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)' }}
                                     title="Edit Patient"
                                   >
                                     <Edit size={12} />
                                   </button>
-                                  <button 
-                                    onClick={() => handleDeletePatient(patient)} 
+                                  <button
+                                    onClick={() => handleDeletePatient(patient)}
                                     className="btn-header"
                                     style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)' }}
                                     title="Delete Patient"
@@ -3380,10 +3381,10 @@ export default function App() {
                   </div>
 
                   {/* Limit & Pagination Controls Footer */}
-                  <div className="table-footer" style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between', 
+                  <div className="table-footer" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     marginTop: '10px',
                     paddingTop: '12px',
                     borderTop: '1px solid var(--border-light)',
@@ -3420,7 +3421,7 @@ export default function App() {
                       >
                         Previous
                       </button>
-                      
+
                       {renderPageNumbers()}
 
                       <button
@@ -3462,8 +3463,8 @@ export default function App() {
                         />
                       </div>
                       {surgeonSearchQuery && (
-                        <button 
-                          className="btn-header" 
+                        <button
+                          className="btn-header"
                           onClick={() => {
                             setSurgeonSearchQuery('');
                             setSurgeonPage(1);
@@ -3473,8 +3474,8 @@ export default function App() {
                           Clear
                         </button>
                       )}
-                      <button 
-                        className="btn-header btn-primary" 
+                      <button
+                        className="btn-header btn-primary"
                         onClick={handleOpenAddSurgeon}
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content' }}
                       >
@@ -3504,14 +3505,14 @@ export default function App() {
                               </td>
                               <td style={{ fontWeight: '600', color: '#fff' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <div style={{ 
-                                    width: '28px', 
-                                    height: '28px', 
-                                    borderRadius: '50%', 
-                                    backgroundColor: 'rgba(139, 92, 246, 0.12)', 
-                                    color: '#8b5cf6', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                  <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'rgba(139, 92, 246, 0.12)',
+                                    color: '#8b5cf6',
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     justifyContent: 'center',
                                     fontSize: '0.8rem',
                                     fontWeight: '700',
@@ -3527,16 +3528,16 @@ export default function App() {
                               <td style={{ whiteSpace: 'nowrap' }}>{surgeon.phone}</td>
                               <td>
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                  <button 
-                                    onClick={() => handleOpenEditSurgeon(surgeon)} 
+                                  <button
+                                    onClick={() => handleOpenEditSurgeon(surgeon)}
                                     className="btn-header"
                                     style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)' }}
                                     title="Edit Surgeon"
                                   >
                                     <Edit size={12} />
                                   </button>
-                                  <button 
-                                    onClick={() => handleDeleteSurgeon(surgeon)} 
+                                  <button
+                                    onClick={() => handleDeleteSurgeon(surgeon)}
                                     className="btn-header"
                                     style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)' }}
                                     title="Delete Surgeon"
@@ -3561,10 +3562,10 @@ export default function App() {
                   </div>
 
                   {/* Limit & Pagination Controls Footer */}
-                  <div className="table-footer" style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between', 
+                  <div className="table-footer" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     marginTop: '10px',
                     paddingTop: '12px',
                     borderTop: '1px solid var(--border-light)',
@@ -3601,7 +3602,7 @@ export default function App() {
                       >
                         Previous
                       </button>
-                      
+
                       {renderSurgeonPageNumbers()}
 
                       <button
@@ -4237,7 +4238,7 @@ export default function App() {
             </div>
 
             <form onSubmit={handleSavePatient} className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '6px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
+
               {/* Basic Information Section */}
               <div>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
