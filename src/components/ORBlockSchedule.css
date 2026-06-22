@@ -1,0 +1,506 @@
+/* Dark Glassmorphic OR Block Schedule Styles */
+
+.or-schedule-container {
+    padding: 20px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.or-schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.or-schedule-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.month-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.btn-nav {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+}
+
+.btn-nav:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.month-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #fff;
+    min-width: 140px;
+    text-align: center;
+}
+
+/* Grid Wrapper for Horizontal Scroll */
+.schedule-grid-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Grid */
+.schedule-grid {
+    display: grid;
+    /* 1 Date column (narrow) + N Room columns */
+    grid-template-columns: 90px repeat(var(--rooms-count, 1), minmax(180px, 1fr));
+    min-width: calc(90px + (var(--rooms-count, 1) * 180px));
+}
+
+.grid-header-row,
+.grid-row {
+    display: contents;
+}
+
+.grid-header-cell {
+    background: var(--bg-sidebar);
+    color: #fff;
+    font-weight: 600;
+    padding: 14px;
+    text-align: center;
+    border-bottom: 2px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 0.85rem;
+}
+
+.row-label {
+    background: var(--bg-sidebar);
+    font-weight: 600;
+    flex-direction: column;
+    justify-content: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+/* Sticky Header for Date Column */
+.grid-header-cell:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    border-right: 1px solid var(--border-color);
+}
+
+/* Grid Cell */
+.grid-cell {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    min-height: 110px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    transition: background 0.2s;
+    position: relative;
+    gap: 8px;
+}
+
+.grid-cell:hover {
+    background: rgba(255, 255, 255, 0.01);
+}
+
+/* Block List & Items */
+.block-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.block-item {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-left-width: 4px;
+    font-size: 0.8rem;
+    transition: transform 0.15s, border-color 0.15s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.block-item:hover {
+    transform: translateX(2px);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.cell-provider {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cell-time {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* Gap Visualization */
+.gap-indicator {
+    font-size: 0.65rem;
+    text-align: center;
+    padding: 3px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin: 2px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+}
+
+.gap-indicator::before,
+.gap-indicator::after {
+    content: '';
+    height: 1px;
+    background: currentColor;
+    flex: 1;
+    opacity: 0.3;
+}
+
+.gap-green { color: var(--color-green); }
+.gap-yellow { color: var(--color-orange); }
+.gap-red { color: var(--color-red); }
+
+/* Modal List Styling */
+.modal-block-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding-right: 4px;
+}
+
+.modal-block-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-block-info h4 {
+    margin: 0 0 4px 0;
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.modal-block-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.modal-block-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-add-block {
+    width: 100%;
+    padding: 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px dashed rgba(59, 130, 246, 0.3);
+    color: var(--color-blue);
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+}
+
+.btn-add-block:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: var(--color-blue);
+    color: #fff;
+}
+
+/* Metrics in Header */
+.header-metrics {
+    display: flex;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    align-items: center;
+}
+
+.metric-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Group Header Styling */
+.grid-group-header {
+    grid-column: 1 / -1;
+    background: var(--bg-sidebar);
+    color: var(--text-secondary);
+    font-weight: 700;
+    padding: 10px 16px;
+    font-size: 0.8rem;
+    border-bottom: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+}
+
+/* Fix sticky behavior overlap */
+.row-label {
+    top: 40px;
+}
+.grid-group-header {
+    top: 0;
+}
+
+.date-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #fff;
+}
+
+.month-name {
+    display: block;
+    font-size: 0.6rem;
+    opacity: 0.5;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.week-label {
+    display: block;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 2px 4px;
+    border-radius: 4px;
+    width: fit-content;
+}
+
+/* Embedded Mode */
+.or-schedule-container.embedded {
+    min-height: auto;
+    padding: 0;
+    background: transparent;
+}
+
+.or-schedule-container.embedded .or-schedule-header {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    background: transparent;
+    border-bottom: none;
+}
+
+.or-schedule-container.embedded .or-schedule-title {
+    font-size: 0.95rem;
+}
+
+.or-schedule-container.embedded .schedule-grid-wrapper {
+    border: 1px solid var(--border-color);
+}
+
+/* --- Daily Chart Styles --- */
+.chart-section-container {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    animation: slideDown 0.25s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chart-header h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pie-chart-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.pie-chart {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.chart-legend-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.legend-name {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.legend-val {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.donut-hole {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 55%;
+    height: 55%;
+    background: var(--bg-card);
+    border-radius: 50%;
+}
+
+/* Button to toggle chart */
+.btn-toggle-chart {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+}
+
+.btn-toggle-chart:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-color: var(--text-muted);
+}
+
+.btn-toggle-chart.active {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--color-blue);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.filter-select {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.filter-select:hover {
+    background: var(--bg-card-hover);
+}
