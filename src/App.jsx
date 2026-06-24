@@ -326,34 +326,34 @@ const MOCK_PROFITABILITY_SUMMARY = [
 
 // Legacy Timeline data (for Schedule Optimizer subtabs)
 const INITIAL_SURGERIES = [
-  { id: 1, or: 'OR 1', label: 'Total Knee', doctor: 'Dr. Malinoski', start: '7:30 AM', end: '9:30 AM', startMin: 450, endMin: 570, marginType: 'high', code: '27130', revenue: 22125, supplies: 4800, implants: 6200, labor: 1800, roomCost: 1360, margin: 7965 },
-  { id: 2, or: 'OR 1', label: 'Shoulder Arthroscopy', doctor: 'Dr. Jones', start: '10:00 AM', end: '11:30 AM', startMin: 600, endMin: 690, marginType: 'med', code: '29824', revenue: 11230, supplies: 2400, implants: 2800, labor: 1350, roomCost: 2480, margin: 4200 },
-  { id: 3, or: 'OR 1', label: 'Hip Replacement', doctor: 'Dr. Bonett', start: '12:30 PM', end: '3:00 PM', startMin: 750, endMin: 900, marginType: 'high', code: '27132', revenue: 25400, supplies: 5100, implants: 7500, labor: 2250, roomCost: 3100, margin: 7450 },
-  { id: 4, or: 'OR 1', label: 'Block', doctor: 'System Block', start: '3:30 PM', end: '5:00 PM', startMin: 930, endMin: 1020, marginType: 'blocked' },
+  { id: 1, date: '2026-02-24', or: 'OR 1', label: 'Total Knee', doctor: 'Dr. Malinoski', start: '7:30 AM', end: '9:30 AM', startMin: 450, endMin: 570, marginType: 'high', code: '27130', revenue: 22125, supplies: 4800, implants: 6200, labor: 1800, roomCost: 1360, margin: 7965 },
+  { id: 2, date: '2026-02-24', or: 'OR 1', label: 'Shoulder Arthroscopy', doctor: 'Dr. Jones', start: '10:00 AM', end: '11:30 AM', startMin: 600, endMin: 690, marginType: 'med', code: '29824', revenue: 11230, supplies: 2400, implants: 2800, labor: 1350, roomCost: 2480, margin: 4200 },
+  { id: 3, date: '2026-02-24', or: 'OR 1', label: 'Hip Replacement', doctor: 'Dr. Bonett', start: '12:30 PM', end: '3:00 PM', startMin: 750, endMin: 900, marginType: 'high', code: '27132', revenue: 25400, supplies: 5100, implants: 7500, labor: 2250, roomCost: 3100, margin: 7450 },
+  { id: 4, date: '2026-02-24', or: 'OR 1', label: 'Block', doctor: 'System Block', start: '3:30 PM', end: '5:00 PM', startMin: 930, endMin: 1020, marginType: 'blocked' },
 
-  { id: 5, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '7:00 AM', end: '8:00 AM', startMin: 420, endMin: 480, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
-  { id: 6, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '8:30 AM', end: '9:30 AM', startMin: 510, endMin: 570, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
-  { id: 7, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '10:00 AM', end: '11:00 AM', startMin: 600, endMin: 660, marginType: 'high', code: '27447', revenue: 9105, supplies: 1450, implants: 1600, labor: 900, roomCost: 2450, margin: 4910 },
-  { id: 8, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '11:30 AM', end: '12:30 PM', startMin: 690, endMin: 750, marginType: 'low', code: '66984', revenue: 4550, supplies: 1550, implants: 1100, labor: 900, roomCost: 800, margin: 200 },
-  { id: 9, or: 'OR 2', label: 'Cataract', doctor: 'Dr. Walsh', start: '1:00 PM', end: '2:00 PM', startMin: 780, endMin: 840, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
-  { id: 10, or: 'OR 2', label: 'Block', doctor: 'System Block', start: '2:30 PM', end: '5:00 PM', startMin: 870, endMin: 1020, marginType: 'blocked' },
+  { id: 5, date: '2026-02-24', or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '7:00 AM', end: '8:00 AM', startMin: 420, endMin: 480, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
+  { id: 6, date: '2026-02-24', or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '8:30 AM', end: '9:30 AM', startMin: 510, endMin: 570, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
+  { id: 7, date: '2026-02-24', or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '10:00 AM', end: '11:00 AM', startMin: 600, endMin: 660, marginType: 'high', code: '27447', revenue: 9105, supplies: 1450, implants: 1600, labor: 900, roomCost: 2450, margin: 4910 },
+  { id: 8, date: '2026-02-24', or: 'OR 2', label: 'Cataract', doctor: 'Dr. Gardner', start: '11:30 AM', end: '12:30 PM', startMin: 690, endMin: 750, marginType: 'low', code: '66984', revenue: 4550, supplies: 1550, implants: 1100, labor: 900, roomCost: 800, margin: 200 },
+  { id: 9, date: '2026-02-24', or: 'OR 2', label: 'Cataract', doctor: 'Dr. Walsh', start: '1:00 PM', end: '2:00 PM', startMin: 780, endMin: 840, marginType: 'med', code: '66984', revenue: 4550, supplies: 950, implants: 1100, labor: 900, roomCost: 800, margin: 800 },
+  { id: 10, date: '2026-02-24', or: 'OR 2', label: 'Block', doctor: 'System Block', start: '2:30 PM', end: '5:00 PM', startMin: 870, endMin: 1020, marginType: 'blocked' },
 
-  { id: 11, or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Walsh', start: '7:15 AM', end: '8:45 AM', startMin: 435, endMin: 525, marginType: 'high', code: '49505', revenue: 10200, supplies: 1200, implants: 1800, labor: 1350, roomCost: 2100, margin: 3750 },
-  { id: 12, or: 'OR 3', label: 'Gallbladder', doctor: 'Dr. Walsh', start: '9:15 AM', end: '10:45 AM', startMin: 555, endMin: 645, marginType: 'med', code: '23430', revenue: 8732, supplies: 1900, implants: 1100, labor: 1350, roomCost: 2450, margin: 3450 },
-  { id: 13, or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Walsh', start: '11:15 AM', end: '12:45 PM', startMin: 675, endMin: 765, marginType: 'med', code: '49505', revenue: 10200, supplies: 2100, implants: 1800, labor: 1350, roomCost: 2100, margin: 2850 },
-  { id: 14, or: 'OR 3', label: 'Appendectomy', doctor: 'Dr. Walsh', start: '1:15 PM', end: '2:45 PM', startMin: 795, endMin: 885, marginType: 'med', code: '44970', revenue: 12400, supplies: 2200, implants: 2500, labor: 1350, roomCost: 3100, margin: 3250 },
-  { id: 15, or: 'OR 3', label: 'Block', doctor: 'System Block', start: '3:15 PM', end: '5:00 PM', startMin: 915, endMin: 1020, marginType: 'blocked' },
+  { id: 11, date: '2026-02-24', or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Walsh', start: '7:15 AM', end: '8:45 AM', startMin: 435, endMin: 525, marginType: 'high', code: '49505', revenue: 10200, supplies: 1200, implants: 1800, labor: 1350, roomCost: 2100, margin: 3750 },
+  { id: 12, date: '2026-02-24', or: 'OR 3', label: 'Gallbladder', doctor: 'Dr. Walsh', start: '9:15 AM', end: '10:45 AM', startMin: 555, endMin: 645, marginType: 'med', code: '23430', revenue: 8732, supplies: 1900, implants: 1100, labor: 1350, roomCost: 2450, margin: 3450 },
+  { id: 13, date: '2026-02-24', or: 'OR 3', label: 'Hernia Repair', doctor: 'Dr. Walsh', start: '11:15 AM', end: '12:45 PM', startMin: 675, endMin: 765, marginType: 'med', code: '49505', revenue: 10200, supplies: 2100, implants: 1800, labor: 1350, roomCost: 2100, margin: 2850 },
+  { id: 14, date: '2026-02-24', or: 'OR 3', label: 'Appendectomy', doctor: 'Dr. Walsh', start: '1:15 PM', end: '2:45 PM', startMin: 795, endMin: 885, marginType: 'med', code: '44970', revenue: 12400, supplies: 2200, implants: 2500, labor: 1350, roomCost: 3100, margin: 3250 },
+  { id: 15, date: '2026-02-24', or: 'OR 3', label: 'Block', doctor: 'System Block', start: '3:15 PM', end: '5:00 PM', startMin: 915, endMin: 1020, marginType: 'blocked' },
 
-  { id: 16, or: 'OR 4', label: 'Block', doctor: 'System Block', start: '7:00 AM', end: '10:00 AM', startMin: 420, endMin: 600, marginType: 'blocked' },
-  { id: 17, or: 'OR 4', label: 'Spine Fusion', doctor: 'Dr. Bonett', start: '10:30 AM', end: '1:30 PM', startMin: 630, endMin: 810, marginType: 'high', code: '22612', revenue: 42800, supplies: 7500, implants: 18500, labor: 2700, roomCost: 4500, margin: 9600 },
-  { id: 18, or: 'OR 4', label: 'Block', doctor: 'System Block', start: '2:00 PM', end: '5:00 PM', startMin: 840, endMin: 1020, marginType: 'blocked' },
-  { id: 19, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '7:30 AM', end: '8:30 AM', startMin: 450, endMin: 510, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
-  { id: 20, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '9:00 AM', end: '10:00 AM', startMin: 540, endMin: 600, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
-  { id: 21, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '10:30 AM', end: '11:30 AM', startMin: 630, endMin: 690, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
-  { id: 22, or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '12:00 PM', end: '1:00 PM', startMin: 720, endMin: 780, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
-  { id: 23, or: 'OR 5', label: 'Block', doctor: 'System Block', start: '1:30 PM', end: '5:00 PM', startMin: 810, endMin: 1020, marginType: 'blocked' },
+  { id: 16, date: '2026-02-24', or: 'OR 4', label: 'Block', doctor: 'System Block', start: '7:00 AM', end: '10:00 AM', startMin: 420, endMin: 600, marginType: 'blocked' },
+  { id: 17, date: '2026-02-24', or: 'OR 4', label: 'Spine Fusion', doctor: 'Dr. Bonett', start: '10:30 AM', end: '1:30 PM', startMin: 630, endMin: 810, marginType: 'high', code: '22612', revenue: 42800, supplies: 7500, implants: 18500, labor: 2700, roomCost: 4500, margin: 9600 },
+  { id: 18, date: '2026-02-24', or: 'OR 4', label: 'Block', doctor: 'System Block', start: '2:00 PM', end: '5:00 PM', startMin: 840, endMin: 1020, marginType: 'blocked' },
+  { id: 19, date: '2026-02-24', or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '7:30 AM', end: '8:30 AM', startMin: 450, endMin: 510, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 20, date: '2026-02-24', or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '9:00 AM', end: '10:00 AM', startMin: 540, endMin: 600, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 21, date: '2026-02-24', or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '10:30 AM', end: '11:30 AM', startMin: 630, endMin: 690, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 22, date: '2026-02-24', or: 'OR 5', label: 'Knee Scope', doctor: 'Dr. Malinoski', start: '12:00 PM', end: '1:00 PM', startMin: 720, endMin: 780, marginType: 'high', code: '29827', revenue: 12842, supplies: 3400, implants: 1819, labor: 900, roomCost: 900, margin: 5823 },
+  { id: 23, date: '2026-02-24', or: 'OR 5', label: 'Block', doctor: 'System Block', start: '1:30 PM', end: '5:00 PM', startMin: 810, endMin: 1020, marginType: 'blocked' },
 
-  { id: 24, or: 'OR 6', label: 'Block / Unavailable', doctor: 'Maintenance', start: '7:00 AM', end: '5:00 PM', startMin: 420, endMin: 1020, marginType: 'blocked' }
+  { id: 24, date: '2026-02-24', or: 'OR 6', label: 'Block / Unavailable', doctor: 'Maintenance', start: '7:00 AM', end: '5:00 PM', startMin: 420, endMin: 1020, marginType: 'blocked' }
 ];
 
 const WAITLIST_CASES = [
@@ -1038,11 +1038,12 @@ CustomDateInput.displayName = 'CustomDateInput';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [timeFilter, setTimeFilter] = useState('Week');
-  const [filterDate, setFilterDate] = useState(new Date('2026-06-22T12:00:00'));
+  const [timeFilter, setTimeFilter] = useState('All');
+  const [filterDate, setFilterDate] = useState(new Date('2026-02-23T12:00:00'));
   const [surgeries, setSurgeries] = useState(INITIAL_SURGERIES);
 
   const isDateInFilter = React.useCallback((surgDateStr, fDate, tFilter) => {
+    if (tFilter === 'All') return true;
     if (!surgDateStr || !fDate) return true;
     // Handle different possible date formats, defaulting to YYYY-MM-DD
     const [y, m, d] = surgDateStr.includes('-') ? surgDateStr.split('-').map(Number) : [null, null, null];
@@ -1079,6 +1080,14 @@ export default function App() {
   }, []);
 
   const filteredSurgeries = React.useMemo(() => surgeries.filter(s => isDateInFilter(s.date, filterDate, timeFilter)), [surgeries, filterDate, timeFilter, isDateInFilter]);
+
+  const orPerformanceMetrics = React.useMemo(() => ({
+    actualTimeUsed: 31.2,
+    wastedTime: 8.8,
+    utilPercentage: 78,
+    wastedPercentage: 22,
+    leakageInsight: 'Releasing the last 2 hours of blocks on Wednesday afternoons (which are historically unused) could prevent $3,200 in staff allocation losses.'
+  }), []);
 
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedSurgeon, setSelectedSurgeon] = useState(null);
@@ -2279,6 +2288,8 @@ export default function App() {
                   {activeTab === 'overview' && 'Executive Overview'}
                   {activeTab === 'or' && 'OR Performance'}
                   {activeTab === 'surgeons' && 'Surgeon Performance'}
+                  {activeTab === 'surgeon_management' && 'Surgeon Management'}
+                  {activeTab === 'surgeons_manage' && 'Surgeon Management'}
                   {activeTab === 'patients' && 'Patient Management'}
                   {activeTab === 'financial' && 'Financial Performance'}
                   {activeTab === 'cpt' && 'Case Profitability'}
@@ -2301,6 +2312,8 @@ export default function App() {
                   {activeTab === 'overview' && 'Strategic summaries of health system indicators'}
                   {activeTab === 'or' && 'Deep-dive into room allocation, turnover times, and block wastage'}
                   {activeTab === 'surgeons' && 'Caseloads, turnover performance, and financial contribution by surgeon'}
+                  {activeTab === 'surgeon_management' && 'Search, filter, and manage surgeon profiles and credentials'}
+                  {activeTab === 'surgeons_manage' && 'Search, filter, and manage surgeon profiles and credentials'}
                   {activeTab === 'patients' && 'Search, filter, and view patient demographics, health insurances, and medical records'}
                   {activeTab === 'financial' && 'Analysis of revenues, expenses, EBITDA margins, and bottom lines'}
                   {activeTab === 'cpt' && 'Contribution margins, procedure times, and volumes by CPT code'}
@@ -2328,7 +2341,7 @@ export default function App() {
               alignItems: 'center',
               marginRight: '10px'
             }}>
-              {['Day', 'Week', 'Month', 'Year'].map(filter => (
+              {['Day', 'Week', 'Month', 'Year', 'All'].map(filter => (
                 <button 
                   key={filter}
                   onClick={() => setTimeFilter(filter)}
@@ -2352,31 +2365,33 @@ export default function App() {
             </div>
 
             {/* Date Selector */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: '#f1f5f9',
-              borderRadius: '8px',
-              padding: '6px 14px',
-              gap: '10px',
-              color: '#334155',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              border: '1px solid #e2e8f0',
-              cursor: 'pointer'
-            }}>
-              <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
-              <DatePicker
-                selected={filterDate}
-                onChange={(date) => setFilterDate(date)}
-                filterDate={timeFilter === 'Week' ? (date) => date.getDay() === 1 : undefined}
-                showMonthYearPicker={timeFilter === 'Month'}
-                showYearPicker={timeFilter === 'Year'}
-                dateFormat={timeFilter === 'Month' ? 'MM/yyyy' : timeFilter === 'Year' ? 'yyyy' : 'MM/dd/yyyy'}
-                customInput={<CustomDateInput />}
-                popperPlacement="bottom-end"
-              />
-            </div>
+            {timeFilter !== 'All' && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: '#f1f5f9',
+                borderRadius: '8px',
+                padding: '6px 14px',
+                gap: '10px',
+                color: '#334155',
+                fontSize: '0.9rem',
+                fontWeight: '500',
+                border: '1px solid #e2e8f0',
+                cursor: 'pointer'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
+                <DatePicker
+                  selected={filterDate}
+                  onChange={(date) => setFilterDate(date)}
+                  filterDate={timeFilter === 'Week' ? (date) => date.getDay() === 1 : undefined}
+                  showMonthYearPicker={timeFilter === 'Month'}
+                  showYearPicker={timeFilter === 'Year'}
+                  dateFormat={timeFilter === 'Month' ? 'MM/yyyy' : timeFilter === 'Year' ? 'yyyy' : 'MM/dd/yyyy'}
+                  customInput={<CustomDateInput />}
+                  popperPlacement="bottom-end"
+                />
+              </div>
+            )}
           </div>
         </header>
 
