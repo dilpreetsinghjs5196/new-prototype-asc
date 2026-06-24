@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { db } from './lib/supabase';
 import SurgeryScheduler from './components/SurgeryScheduler';
 import {
@@ -1026,10 +1028,58 @@ const MOCK_OR_TURNOVER_EFF_PIE = [
   { name: 'Standard (20-30m)', value: 30, percentage: 30, color: 'var(--color-blue)' },
   { name: 'Excessive (>30m)', value: 15, percentage: 15, color: 'var(--color-red)' }
 ];
+const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
+  <div onClick={onClick} ref={ref} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', outline: 'none', color: '#1e293b', cursor: 'pointer' }}>
+    <span style={{ marginRight: '10px' }}>{value}</span>
+    <CalendarDays size={16} />
+  </div>
+));
+CustomDateInput.displayName = 'CustomDateInput';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [timeFilter, setTimeFilter] = useState('Week');
+  const [filterDate, setFilterDate] = useState(new Date('2026-06-22T12:00:00'));
   const [surgeries, setSurgeries] = useState(INITIAL_SURGERIES);
+
+  const isDateInFilter = React.useCallback((surgDateStr, fDate, tFilter) => {
+    if (!surgDateStr || !fDate) return true;
+    // Handle different possible date formats, defaulting to YYYY-MM-DD
+    const [y, m, d] = surgDateStr.includes('-') ? surgDateStr.split('-').map(Number) : [null, null, null];
+    let surgDate;
+    if (y && m && d) surgDate = new Date(y, m - 1, d);
+    else surgDate = new Date(surgDateStr + 'T12:00:00');
+    
+    if (isNaN(surgDate)) return false;
+
+    if (tFilter === 'Day') {
+      return surgDate.getFullYear() === fDate.getFullYear() &&
+             surgDate.getMonth() === fDate.getMonth() &&
+             surgDate.getDate() === fDate.getDate();
+    } else if (tFilter === 'Month') {
+      return surgDate.getFullYear() === fDate.getFullYear() &&
+             surgDate.getMonth() === fDate.getMonth();
+    } else if (tFilter === 'Year') {
+      return surgDate.getFullYear() === fDate.getFullYear();
+    } else if (tFilter === 'Week') {
+      const startOfWeek = new Date(fDate);
+      startOfWeek.setHours(0, 0, 0, 0);
+      // Ensure startOfWeek is Monday
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      return surgDate >= startOfWeek && surgDate <= endOfWeek;
+    }
+    return true;
+  }, []);
+
+  const filteredSurgeries = React.useMemo(() => surgeries.filter(s => isDateInFilter(s.date, filterDate, timeFilter)), [surgeries, filterDate, timeFilter, isDateInFilter]);
+
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedSurgeon, setSelectedSurgeon] = useState(null);
   const [profileTab, setProfileTab] = useState('overview');
@@ -2269,11 +2319,64 @@ export default function App() {
           </div>
 
           <div className="header-actions">
-            <div className="date-range-selector">
-              <span>📅</span> May 1 – May 29, 2026 (MTD)
+            {/* Toggle Group */}
+            <div style={{
+              display: 'flex',
+              backgroundColor: '#f1f5f9',
+              borderRadius: '8px',
+              padding: '4px',
+              alignItems: 'center',
+              marginRight: '10px'
+            }}>
+              {['Day', 'Week', 'Month', 'Year'].map(filter => (
+                <button 
+                  key={filter}
+                  onClick={() => setTimeFilter(filter)}
+                  style={{
+                    border: 'none',
+                    background: timeFilter === filter ? '#fff' : 'transparent',
+                    color: timeFilter === filter ? '#3b82f6' : '#64748b',
+                    padding: '6px 16px',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    fontWeight: timeFilter === filter ? '600' : '500',
+                    cursor: 'pointer',
+                    boxShadow: timeFilter === filter ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.2s',
+                    outline: 'none'
+                  }}
+                >
+                  {filter}
+                </button>
+              ))}
             </div>
-            <button className="btn-header"><Filter size={16} /> Filters</button>
-            <button className="btn-header btn-primary"><Download size={16} /> Export</button>
+
+            {/* Date Selector */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: '#f1f5f9',
+              borderRadius: '8px',
+              padding: '6px 14px',
+              gap: '10px',
+              color: '#334155',
+              fontSize: '0.9rem',
+              fontWeight: '500',
+              border: '1px solid #e2e8f0',
+              cursor: 'pointer'
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
+              <DatePicker
+                selected={filterDate}
+                onChange={(date) => setFilterDate(date)}
+                filterDate={timeFilter === 'Week' ? (date) => date.getDay() === 1 : undefined}
+                showMonthYearPicker={timeFilter === 'Month'}
+                showYearPicker={timeFilter === 'Year'}
+                dateFormat={timeFilter === 'Month' ? 'MM/yyyy' : timeFilter === 'Year' ? 'yyyy' : 'MM/dd/yyyy'}
+                customInput={<CustomDateInput />}
+                popperPlacement="bottom-end"
+              />
+            </div>
           </div>
         </header>
 
@@ -3817,30 +3920,37 @@ export default function App() {
               {/* ==========================================
               TAB: CANCELLATIONS
               ========================================== */}
-              {activeTab === 'cancellations' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                    <div className="kpi-card">
-                      <span className="kpi-label">Cancellation Rate</span>
-                      <span className="kpi-value" style={{ color: 'var(--color-red)' }}>6.2%</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Facility average target &lt; 5.0%</span>
+              {activeTab === 'cancellations' && (() => {
+                const totalCases = filteredSurgeries.length;
+                const cancelledSurgeriesList = filteredSurgeries.filter(s => s.status?.toLowerCase() === 'cancelled');
+                const cancelledCount = cancelledSurgeriesList.length;
+                const cancelRate = totalCases > 0 ? ((cancelledCount / totalCases) * 100).toFixed(1) : 0;
+                const totalLostMargin = cancelledSurgeriesList.reduce((sum, s) => sum + Math.abs(s.margin || 0), 0);
+                
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                      <div className="kpi-card">
+                        <span className="kpi-label">Cancellation Rate</span>
+                        <span className="kpi-value" style={{ color: 'var(--color-red)' }}>{cancelRate}%</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Facility average target &lt; 5.0%</span>
+                      </div>
+                      <div className="kpi-card">
+                        <span className="kpi-label">Lost Contrib. Margin</span>
+                        <span className="kpi-value" style={{ color: 'var(--color-red)' }}>${totalLostMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Based on total recorded cancellations</span>
+                      </div>
+                      <div className="kpi-card">
+                        <span className="kpi-label">Cancelled Cases</span>
+                        <span className="kpi-value">{cancelledCount} Cases</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total recorded cancelled cases</span>
+                      </div>
+                      <div className="kpi-card">
+                        <span className="kpi-label">Avg Lead Notification Time</span>
+                        <span className="kpi-value">{cancelledCount > 0 ? '4.5 hours' : 'N/A'}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Time before scheduled start</span>
+                      </div>
                     </div>
-                    <div className="kpi-card">
-                      <span className="kpi-label">Lost Contrib. Margin</span>
-                      <span className="kpi-value" style={{ color: 'var(--color-red)' }}>$48,200</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Based on last 30 days cancellations</span>
-                    </div>
-                    <div className="kpi-card">
-                      <span className="kpi-label">Cancelled Cases</span>
-                      <span className="kpi-value">14 Cases</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total cases cancelled this month</span>
-                    </div>
-                    <div className="kpi-card">
-                      <span className="kpi-label">Avg Lead Notification Time</span>
-                      <span className="kpi-value">4.5 hours</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Time before scheduled start</span>
-                    </div>
-                  </div>
 
                   {/* Recovery Optimizer alerts */}
                   <div
@@ -3940,7 +4050,7 @@ export default function App() {
                   <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
                     <div className="dashboard-card">
                       <div className="card-header">
-                        <h3 className="card-title">Recent Cancellations & Revenue Loss</h3>
+                        <h3 className="card-title">Recent Updates (Cancelled, Completed, Rescheduled)</h3>
                       </div>
                       <div className="custom-table-container">
                         <table className="custom-table">
@@ -3949,30 +4059,43 @@ export default function App() {
                               <th>Date</th>
                               <th>Procedure</th>
                               <th>Surgeon</th>
-                              <th>Reason</th>
-                              <th>Estimated Lost Margin</th>
+                              <th>Status/Reason</th>
+                              <th>Estimated Margin Impact</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {[
-                              { date: 'May 12', desc: 'Gallbladder (CPT 23430)', surg: 'Dr. Walsh Mark', reason: 'Patient No-Show', loss: 3450 },
-                              { date: 'May 10', desc: 'Shoulder Arthroscopy', surg: 'Dr. Gardner Paul', reason: 'Incomplete Pre-Op Clearance', loss: 4200 },
-                              { date: 'May 8', desc: 'Carpal Tunnel Release', surg: 'Dr. Bonett Andrew', reason: 'Insurance Pre-Auth Refused', loss: 1620 },
-                              { date: 'May 5', desc: 'Hernia Repair', surg: 'Dr. Walsh Mark', reason: 'Patient Medical Anomaly (Elevated BP)', loss: 3750 }
-                            ].map((c, i) => (
+                            {filteredSurgeries
+                                .filter(s => ['cancelled', 'completed', 'rescheduled'].includes(s.status?.toLowerCase()))
+                                .slice(0, 10)
+                                .map((c, i) => (
                               <tr
-                                key={i}
-                                onClick={() => { setSelectedSurgeon(c.surg); setProfileTab('schedule'); }}
+                                key={c.id || i}
+                                onClick={() => { setSelectedSurgeon(c.doctor); setProfileTab('schedule'); }}
                                 style={{ cursor: 'pointer' }}
                                 className="clickable-row"
                               >
-                                <td>{c.date}</td>
-                                <td style={{ fontWeight: '600' }}>{c.desc}</td>
-                                <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.surg}</td>
-                                <td style={{ color: 'var(--color-orange)' }}>{c.reason}</td>
-                                <td style={{ color: 'var(--color-red)', fontWeight: '600' }}>-${c.loss.toLocaleString()}</td>
+                                <td>{c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</td>
+                                <td style={{ fontWeight: '600' }}>{c.label}</td>
+                                <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.doctor}</td>
+                                <td style={{ 
+                                  color: c.status?.toLowerCase() === 'cancelled' ? 'var(--color-red)' : 
+                                         c.status?.toLowerCase() === 'completed' ? 'var(--color-green)' : 'var(--color-orange)',
+                                  textTransform: 'capitalize' 
+                                }}>
+                                  {c.status || 'Unknown'} {c.notes ? `- ${c.notes}` : ''}
+                                </td>
+                                <td style={{ color: c.margin < 0 ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
+                                  {c.margin < 0 ? '-' : '+'}${Math.abs(c.margin || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </td>
                               </tr>
                             ))}
+                            {filteredSurgeries.filter(s => ['cancelled', 'completed', 'rescheduled'].includes(s.status?.toLowerCase())).length === 0 && (
+                              <tr>
+                                <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                                  No recent records found
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -4018,7 +4141,8 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* ==========================================
               TAB: REPORTS & ANALYTICS
@@ -4140,7 +4264,7 @@ export default function App() {
                   patients={patients}
                   surgeons={surgeonsList}
                   cptCodes={cptCodesList}
-                  surgeries={surgeries}
+                  surgeries={filteredSurgeries}
                   onSchedule={async (surgData) => {
                     const newSurg = await db.addSurgery(surgData);
                     if (newSurg) {
