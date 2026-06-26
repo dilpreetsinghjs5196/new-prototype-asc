@@ -7,15 +7,15 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function checkSchema() {
   const { data, error } = await supabase
-    .from('surgeries')
+    .from('cpt_codes')
     .select('*')
     .limit(1);
 
   if (error) {
-    console.error('Error fetching surgeries:', error);
+    console.error('Error fetching cpt_codes:', error);
   } else {
-    console.log('Surgeries row keys:', data.length > 0 ? Object.keys(data[0]) : 'No data');
-    console.log('Surgeries row:', data[0]);
+    console.log('CPT codes row keys:', data.length > 0 ? Object.keys(data[0]) : 'No data');
+    console.log('CPT codes row:', data[0]);
   }
 }
 

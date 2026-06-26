@@ -3,6 +3,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { db } from './lib/supabase';
 import SurgeryScheduler from './components/SurgeryScheduler';
+import CPTManagement from './components/CPTManagement';
 import {
   ResponsiveContainer,
   LineChart,
@@ -2061,6 +2062,80 @@ export default function App() {
     }
   };
 
+  const handleAddCPT = async (cptData) => {
+    try {
+      const inserted = await db.addCPTCode(cptData);
+      const newCpt = inserted || { ...cptData, id: Date.now(), created_at: new Date().toISOString() };
+      setCptCodesList(prev => [newCpt, ...prev]);
+      
+      const newTableItem = {
+        code: newCpt.code,
+        desc: newCpt.description,
+        time: newCpt.average_duration || 60,
+        turn: newCpt.turnover_time || 20,
+        fee: newCpt.reimbursement || 0,
+        med: newCpt.reimbursement || 0,
+        labor: 0,
+        supply: newCpt.cost || 0,
+        margin: (newCpt.reimbursement || 0) - (newCpt.cost || 0),
+        pct: newCpt.reimbursement > 0 ? Math.round(((newCpt.reimbursement - (newCpt.cost || 0)) / newCpt.reimbursement) * 100) : 0
+      };
+      setCptTableData(prev => [newTableItem, ...prev]);
+      alert('CPT code registered successfully.');
+    } catch (err) {
+      console.error('Error adding CPT code:', err);
+      if (err && (err.code === '23505' || String(err.message || '').includes('already exists'))) {
+        alert('Failed to register: CPT code already exists in the database.');
+      } else {
+        alert('Failed to register CPT code.');
+      }
+      throw err;
+    }
+  };
+
+  const handleUpdateCPT = async (id, updates) => {
+    try {
+      const updated = await db.updateCPTCode(id, updates);
+      setCptCodesList(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+      
+      setCptTableData(prev => prev.map(c => c.code === updates.code ? {
+        ...c,
+        desc: updates.description,
+        time: updates.average_duration || c.time,
+        turn: updates.turnover_time || c.turn,
+        fee: updates.reimbursement !== null && updates.reimbursement !== undefined ? updates.reimbursement : c.fee,
+        med: updates.reimbursement !== null && updates.reimbursement !== undefined ? updates.reimbursement : c.med,
+        supply: updates.cost !== null && updates.cost !== undefined ? updates.cost : c.supply,
+        margin: (updates.reimbursement !== null && updates.reimbursement !== undefined ? updates.reimbursement : c.fee) - (updates.cost !== null && updates.cost !== undefined ? updates.cost : c.supply),
+        pct: (updates.reimbursement || c.fee) > 0 ? Math.round((((updates.reimbursement !== null && updates.reimbursement !== undefined ? updates.reimbursement : c.fee) - (updates.cost !== null && updates.cost !== undefined ? updates.cost : c.supply)) / (updates.reimbursement || c.fee)) * 100) : 0
+      } : c));
+      alert('CPT code updated successfully.');
+    } catch (err) {
+      console.error('Error updating CPT code:', err);
+      if (err && (err.code === '23505' || String(err.message || '').includes('already exists'))) {
+        alert('Failed to update: CPT code already exists in the database.');
+      } else {
+        alert('Failed to update CPT code.');
+      }
+      throw err;
+    }
+  };
+
+  const handleDeleteCPT = async (id) => {
+    try {
+      const cptToDelete = cptCodesList.find(c => c.id === id);
+      await db.deleteCPTCode(id);
+      setCptCodesList(prev => prev.filter(c => c.id !== id));
+      if (cptToDelete) {
+        setCptTableData(prev => prev.filter(c => c.code !== cptToDelete.code));
+      }
+      alert('CPT code deleted successfully.');
+    } catch (err) {
+      console.error('Error deleting CPT code:', err);
+      alert('Failed to delete CPT code.');
+    }
+  };
+
   const filteredPatients = patients.filter(p => {
     const q = patientSearchQuery.toLowerCase();
     return (
@@ -2301,6 +2376,14 @@ export default function App() {
           </div>
 
           <div
+            className={`menu-item ${activeTab === 'cpt_manage' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('cpt_manage'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Sliders size={16} /></div>
+            CPT Codes Management
+          </div>
+
+          <div
             className={`menu-item ${activeTab === 'payer' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('payer'); setSelectedSurgeon(null); }}
           >
@@ -2392,6 +2475,7 @@ export default function App() {
                   {activeTab === 'patients' && 'Patient Management'}
                   {activeTab === 'financial' && 'Financial Performance'}
                   {activeTab === 'cpt' && 'Case Profitability'}
+                  {activeTab === 'cpt_manage' && 'CPT Codes Management'}
                   {activeTab === 'payer' && 'Payer Intelligence'}
                   {activeTab === 'supply' && 'Supply Chain'}
                   {activeTab === 'cancellations' && 'Cancellations'}
@@ -4372,6 +4456,18 @@ export default function App() {
                     await db.deleteSurgery(id);
                     setSurgeries(prev => prev.filter(s => s.id !== id));
                   }}
+                />
+              )}
+
+              {/* ==========================================
+              TAB: CPT CODES MANAGEMENT
+              ========================================== */}
+              {activeTab === 'cpt_manage' && (
+                <CPTManagement
+                  cptCodes={cptCodesList}
+                  onAdd={handleAddCPT}
+                  onUpdate={handleUpdateCPT}
+                  onDelete={handleDeleteCPT}
                 />
               )}
             </>
