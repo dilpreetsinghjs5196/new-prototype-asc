@@ -266,5 +266,53 @@ export const db = {
       .eq('id', id);
     if (error) throw error;
     return true;
+  },
+
+  // ==================== SETTINGS ====================
+  async getSettings() {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*')
+      .limit(1);
+
+    // Don't throw error if no rows found, just return null
+    if (error) {
+      if (error.code === 'PGRST116' || error.code === '42P01') return null;
+      console.error('Error fetching settings:', error);
+      throw error;
+    }
+
+    return data && data.length > 0 ? data[0] : null;
+  },
+
+  async updateSettings(updates) {
+    // Get the first (and only) settings record
+    const { data: existing } = await supabase
+      .from('settings')
+      .select('id')
+      .limit(1)
+      .single();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('settings')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } else {
+      // Insert if no settings exist
+      const { data, error } = await supabase
+        .from('settings')
+        .insert([updates])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
   }
 };

@@ -4,6 +4,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { db } from './lib/supabase';
 import SurgeryScheduler from './components/SurgeryScheduler';
 import CPTManagement from './components/CPTManagement';
+import SettingsView from './components/Settings';
 import {
   ResponsiveContainer,
   LineChart,
@@ -4390,33 +4391,7 @@ export default function App() {
               TAB: SETTINGS
               ========================================== */}
               {activeTab === 'settings' && (
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title">ASC Settings Configuration</h3>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '0.9rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                      <span>OR Baseline Cost / Hour</span>
-                      <input type="text" value="$1,500" className="date-range-selector" style={{ width: '150px' }} readOnly />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                      <span>Staff Labor Cost / Hour</span>
-                      <input type="text" value="$450" className="date-range-selector" style={{ width: '150px' }} readOnly />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                      <span>Default Turnover Allocation</span>
-                      <input type="text" value="25 mins" className="date-range-selector" style={{ width: '150px' }} readOnly />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', alignItems: 'center' }}>
-                      <span>Supabase Sync Host</span>
-                      <input type="text" value="https://supabase.medicalai.co" className="date-range-selector" style={{ width: '300px' }} readOnly />
-                    </div>
-                  </div>
-                </div>
+                <SettingsView />
               )}
 
               {/* ==========================================
