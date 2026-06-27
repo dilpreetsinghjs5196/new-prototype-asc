@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Mic, Lock } from 'lucide-react';
+import { Sparkles, X, Send, Mic, Lock, Volume2, VolumeX } from 'lucide-react';
 import { db } from '../lib/supabase';
 import { sendMessageToGemini } from '../lib/gemini';
 import './Chatbot.css';
@@ -27,6 +27,9 @@ const Chatbot = () => {
   const [orBlockSchedule, setOrBlockSchedule] = useState([]);
 
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const [isSoundOn, setIsSoundOn] = useState(true); // Default to voice output on
 
   useEffect(() => {
     if (isOpen) {
@@ -57,6 +60,58 @@ const Chatbot = () => {
       fetchData();
     }
   }, [isOpen]);
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+
+      recognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        // Fallback if isFinal is not behaving as expected
+        if (!finalTranscript && event.results.length > 0) {
+           finalTranscript = event.results[event.results.length - 1][0].transcript;
+        }
+
+        if (finalTranscript) {
+          setInput(finalTranscript); // Overwrite to prevent stutter accumulation
+        }
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+  }, []);
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      alert("Voice recognition is not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -138,6 +193,14 @@ const Chatbot = () => {
       const contextData = prepareContextData();
       const botReply = await sendMessageToGemini(userMessage.text, history, contextData);
 
+      // Speak the response if sound is on
+      if (isSoundOn && 'speechSynthesis' in window) {
+        // Remove markdown characters for better speech
+        const cleanText = botReply.replace(/[*_#]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        window.speechSynthesis.speak(utterance);
+      }
+
       const botMessage = {
         id: Date.now() + 1,
         type: 'bot',
@@ -174,9 +237,22 @@ const Chatbot = () => {
                 <span>PHI PROTECTED</span>
               </div>
             </div>
-            <button className="chatbot-close-btn" onClick={toggleChat} aria-label="Close Chat">
-              <X size={18} />
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="chatbot-close-btn" 
+                onClick={() => {
+                  if (window.speechSynthesis) window.speechSynthesis.cancel();
+                  setIsSoundOn(!isSoundOn);
+                }} 
+                aria-label="Toggle Sound"
+                title={isSoundOn ? "Mute Voice" : "Enable Voice"}
+              >
+                {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              </button>
+              <button className="chatbot-close-btn" onClick={toggleChat} aria-label="Close Chat">
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}
@@ -202,7 +278,24 @@ const Chatbot = () => {
           {/* Input Area */}
           <form className="chatbot-input-area" onSubmit={handleSend}>
             <div className="chatbot-input-wrapper">
-              <Mic size={18} className="chatbot-mic-icon" />
+              <button 
+                type="button"
+                className={`chatbot-mic-btn ${isListening ? 'listening' : ''}`}
+                onClick={toggleVoiceInput}
+                aria-label={isListening ? "Stop listening" : "Start voice input"}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer',
+                  color: isListening ? '#ef4444' : 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px'
+                }}
+              >
+                <Mic size={18} className="chatbot-mic-icon" />
+              </button>
               <input
                 type="text"
                 className="chatbot-input"
