@@ -14,7 +14,8 @@ const Settings = ({ onUpdate }) => {
         tax_id: '59-1234567',
         npi: '1234567890',
         apply_medicare_mppr: false,
-        ai_allowed_email: '' // Restrict usage to this email
+        ai_allowed_email: '', // Restrict usage to this email
+        gemini_api_key: ''
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -27,8 +28,16 @@ const Settings = ({ onUpdate }) => {
         try {
             setLoading(true);
             const data = await db.getSettings();
+            
+            // Load local AI config for email just in case it's not in DB
+            const localAI = {
+                ai_allowed_email: localStorage.getItem('ai_allowed_email') || ''
+            };
+
             if (data) {
-                setSettings(data);
+                setSettings({ ...data, ...localAI });
+            } else {
+                setSettings(prev => ({ ...prev, ...localAI }));
             }
         } catch (error) {
             console.error('Error loading settings:', error);
@@ -52,9 +61,19 @@ const Settings = ({ onUpdate }) => {
         try {
             setSaving(true);
 
-            // Create a copy of settings and remove the 'id' field
-            // because 'id' is a generated identity column and cannot be updated
-            const { id, ...settingsToUpdate } = settings;
+            // Separate AI settings to store locally to prevent Supabase schema errors for email
+            const { id, ai_allowed_email, ...settingsToUpdate } = settings;
+
+            // Save local settings
+            if (ai_allowed_email !== undefined) localStorage.setItem('ai_allowed_email', ai_allowed_email);
+
+            // If the user didn't type a new API key (it's either empty or just the placeholder dots), we don't overwrite it in DB
+            // We use a separate state to handle the input, but since it's in `settings.gemini_api_key`, 
+            // if it's exactly the masked string '••••••••••••••••', we delete it from settingsToUpdate
+            // so we don't overwrite the real key with dots.
+            if (settingsToUpdate.gemini_api_key === '••••••••••••••••' || settingsToUpdate.gemini_api_key === '...........................') {
+                delete settingsToUpdate.gemini_api_key;
+            }
 
             await db.updateSettings(settingsToUpdate);
 
@@ -328,9 +347,9 @@ const Settings = ({ onUpdate }) => {
                                     className="setting-form-input"
                                     type="password"
                                     name="gemini_api_key"
-                                    value={settings.gemini_api_key || ''}
+                                    value={settings.gemini_api_key ? (settings.gemini_api_key === '••••••••••••••••' ? '••••••••••••••••' : settings.gemini_api_key.includes('AIza') ? '••••••••••••••••' : settings.gemini_api_key) : ''}
                                     onChange={handleChange}
-                                    placeholder="AI..."
+                                    placeholder="Enter new API key to update..."
                                     style={{ height: '48px', fontFamily: 'monospace', letterSpacing: '0.05em', paddingRight: '120px' }}
                                     autoComplete="new-password"
                                 />

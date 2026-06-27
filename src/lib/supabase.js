@@ -28,12 +28,32 @@ export const db = {
 
   // Fetch CPT codes list
   async getCPTCodes() {
-    const { data, error } = await supabase
-      .from('cpt_codes')
-      .select('*')
-      .order('code', { ascending: true });
-    if (error) throw error;
-    return data || [];
+    let allCodes = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from('cpt_codes')
+            .select('*')
+            .order('code', { ascending: true })
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allCodes = [...allCodes, ...data];
+            if (data.length < pageSize) {
+                hasMore = false;
+            } else {
+                page++;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
+    return allCodes;
   },
 
   // Fetch surgeries, joining surgeon and patient details

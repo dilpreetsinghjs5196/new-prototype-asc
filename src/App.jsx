@@ -5,6 +5,7 @@ import { db } from './lib/supabase';
 import SurgeryScheduler from './components/SurgeryScheduler';
 import CPTManagement from './components/CPTManagement';
 import SettingsView from './components/Settings';
+import Chatbot from './components/Chatbot';
 import {
   ResponsiveContainer,
   LineChart,
@@ -5028,6 +5029,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <Chatbot />
     </div>
   );
 }
