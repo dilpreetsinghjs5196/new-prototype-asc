@@ -1053,16 +1053,16 @@ export default function App() {
     let surgDate;
     if (y && m && d) surgDate = new Date(y, m - 1, d);
     else surgDate = new Date(surgDateStr + 'T12:00:00');
-    
+
     if (isNaN(surgDate)) return false;
 
     if (tFilter === 'Day') {
       return surgDate.getFullYear() === fDate.getFullYear() &&
-             surgDate.getMonth() === fDate.getMonth() &&
-             surgDate.getDate() === fDate.getDate();
+        surgDate.getMonth() === fDate.getMonth() &&
+        surgDate.getDate() === fDate.getDate();
     } else if (tFilter === 'Month') {
       return surgDate.getFullYear() === fDate.getFullYear() &&
-             surgDate.getMonth() === fDate.getMonth();
+        surgDate.getMonth() === fDate.getMonth();
     } else if (tFilter === 'Year') {
       return surgDate.getFullYear() === fDate.getFullYear();
     } else if (tFilter === 'Week') {
@@ -1121,11 +1121,11 @@ export default function App() {
         totalTurnover += parseInt(surg.turnover_time, 10);
         turnoverCount++;
       } else if (surg.turnoverTime) {
-         totalTurnover += parseInt(surg.turnoverTime, 10);
-         turnoverCount++;
+        totalTurnover += parseInt(surg.turnoverTime, 10);
+        turnoverCount++;
       } else {
-         totalTurnover += 20; 
-         turnoverCount++;
+        totalTurnover += 20;
+        turnoverCount++;
       }
 
       const dur = parseInt(surg.duration_minutes || surg.durationMinutes || 0, 10);
@@ -1142,12 +1142,12 @@ export default function App() {
     });
 
     Object.values(byDateAndOR).forEach(orGroups => {
-       Object.values(orGroups).forEach(surgeries => {
-          if (surgeries.length > 1) {
-             gapsCount += surgeries.length - 1;
-             totalLeakageMinutes += (surgeries.length - 1) * 35;
-          }
-       });
+      Object.values(orGroups).forEach(surgeries => {
+        if (surgeries.length > 1) {
+          gapsCount += surgeries.length - 1;
+          totalLeakageMinutes += (surgeries.length - 1) * 35;
+        }
+      });
     });
 
     const avgTurnover = turnoverCount ? Math.round(totalTurnover / turnoverCount) : 0;
@@ -1155,13 +1155,13 @@ export default function App() {
     const ovHrs = (overtimeMinutes / 60).toFixed(1);
 
     const utlizationArray = Object.keys(roomUtilization).map(or => {
-       const data = roomUtilization[or];
-       let pct = data ? Math.min(100, Math.round((data.used / data.total) * 100)) : 0;
-       return {
-          room: or,
-          val: pct,
-          color: pct > 80 ? 'var(--color-blue)' : (pct > 50 ? 'var(--color-green)' : 'var(--color-red)')
-       };
+      const data = roomUtilization[or];
+      let pct = data ? Math.min(100, Math.round((data.used / data.total) * 100)) : 0;
+      return {
+        room: or,
+        val: pct,
+        color: pct > 80 ? 'var(--color-blue)' : (pct > 50 ? 'var(--color-green)' : 'var(--color-red)')
+      };
     });
 
     const totalVolume = filteredSurgeries.length;
@@ -1169,7 +1169,7 @@ export default function App() {
     let turnoverPct = Math.min(100, Math.round(26 * (totalVolume / 20)));
     let shortGapsPct = Math.min(100, Math.round(22 * (totalVolume / 20)));
     let unfilledPct = Math.min(100, Math.round(20 * (totalVolume / 20)));
-    
+
     const totalPct = lateStartsPct + turnoverPct + shortGapsPct + unfilledPct || 1;
     lateStartsPct = Math.round((lateStartsPct / totalPct) * 100);
     turnoverPct = Math.round((turnoverPct / totalPct) * 100);
@@ -2069,7 +2069,7 @@ export default function App() {
       const inserted = await db.addCPTCode(cptData);
       const newCpt = inserted || { ...cptData, id: Date.now(), created_at: new Date().toISOString() };
       setCptCodesList(prev => [newCpt, ...prev]);
-      
+
       const newTableItem = {
         code: newCpt.code,
         desc: newCpt.description,
@@ -2099,7 +2099,7 @@ export default function App() {
     try {
       const updated = await db.updateCPTCode(id, updates);
       setCptCodesList(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-      
+
       setCptTableData(prev => prev.map(c => c.code === updates.code ? {
         ...c,
         desc: updates.description,
@@ -2453,8 +2453,8 @@ export default function App() {
         <div className="sidebar-profile">
           <div className="profile-avatar"></div>
           <div className="profile-info">
-            <span className="profile-name">Jonathan Smith</span>
-            <span className="profile-role">COO</span>
+            <span className="profile-name">Siva Suresh</span>
+            <span className="profile-role">Director</span>
           </div>
         </div>
       </aside>
@@ -2527,7 +2527,7 @@ export default function App() {
               marginRight: '10px'
             }}>
               {['Day', 'Week', 'Month', 'Year', 'All'].map(filter => (
-                <button 
+                <button
                   key={filter}
                   onClick={() => setTimeFilter(filter)}
                   style={{
@@ -4105,7 +4105,7 @@ export default function App() {
                 const cancelledCount = cancelledSurgeriesList.length;
                 const cancelRate = totalCases > 0 ? ((cancelledCount / totalCases) * 100).toFixed(1) : 0;
                 const totalLostMargin = cancelledSurgeriesList.reduce((sum, s) => sum + Math.abs(s.margin || 0), 0);
-                
+
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
@@ -4131,195 +4131,195 @@ export default function App() {
                       </div>
                     </div>
 
-                  {/* Recovery Optimizer alerts */}
-                  <div
-                    style={{
-                      backgroundColor: cancellationActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                      border: `1px solid ${cancellationActive ? 'var(--color-red)' : 'var(--color-green)'}`,
-                      borderRadius: '12px',
-                      padding: '16px 20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '10px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ color: cancellationActive ? 'var(--color-red)' : 'var(--color-green)', fontSize: '1.25rem' }}>
-                        {cancellationActive ? <AlertTriangle /> : <CheckCircle />}
+                    {/* Recovery Optimizer alerts */}
+                    <div
+                      style={{
+                        backgroundColor: cancellationActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                        border: `1px solid ${cancellationActive ? 'var(--color-red)' : 'var(--color-green)'}`,
+                        borderRadius: '12px',
+                        padding: '16px 20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '10px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ color: cancellationActive ? 'var(--color-red)' : 'var(--color-green)', fontSize: '1.25rem' }}>
+                          {cancellationActive ? <AlertTriangle /> : <CheckCircle />}
+                        </div>
+                        <div>
+                          <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.95rem' }}>
+                            {cancellationActive ? 'Operational Cancellation Anomaly' : 'Vacancy Successfully Filled'}
+                          </h4>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                            {optimizerMessage}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.95rem' }}>
-                          {cancellationActive ? 'Operational Cancellation Anomaly' : 'Vacancy Successfully Filled'}
-                        </h4>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                          {optimizerMessage}
-                        </p>
-                      </div>
+
+                      {cancellationActive ? (
+                        <button
+                          className="btn-header btn-primary"
+                          onClick={() => setShowAutoSuggest(true)}
+                        >
+                          <Sparkles size={14} style={{ marginRight: '6px' }} /> Run Action Engine
+                        </button>
+                      ) : (
+                        <button
+                          className="btn-header"
+                          onClick={resetCancellationSim}
+                        >
+                          <RotateCcw size={14} style={{ marginRight: '6px' }} /> Reset Simulation
+                        </button>
+                      )}
                     </div>
 
-                    {cancellationActive ? (
-                      <button
-                        className="btn-header btn-primary"
-                        onClick={() => setShowAutoSuggest(true)}
-                      >
-                        <Sparkles size={14} style={{ marginRight: '6px' }} /> Run Action Engine
-                      </button>
-                    ) : (
-                      <button
-                        className="btn-header"
-                        onClick={resetCancellationSim}
-                      >
-                        <RotateCcw size={14} style={{ marginRight: '6px' }} /> Reset Simulation
-                      </button>
-                    )}
-                  </div>
-
-                  {showAutoSuggest && (
-                    <div className="dashboard-card" style={{ border: '1px solid var(--color-blue)', boxShadow: '0 0 15px rgba(59, 130, 246, 0.2)', marginBottom: '10px' }}>
-                      <div className="card-header">
-                        <h3 className="card-title" style={{ color: 'var(--color-blue)' }}><Sparkles size={16} /> Action Engine: Vacant Slot Replacements</h3>
-                      </div>
-                      <div className="custom-table-container">
-                        <table className="custom-table">
-                          <thead>
-                            <tr>
-                              <th>Patient Code</th>
-                              <th>CPT / Description</th>
-                              <th>Surgeon</th>
-                              <th>Duration</th>
-                              <th>Revenue</th>
-                              <th>Supply Cost</th>
-                              <th>Implant Cost</th>
-                              <th>Contrib. Margin</th>
-                              <th>Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {WAITLIST_CASES.map(wc => (
-                              <tr key={wc.id}>
-                                <td style={{ fontWeight: '600' }}>#{wc.id}</td>
-                                <td>
-                                  <div style={{ fontWeight: '600' }}>CPT {wc.code}</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{wc.desc}</div>
-                                </td>
-                                <td>{wc.surgeon}</td>
-                                <td>{wc.duration} mins</td>
-                                <td>${wc.rev.toLocaleString()}</td>
-                                <td>${wc.supplies.toLocaleString()}</td>
-                                <td>${wc.implants.toLocaleString()}</td>
-                                <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${wc.margin.toLocaleString()}</td>
-                                <td>
-                                  <button
-                                    className="btn-header btn-primary"
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                    onClick={() => handleSimulateResolve(wc)}
-                                  >
-                                    Fill Slot
-                                  </button>
-                                </td>
+                    {showAutoSuggest && (
+                      <div className="dashboard-card" style={{ border: '1px solid var(--color-blue)', boxShadow: '0 0 15px rgba(59, 130, 246, 0.2)', marginBottom: '10px' }}>
+                        <div className="card-header">
+                          <h3 className="card-title" style={{ color: 'var(--color-blue)' }}><Sparkles size={16} /> Action Engine: Vacant Slot Replacements</h3>
+                        </div>
+                        <div className="custom-table-container">
+                          <table className="custom-table">
+                            <thead>
+                              <tr>
+                                <th>Patient Code</th>
+                                <th>CPT / Description</th>
+                                <th>Surgeon</th>
+                                <th>Duration</th>
+                                <th>Revenue</th>
+                                <th>Supply Cost</th>
+                                <th>Implant Cost</th>
+                                <th>Contrib. Margin</th>
+                                <th>Action</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {WAITLIST_CASES.map(wc => (
+                                <tr key={wc.id}>
+                                  <td style={{ fontWeight: '600' }}>#{wc.id}</td>
+                                  <td>
+                                    <div style={{ fontWeight: '600' }}>CPT {wc.code}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{wc.desc}</div>
+                                  </td>
+                                  <td>{wc.surgeon}</td>
+                                  <td>{wc.duration} mins</td>
+                                  <td>${wc.rev.toLocaleString()}</td>
+                                  <td>${wc.supplies.toLocaleString()}</td>
+                                  <td>${wc.implants.toLocaleString()}</td>
+                                  <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${wc.margin.toLocaleString()}</td>
+                                  <td>
+                                    <button
+                                      className="btn-header btn-primary"
+                                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                      onClick={() => handleSimulateResolve(wc)}
+                                    >
+                                      Fill Slot
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
-                    <div className="dashboard-card">
-                      <div className="card-header">
-                        <h3 className="card-title">Recent Updates (Cancelled, Completed, Rescheduled)</h3>
-                      </div>
-                      <div className="custom-table-container">
-                        <table className="custom-table">
-                          <thead>
-                            <tr>
-                              <th>Date</th>
-                              <th>Procedure</th>
-                              <th>Surgeon</th>
-                              <th>Status/Reason</th>
-                              <th>Estimated Margin Impact</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredSurgeries
+                    <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
+                      <div className="dashboard-card">
+                        <div className="card-header">
+                          <h3 className="card-title">Recent Updates (Cancelled, Completed, Rescheduled)</h3>
+                        </div>
+                        <div className="custom-table-container">
+                          <table className="custom-table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Procedure</th>
+                                <th>Surgeon</th>
+                                <th>Status/Reason</th>
+                                <th>Estimated Margin Impact</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredSurgeries
                                 .filter(s => ['cancelled', 'completed', 'rescheduled'].includes(s.status?.toLowerCase()))
                                 .slice(0, 10)
                                 .map((c, i) => (
-                              <tr
-                                key={c.id || i}
-                                onClick={() => { setSelectedSurgeon(c.doctor); setProfileTab('schedule'); }}
-                                style={{ cursor: 'pointer' }}
-                                className="clickable-row"
-                              >
-                                <td>{c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</td>
-                                <td style={{ fontWeight: '600' }}>{c.label}</td>
-                                <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.doctor}</td>
-                                <td style={{ 
-                                  color: c.status?.toLowerCase() === 'cancelled' ? 'var(--color-red)' : 
-                                         c.status?.toLowerCase() === 'completed' ? 'var(--color-green)' : 'var(--color-orange)',
-                                  textTransform: 'capitalize' 
-                                }}>
-                                  {c.status || 'Unknown'} {c.notes ? `- ${c.notes}` : ''}
-                                </td>
-                                <td style={{ color: c.margin < 0 ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
-                                  {c.margin < 0 ? '-' : '+'}${Math.abs(c.margin || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                </td>
-                              </tr>
-                            ))}
-                            {filteredSurgeries.filter(s => ['cancelled', 'completed', 'rescheduled'].includes(s.status?.toLowerCase())).length === 0 && (
-                              <tr>
-                                <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-                                  No recent records found
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                                  <tr
+                                    key={c.id || i}
+                                    onClick={() => { setSelectedSurgeon(c.doctor); setProfileTab('schedule'); }}
+                                    style={{ cursor: 'pointer' }}
+                                    className="clickable-row"
+                                  >
+                                    <td>{c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</td>
+                                    <td style={{ fontWeight: '600' }}>{c.label}</td>
+                                    <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.doctor}</td>
+                                    <td style={{
+                                      color: c.status?.toLowerCase() === 'cancelled' ? 'var(--color-red)' :
+                                        c.status?.toLowerCase() === 'completed' ? 'var(--color-green)' : 'var(--color-orange)',
+                                      textTransform: 'capitalize'
+                                    }}>
+                                      {c.status || 'Unknown'} {c.notes ? `- ${c.notes}` : ''}
+                                    </td>
+                                    <td style={{ color: c.margin < 0 ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
+                                      {c.margin < 0 ? '-' : '+'}${Math.abs(c.margin || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </td>
+                                  </tr>
+                                ))}
+                              {filteredSurgeries.filter(s => ['cancelled', 'completed', 'rescheduled'].includes(s.status?.toLowerCase())).length === 0 && (
+                                <tr>
+                                  <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                                    No recent records found
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="dashboard-card">
-                      <div className="card-header">
-                        <h3 className="card-title">Cancellations by Reason</h3>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                          <span>Medical Issues (Pre-Op clearance/elevated vitals)</span>
-                          <span style={{ fontWeight: '600' }}>42%</span>
+                      <div className="dashboard-card">
+                        <div className="card-header">
+                          <h3 className="card-title">Cancellations by Reason</h3>
                         </div>
-                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: '42%', backgroundColor: 'var(--color-red)' }} />
-                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                            <span>Medical Issues (Pre-Op clearance/elevated vitals)</span>
+                            <span style={{ fontWeight: '600' }}>42%</span>
+                          </div>
+                          <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: '42%', backgroundColor: 'var(--color-red)' }} />
+                          </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                          <span>Insurance / Authorization issues</span>
-                          <span style={{ fontWeight: '600' }}>28%</span>
-                        </div>
-                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: '28%', backgroundColor: 'var(--color-red)' }} />
-                        </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                            <span>Insurance / Authorization issues</span>
+                            <span style={{ fontWeight: '600' }}>28%</span>
+                          </div>
+                          <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: '28%', backgroundColor: 'var(--color-red)' }} />
+                          </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                          <span>Patient No-Show / Late cancellation</span>
-                          <span style={{ fontWeight: '600' }}>20%</span>
-                        </div>
-                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: '20%', backgroundColor: 'var(--color-orange)' }} />
-                        </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                            <span>Patient No-Show / Late cancellation</span>
+                            <span style={{ fontWeight: '600' }}>20%</span>
+                          </div>
+                          <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: '20%', backgroundColor: 'var(--color-orange)' }} />
+                          </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                          <span>Administrative / Scheduling conflict</span>
-                          <span style={{ fontWeight: '600' }}>10%</span>
-                        </div>
-                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: '10%', backgroundColor: 'var(--color-grey)' }} />
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                            <span>Administrative / Scheduling conflict</span>
+                            <span style={{ fontWeight: '600' }}>10%</span>
+                          </div>
+                          <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: '10%', backgroundColor: 'var(--color-grey)' }} />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
                 );
               })()}
 
