@@ -6,6 +6,7 @@ import SurgeryScheduler from './components/SurgeryScheduler';
 import CPTManagement from './components/CPTManagement';
 import SettingsView from './components/Settings';
 import Chatbot from './components/Chatbot';
+import AIAnalystModal from './components/AIAnalystModal';
 import {
   ResponsiveContainer,
   LineChart,
@@ -1291,6 +1292,9 @@ export default function App() {
   const [baseRevenuePerHour, setBaseRevenuePerHour] = useState(1102);
   const [baseMarginPerHour, setBaseMarginPerHour] = useState(208);
   const [avgTurnoverGlobal, setAvgTurnoverGlobal] = useState(24);
+
+  // ASC Analyst Modal State
+  const [showAscAnalyst, setShowAscAnalyst] = useState(false);
 
   // Fetch from Supabase on component mount
   useEffect(() => {
@@ -4344,6 +4348,13 @@ export default function App() {
                 <div className="dashboard-card">
                   <div className="card-header">
                     <h3 className="card-title"><Sparkles size={18} /> Prescriptive AI Actions Hub</h3>
+                    <button
+                      className="btn-header btn-primary"
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
+                      onClick={() => { setShowAscAnalyst(true); setAnalystResult(null); }}
+                    >
+                      <Sparkles size={14} /> ASC Analyst
+                    </button>
                   </div>
 
                   <div className="ai-recommendations-list">
@@ -5029,6 +5040,17 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* ==========================================
+          MODAL: ASC ANALYST — SMART SCHEDULE OPTIMIZATION
+          ========================================== */}
+      <AIAnalystModal
+        isOpen={showAscAnalyst}
+        onClose={() => setShowAscAnalyst(false)}
+        surgeries={surgeries}
+        cptCodes={cptCodesList}
+        settings={{}}
+      />
 
       <Chatbot />
     </div>
