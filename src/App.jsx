@@ -9,6 +9,7 @@ import Chatbot from './components/Chatbot';
 import AIAnalystModal from './components/AIAnalystModal';
 import CommandCenter from './components/CommandCenter';
 import { calculateMedicareRevenue, calculateORCost } from './utils/hospitalUtils';
+import InstructionPanel from './components/InstructionPanel';
 import {
   ResponsiveContainer,
   LineChart,
@@ -55,7 +56,8 @@ import {
   Edit,
   Trash2,
   Plus,
-  CalendarDays
+  CalendarDays,
+  Bot
 } from 'lucide-react';
 
 // ==========================================
@@ -2312,6 +2314,15 @@ export default function App() {
 
         <nav className="sidebar-menu">
           <div
+            className={`menu-item ${activeTab === 'instruction' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('instruction'); setSelectedSurgeon(null); }}
+            style={activeTab === 'instruction' ? { backgroundColor: '#10b981', color: 'white' } : {}}
+          >
+            <div className="menu-item-icon"><Bot size={16} /></div>
+            Instruction Panel
+          </div>
+
+          <div
             className={`menu-item ${activeTab === 'dashboard' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('dashboard'); setSelectedSurgeon(null); }}
           >
@@ -2493,6 +2504,7 @@ export default function App() {
                   {activeTab === 'settings' && 'System Configuration Settings'}
                   {activeTab === 'help' && 'Help & Support'}
                   {activeTab === 'scheduler' && 'Surgery Log & OR Schedule'}
+                  {activeTab === 'instruction' && 'Chatbot Instructions'}
                 </>
               )}
             </h1>
@@ -2517,6 +2529,7 @@ export default function App() {
                   {activeTab === 'settings' && 'Manage operational baseline costs, roles, and integrations'}
                   {activeTab === 'help' && 'Support desk and user guides'}
                   {activeTab === 'scheduler' && 'Schedule, track, and analyze surgical cases with full cost and OR time data'}
+                  {activeTab === 'instruction' && 'Manage dynamic questions and categories for the AI Chatbot'}
                 </>
               )}
             </span>
@@ -4202,6 +4215,14 @@ export default function App() {
               {activeTab === 'settings' && (
                 <SettingsView />
               )}
+
+              {/* ==========================================
+              TAB: INSTRUCTION PANEL
+              ========================================== */}
+              {activeTab === 'instruction' && (
+                <InstructionPanel />
+              )}
+
 
               {/* ==========================================
               TAB: HELP & SUPPORT
