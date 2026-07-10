@@ -1049,6 +1049,7 @@ export default function App() {
   const [timeFilter, setTimeFilter] = useState('All');
   const [filterDate, setFilterDate] = useState(new Date('2026-02-23T12:00:00'));
   const [surgeries, setSurgeries] = useState(INITIAL_SURGERIES);
+  const [includeAdvancedCosts, setIncludeAdvancedCosts] = useState(false);
 
   const isDateInFilter = React.useCallback((surgDateStr, fDate, tFilter) => {
     if (tFilter === 'All') return true;
@@ -1195,6 +1196,121 @@ export default function App() {
       ]
     };
   }, [filteredSurgeries]);
+
+  const executiveOverviewMetrics = React.useMemo(() => {
+    let netRevenue = 0;
+    let operatingMargin = 0;
+    let totalDirectCost = 0;
+    let totalCancellations = 0;
+
+    const specialtyAgg = {};
+    const facilityAgg = {};
+    const weeksAgg = [
+      { name: 'Week 1', revenue: 0, cost: 0, margin: 0 },
+      { name: 'Week 2', revenue: 0, cost: 0, margin: 0 },
+      { name: 'Week 3', revenue: 0, cost: 0, margin: 0 },
+      { name: 'Week 4', revenue: 0, cost: 0, margin: 0 }
+    ];
+
+    if (!filteredSurgeries || filteredSurgeries.length === 0) {
+      return {
+        netRevenue: 0,
+        operatingMargin: 0,
+        avgContribution: 0,
+        ebitdaPct: 0,
+        financialsTrend: weeksAgg,
+        specialtyDist: [],
+        facilityComparative: []
+      };
+    }
+
+    filteredSurgeries.forEach((surg, idx) => {
+      // Basic aggregations
+      const rev = Number(surg.revenue || surg.expected_reimbursement || 0);
+      const cost = includeAdvancedCosts ? (Number(surg.supplies || 0) + Number(surg.implants || 0) + Number(surg.labor || 0) + Number(surg.roomCost || 0) + Number(surg.medications_cost || 0) + Number(surg.tray_cost || 0)) : 0;
+      const marg = rev - cost;
+      const isCancelled = surg.status?.toLowerCase() === 'cancelled';
+      
+      netRevenue += rev;
+      operatingMargin += marg;
+      totalDirectCost += cost;
+      if (isCancelled) totalCancellations++;
+
+      // Weekly Financials Trend (Arbitrary grouping if time span varies, or sorting chronologically)
+      // We will assign cases dynamically to 4 sequential time buckets to maintain the chart shape
+      const bucketIdx = Math.floor((idx / filteredSurgeries.length) * 4);
+      const weekBucket = Math.min(3, bucketIdx);
+      weeksAgg[weekBucket].revenue += rev;
+      weeksAgg[weekBucket].cost += cost;
+      weeksAgg[weekBucket].margin += marg;
+
+      // Specialty Case Distribution
+      const spec = surg.specialty || 'General Surgery';
+      if (!specialtyAgg[spec]) {
+        specialtyAgg[spec] = { count: 0, revenue: 0, margin: 0 };
+      }
+      specialtyAgg[spec].count++;
+      specialtyAgg[spec].revenue += rev;
+      specialtyAgg[spec].margin += marg;
+
+      // Facility Scorecard
+      const fac = surg.or || surg.or_room || 'Main ASC';
+      if (!facilityAgg[fac]) {
+        facilityAgg[fac] = { cases: 0, utilMinutes: 0, profitUtilMinutes: 0, revenue: 0, directCost: 0, netMargin: 0, cancellations: 0 };
+      }
+      facilityAgg[fac].cases++;
+      facilityAgg[fac].revenue += rev;
+      facilityAgg[fac].directCost += cost;
+      facilityAgg[fac].netMargin += marg;
+      if (isCancelled) facilityAgg[fac].cancellations++;
+      
+      const dur = parseInt(surg.duration_minutes || 60, 10);
+      const actualDur = parseInt(surg.actual_duration_minutes || dur, 10);
+      facilityAgg[fac].utilMinutes += actualDur;
+      if (marg > 0) facilityAgg[fac].profitUtilMinutes += actualDur;
+    });
+
+    const avgContribution = Math.round(operatingMargin / filteredSurgeries.length);
+    const ebitdaPct = netRevenue > 0 ? ((operatingMargin / netRevenue) * 100).toFixed(1) : 0;
+
+    // Process Specialty Data
+    const specialtyColors = ['var(--color-blue)', 'var(--color-green)', 'var(--color-purple)', 'var(--color-orange)', 'var(--color-pink)', 'var(--color-red)'];
+    const specialtyDistArray = Object.entries(specialtyAgg).map(([name, data], i) => ({
+      name,
+      value: data.count,
+      percentage: Math.round((data.count / filteredSurgeries.length) * 100),
+      revenue: data.revenue,
+      margin: data.margin,
+      color: specialtyColors[i % specialtyColors.length]
+    })).sort((a, b) => b.value - a.value);
+
+    // Process Facility Data
+    const facilityCompArray = Object.entries(facilityAgg).map(([name, data]) => {
+      // Assuming 600 minutes is full capacity for a room based on the OR calculations
+      const utilPct = Math.min(100, Math.round((data.utilMinutes / (data.cases > 0 ? data.cases * 60 : 600)) * 100)); // Rough heuristic for utilization per room
+      const profitUtilPct = Math.min(100, Math.round((data.profitUtilMinutes / (data.cases > 0 ? data.cases * 60 : 600)) * 100));
+      return {
+        name,
+        cases: data.cases,
+        util: utilPct,
+        profitUtil: profitUtilPct,
+        revenue: data.revenue,
+        directCost: data.directCost,
+        netMargin: data.netMargin,
+        cancellations: data.cancellations
+      };
+    });
+
+    return {
+      netRevenue,
+      operatingMargin,
+      avgContribution,
+      ebitdaPct,
+      financialsTrend: weeksAgg,
+      specialtyDist: specialtyDistArray,
+      facilityComparative: facilityCompArray
+    };
+  }, [filteredSurgeries, includeAdvancedCosts]);
 
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedSurgeon, setSelectedSurgeon] = useState(null);
@@ -1393,6 +1509,7 @@ export default function App() {
             patient_id: surg.patient_id,
             surgeon_id: surg.surgeon_id,
             doctor_name: surg.doctor_name,
+            specialty: surg.surgeons?.specialty || 'General Surgery',
             start_time: surg.start_time,
             cpt_codes: surg.cpt_codes,
             supplies_cost: supplies,
@@ -2535,6 +2652,25 @@ export default function App() {
           </div>
 
           <div className="header-actions">
+            {/* Toggle Advanced Costs Checkbox */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginRight: '15px',
+              fontSize: '0.85rem',
+              color: '#475569',
+              fontWeight: '500'
+            }}>
+              <input 
+                type="checkbox" 
+                id="includeAdvancedCosts" 
+                checked={includeAdvancedCosts}
+                onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
+                style={{ marginRight: '6px', cursor: 'pointer' }}
+              />
+              <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer' }}>Include Costs</label>
+            </div>
+
             {/* Toggle Group */}
             <div style={{
               display: 'flex',
@@ -2844,12 +2980,12 @@ export default function App() {
                   <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                     <div className="kpi-card">
                       <div className="kpi-card-header">
-                        <span className="kpi-label">Net Revenue (MTD)</span>
+                        <span className="kpi-label">Net Revenue</span>
                         <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
                       </div>
-                      <span className="kpi-value">$1,898,090</span>
+                      <span className="kpi-value">{executiveOverviewMetrics.netRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
                       <div className="kpi-trend positive">
-                        vs Target MTD <span className="kpi-trend-change">+4.2%</span>
+                        vs Target <span className="kpi-trend-change">+4.2%</span>
                       </div>
                       <div className="sparkline-container">
                         <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
@@ -2863,9 +2999,9 @@ export default function App() {
                         <span className="kpi-label">Operating Margin</span>
                         <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
                       </div>
-                      <span className="kpi-value">$163,264</span>
+                      <span className="kpi-value">{executiveOverviewMetrics.operatingMargin.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
                       <div className="kpi-trend positive">
-                        Margin Ratio <span className="kpi-trend-change">8.6%</span>
+                        Margin Ratio <span className="kpi-trend-change">{(executiveOverviewMetrics.ebitdaPct)}%</span>
                       </div>
                       <div className="sparkline-container">
                         <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
@@ -2879,7 +3015,7 @@ export default function App() {
                         <span className="kpi-label">Avg Contribution / Case</span>
                         <div className="kpi-icon-container blue"><Stethoscope size={12} /></div>
                       </div>
-                      <span className="kpi-value">$1,237</span>
+                      <span className="kpi-value">{executiveOverviewMetrics.avgContribution.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
                       <div className="kpi-trend negative">
                         vs Last Month <span className="kpi-trend-change">-1.2%</span>
                       </div>
@@ -2895,9 +3031,9 @@ export default function App() {
                         <span className="kpi-label">EBITDA %</span>
                         <div className="kpi-icon-container orange"><DollarSign size={12} /></div>
                       </div>
-                      <span className="kpi-value">34.2%</span>
+                      <span className="kpi-value">{executiveOverviewMetrics.ebitdaPct}%</span>
                       <div className="kpi-trend positive">
-                        vs Target MTD <span className="kpi-trend-change">+1.5%</span>
+                        vs Target <span className="kpi-trend-change">+1.5%</span>
                       </div>
                       <div className="sparkline-container">
                         <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
@@ -2917,7 +3053,7 @@ export default function App() {
                       </div>
                       <div style={{ width: '100%', height: '240px', marginTop: '10px' }}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={MOCK_EXEC_FINANCIALS_TREND} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
+                          <BarChart data={executiveOverviewMetrics.financialsTrend} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
                             <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
                             <YAxis stroke="#5e6c84" fontSize={10} tickLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '11px', color: '#fff' }} />
@@ -2940,7 +3076,7 @@ export default function App() {
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
-                                data={specialtyDist}
+                                data={executiveOverviewMetrics.specialtyDist}
                                 cx="50%"
                                 cy="50%"
                                 innerRadius={45}
@@ -2948,20 +3084,20 @@ export default function App() {
                                 paddingAngle={2}
                                 dataKey="value"
                               >
-                                {specialtyDist.map((entry, index) => (
+                                {executiveOverviewMetrics.specialtyDist.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#fff' }}>1,534</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#fff' }}>{filteredSurgeries.length.toLocaleString()}</div>
                             <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cases</div>
                           </div>
                         </div>
 
-                        <div className="donut-legend-container">
-                          {specialtyDist.map((item, idx) => (
+                        <div className="donut-legend-container" style={{ overflowY: 'auto', maxHeight: '200px' }}>
+                          {executiveOverviewMetrics.specialtyDist.map((item, idx) => (
                             <div className="donut-legend-item" key={idx}>
                               <div className="donut-legend-label">
                                 <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
@@ -3019,7 +3155,7 @@ export default function App() {
                   <div className="dashboard-card">
                     <div className="card-header">
                       <h3 className="card-title">ASC Facility Scorecard</h3>
-                      <span className="card-subtitle-note">Last updated: May 29, 2026</span>
+                      <span className="card-subtitle-note">Last updated: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     </div>
 
                     <div className="custom-table-container">
@@ -3037,15 +3173,15 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {facilityComparative.map(facility => (
+                          {executiveOverviewMetrics.facilityComparative.map(facility => (
                             <tr key={facility.name}>
                               <td style={{ fontWeight: '600' }}>{facility.name}</td>
                               <td>{facility.cases}</td>
                               <td>{facility.util}%</td>
                               <td>{facility.profitUtil}%</td>
-                              <td>${facility.revenue.toLocaleString()}</td>
-                              <td>${facility.directCost.toLocaleString()}</td>
-                              <td style={{ color: 'var(--color-green)', fontWeight: '600' }}>${facility.netMargin.toLocaleString()}</td>
+                              <td>{facility.revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                              <td>{facility.directCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                              <td style={{ color: 'var(--color-green)', fontWeight: '600' }}>{facility.netMargin.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
                               <td style={{ color: facility.cancellations > 4 ? 'var(--color-red)' : 'var(--text-primary)' }}>{facility.cancellations} cases</td>
                             </tr>
                           ))}
