@@ -2755,6 +2755,7 @@ export default function App() {
                     onTabChange={setActiveTab}
                     timeframe={timeFilter}
                     filterDate={filterDate}
+                    includeAdvancedCosts={includeAdvancedCosts}
                   />
 
                   {/* Lower Section: Supply cost breakdown, AI suggestions and Cancellation Insights */}

@@ -4,12 +4,12 @@ import { DollarSign, Clock, TrendingUp } from 'lucide-react';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']; // Highly Profitable, Profitable, Break-even, Unprofitable
 
-export default function CommandCenter({ surgeries = [], onTabChange, timeframe = 'Month', filterDate = new Date() }) {
+export default function CommandCenter({ surgeries = [], onTabChange, timeframe = 'Month', filterDate = new Date(), includeAdvancedCosts = false }) {
 
   // Filter surgeries based on timeframe and selected date
   const filteredSurgeries = useMemo(() => {
     if (timeframe === 'All') return surgeries;
-    
+
     const now = filterDate || new Date();
     return surgeries.filter(s => {
       if (!s.date) return false;
@@ -47,7 +47,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     else if (timeframe === 'Week') totalAvailableMins = 2 * 8 * 5 * 60;
     else if (timeframe === 'Month') totalAvailableMins = 2 * 8 * 20 * 60;
     else if (timeframe === 'Year') totalAvailableMins = 2 * 8 * 250 * 60;
-    else totalAvailableMins = 2 * 8 * 250 * 60; 
+    else totalAvailableMins = 2 * 8 * 250 * 60;
 
     filteredSurgeries.forEach(s => {
       const revenue = parseFloat(s.expected_reimbursement) || 0;
@@ -56,12 +56,13 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       const suppliesCost = parseFloat(s.supplies_cost) || 0;
       const implantsCost = parseFloat(s.implants_cost) || 0;
       const medsCost = parseFloat(s.medications_cost) || 0;
+      const trayCost = parseFloat(s.tray_cost) || 0;
 
-      const totalSurgCost = roomCost + laborCost + suppliesCost + implantsCost + medsCost;
+      const totalSurgCost = includeAdvancedCosts ? (roomCost + laborCost + suppliesCost + implantsCost + medsCost + trayCost) : 0;
 
       totalRevenue += revenue;
       totalCosts += totalSurgCost;
-      
+
       const duration = parseFloat(s.actual_duration_minutes) || parseFloat(s.duration_minutes) || 60;
       totalDurationMins += duration;
 
@@ -75,19 +76,21 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     const ebitda = totalRevenue - totalCosts;
     const ebitdaPercent = totalRevenue > 0 ? (ebitda / totalRevenue) * 100 : 0;
     const orUtil = totalAvailableMins > 0 ? (totalDurationMins / totalAvailableMins) * 100 : 0;
-    
+
     // Profitable Utilization (simplified for prototype: % of time spent on profitable cases)
     let profitableMins = 0;
     filteredSurgeries.forEach(s => {
       const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = (parseFloat(s.actual_room_cost) || 0) + 
-                            (parseFloat(s.actual_labor_cost) || 0) + 
-                            (parseFloat(s.supplies_cost) || 0) + 
-                            (parseFloat(s.implants_cost) || 0) + 
-                            (parseFloat(s.medications_cost) || 0);
+      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
+        (parseFloat(s.actual_labor_cost) || 0) +
+        (parseFloat(s.supplies_cost) || 0) +
+        (parseFloat(s.implants_cost) || 0) +
+        (parseFloat(s.medications_cost) || 0) +
+        (parseFloat(s.tray_cost) || 0)
+      ) : 0;
       if (revenue > totalSurgCost) {
-         const duration = parseFloat(s.actual_duration_minutes) || parseFloat(s.duration_minutes) || 60;
-         profitableMins += duration;
+        const duration = parseFloat(s.actual_duration_minutes) || parseFloat(s.duration_minutes) || 60;
+        profitableMins += duration;
       }
     });
     const profitableUtil = totalAvailableMins > 0 ? (profitableMins / totalAvailableMins) * 100 : 0;
@@ -105,7 +108,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       marginPerHour: Math.round(marginPerHour),
       avgTurnover
     };
-  }, [filteredSurgeries, timeframe]);
+  }, [filteredSurgeries, timeframe, includeAdvancedCosts]);
 
   // Surgeon Performance Data
   const surgeonPerf = useMemo(() => {
@@ -113,21 +116,23 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     filteredSurgeries.forEach(s => {
       const doc = s.doctor_name || 'Unknown Surgeon';
       if (!perfMap[doc]) perfMap[doc] = { name: doc, netMargin: 0 };
-      
+
       const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = (parseFloat(s.actual_room_cost) || 0) + 
-                            (parseFloat(s.actual_labor_cost) || 0) + 
-                            (parseFloat(s.supplies_cost) || 0) + 
-                            (parseFloat(s.implants_cost) || 0) + 
-                            (parseFloat(s.medications_cost) || 0);
-      
+      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
+        (parseFloat(s.actual_labor_cost) || 0) +
+        (parseFloat(s.supplies_cost) || 0) +
+        (parseFloat(s.implants_cost) || 0) +
+        (parseFloat(s.medications_cost) || 0) +
+        (parseFloat(s.tray_cost) || 0)
+      ) : 0;
+
       perfMap[doc].netMargin += (revenue - totalSurgCost);
     });
 
     return Object.values(perfMap)
       .sort((a, b) => b.netMargin - a.netMargin)
       .slice(0, 10); // Top 10
-  }, [filteredSurgeries]);
+  }, [filteredSurgeries, includeAdvancedCosts]);
 
   // Case Profitability Distribution
   const caseProfitability = useMemo(() => {
@@ -138,14 +143,16 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
 
     filteredSurgeries.forEach(s => {
       const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = (parseFloat(s.actual_room_cost) || 0) + 
-                            (parseFloat(s.actual_labor_cost) || 0) + 
-                            (parseFloat(s.supplies_cost) || 0) + 
-                            (parseFloat(s.implants_cost) || 0) + 
-                            (parseFloat(s.medications_cost) || 0);
-      
+      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
+        (parseFloat(s.actual_labor_cost) || 0) +
+        (parseFloat(s.supplies_cost) || 0) +
+        (parseFloat(s.implants_cost) || 0) +
+        (parseFloat(s.medications_cost) || 0) +
+        (parseFloat(s.tray_cost) || 0)
+      ) : 0;
+
       const margin = revenue > 0 ? ((revenue - totalSurgCost) / revenue) * 100 : -100;
-      
+
       if (margin >= 25) highlyProfitable++;
       else if (margin >= 10) profitable++;
       else if (margin >= 0) breakEven++;
@@ -158,7 +165,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       { name: 'Break-even', value: breakEven },
       { name: 'Unprofitable', value: unprofitable }
     ];
-  }, [filteredSurgeries]);
+  }, [filteredSurgeries, includeAdvancedCosts]);
 
   // OR Utilization Trend (Monthly)
   const orUtilTrend = useMemo(() => {
@@ -167,35 +174,37 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       if (!s.date) return;
       const d = new Date(s.date);
       const monthYear = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear();
-      
+
       if (!trendMap[monthYear]) {
         trendMap[monthYear] = { name: monthYear, totalMins: 0, profMins: 0, dateObj: d };
       }
-      
+
       const duration = parseFloat(s.actual_duration_minutes) || parseFloat(s.duration_minutes) || 60;
       trendMap[monthYear].totalMins += duration;
 
       const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = (parseFloat(s.actual_room_cost) || 0) + 
-                            (parseFloat(s.actual_labor_cost) || 0) + 
-                            (parseFloat(s.supplies_cost) || 0) + 
-                            (parseFloat(s.implants_cost) || 0) + 
-                            (parseFloat(s.medications_cost) || 0);
-      
+      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
+        (parseFloat(s.actual_labor_cost) || 0) +
+        (parseFloat(s.supplies_cost) || 0) +
+        (parseFloat(s.implants_cost) || 0) +
+        (parseFloat(s.medications_cost) || 0) +
+        (parseFloat(s.tray_cost) || 0)
+      ) : 0;
+
       if (revenue > totalSurgCost) {
         trendMap[monthYear].profMins += duration;
       }
     });
 
     const sortedMonths = Object.values(trendMap).sort((a, b) => a.dateObj - b.dateObj).slice(-6);
-    
-    const monthlyAvailable = 2 * 8 * 20 * 60; 
+
+    const monthlyAvailable = 2 * 8 * 20 * 60;
     return sortedMonths.map(m => ({
       name: m.name.split(' ')[0],
       util: Math.round((m.totalMins / monthlyAvailable) * 100),
       profUtil: Math.round((m.profMins / monthlyAvailable) * 100)
     }));
-  }, [surgeries]);
+  }, [surgeries, includeAdvancedCosts]);
 
 
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
@@ -203,7 +212,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    if (percent < 0.05) return null; 
+    if (percent < 0.05) return null;
     return (
       <text x={x} y={y} fill="white" fontSize={10} textAnchor="middle" dominantBaseline="central">
         {`${(percent * 100).toFixed(0)}%`}
@@ -223,7 +232,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
           <span className="kpi-value" style={{ color: parseFloat(kpis.ebitdaPercent) >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
             {kpis.ebitdaPercent}%
           </span>
-          <div className="kpi-trend positive" style={{visibility: 'hidden'}}>
+          <div className="kpi-trend positive" style={{ visibility: 'hidden' }}>
             Trend
           </div>
           <div className="sparkline-container">
@@ -239,7 +248,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
             <div className="kpi-icon-container blue"><Clock size={12} /></div>
           </div>
           <span className="kpi-value">{kpis.orUtil}%</span>
-          <div className="kpi-trend positive" style={{visibility: 'hidden'}}>
+          <div className="kpi-trend positive" style={{ visibility: 'hidden' }}>
             Trend
           </div>
           <div className="sparkline-container">
@@ -255,7 +264,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
             <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
           </div>
           <span className="kpi-value">{kpis.profitableUtil}%</span>
-          <div className="kpi-trend positive" style={{visibility: 'hidden'}}>
+          <div className="kpi-trend positive" style={{ visibility: 'hidden' }}>
             Trend
           </div>
           <div className="sparkline-container">
@@ -271,7 +280,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
             <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
           </div>
           <span className="kpi-value">${kpis.revPerHour.toLocaleString()}</span>
-          <div className="kpi-trend positive" style={{visibility: 'hidden'}}>
+          <div className="kpi-trend positive" style={{ visibility: 'hidden' }}>
             Trend
           </div>
           <div className="sparkline-container">
@@ -287,9 +296,9 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
             <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
           </div>
           <span className="kpi-value" style={{ color: kpis.marginPerHour >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
-            ${kpis.marginPerHour.toLocaleString()}
+            {kpis.marginPerHour >= 0 ? '$' : '-$'}{Math.abs(kpis.marginPerHour).toLocaleString()}
           </span>
-          <div className="kpi-trend negative" style={{visibility: 'hidden'}}>
+          <div className="kpi-trend negative" style={{ visibility: 'hidden' }}>
             Trend
           </div>
           <div className="sparkline-container">
@@ -305,7 +314,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
             <div className="kpi-icon-container orange"><Clock size={12} /></div>
           </div>
           <span className="kpi-value">{kpis.avgTurnover}</span>
-          <div className="kpi-trend positive" style={{visibility: 'hidden'}}>
+          <div className="kpi-trend positive" style={{ visibility: 'hidden' }}>
             Trend
           </div>
           <div className="sparkline-container">
@@ -322,10 +331,10 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
         <button className="subtab-item" onClick={() => onTabChange('or')}>OR Performance</button>
         <button className="subtab-item" onClick={() => onTabChange('surgeons')}>Surgeon Performance</button>
         <button className="subtab-item" onClick={() => onTabChange('patients')}>Patient Management</button>
-        <button className="subtab-item" onClick={() => onTabChange('financial')}>Financial Performance</button>
-        <button className="subtab-item" onClick={() => onTabChange('cpt')}>Case Profitability</button>
+        {/* <button className="subtab-item" onClick={() => onTabChange('financial')}>Financial Performance</button> */}
+        {/* <button className="subtab-item" onClick={() => onTabChange('cpt')}>Case Profitability</button> */}
         <button className="subtab-item" onClick={() => onTabChange('cancellations')}>Cancellations</button>
-        <button className="subtab-item" onClick={() => onTabChange('supply')}>Supply Chain</button>
+        {/* <button className="subtab-item" onClick={() => onTabChange('supply')}>Supply Chain</button> */}
         <button className="subtab-item" onClick={() => onTabChange('ai')}>AI Insights</button>
       </div>
 
@@ -360,7 +369,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
               <BarChart data={surgeonPerf} layout="vertical" margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                 <XAxis type="number" stroke="#5e6c84" fontSize={9} tickLine={false} />
                 <YAxis dataKey="name" type="category" stroke="#5e6c84" fontSize={9} width={80} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff', formatter: (value) => `$${value.toLocaleString()}` }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} formatter={(value) => value >= 0 ? `$${Math.round(value).toLocaleString()}` : `-$${Math.abs(Math.round(value)).toLocaleString()}`} />
                 <Bar
                   dataKey="netMargin"
                   fill="var(--color-blue)"
