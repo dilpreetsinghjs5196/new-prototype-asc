@@ -2369,21 +2369,21 @@ export default function App() {
             Surgeon Management
           </div>
 
-          <div
+          {/* <div
             className={`menu-item ${activeTab === 'financial' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('financial'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><BarChart3 size={16} /></div>
             Financial Performance
-          </div>
+          </div> */}
 
-          <div
+          {/* <div
             className={`menu-item ${activeTab === 'cpt' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('cpt'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><Stethoscope size={16} /></div>
             Case Profitability
-          </div>
+          </div> */}
 
           <div
             className={`menu-item ${activeTab === 'cpt_manage' && !selectedSurgeon ? 'active' : ''}`}
@@ -2393,21 +2393,21 @@ export default function App() {
             CPT Codes Management
           </div>
 
-          <div
+          {/* <div
             className={`menu-item ${activeTab === 'payer' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('payer'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><ShieldCheck size={16} /></div>
             Payer Intelligence
-          </div>
+          </div> */}
 
-          <div
+          {/* <div
             className={`menu-item ${activeTab === 'supply' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('supply'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><Package size={16} /></div>
             Supply Chain
-          </div>
+          </div> */}
 
           <div
             className={`menu-item ${activeTab === 'cancellations' && !selectedSurgeon ? 'active' : ''}`}
@@ -2417,13 +2417,13 @@ export default function App() {
             Cancellations
           </div>
 
-          <div
+          {/* <div
             className={`menu-item ${activeTab === 'reports' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('reports'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><BookOpen size={16} /></div>
             Reports & Analytics
-          </div>
+          </div> */}
 
           <div
             className={`menu-item ${activeTab === 'ai' && !selectedSurgeon ? 'active' : ''}`}
@@ -2441,13 +2441,13 @@ export default function App() {
             Instruction Panel
           </div>
 
-          <div
+          {/* <div
             className={`menu-item ${activeTab === 'data' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('data'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><Database size={16} /></div>
             Data Explorer
-          </div>
+          </div> */}
 
           <div
             className={`menu-item ${activeTab === 'settings' && !selectedSurgeon ? 'active' : ''}`}
@@ -2457,13 +2457,13 @@ export default function App() {
             Settings
           </div>
 
-          <div
+          {/* <div
             className={`menu-item ${activeTab === 'help' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('help'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><HelpCircle size={16} /></div>
             Help & Support
-          </div>
+          </div> */}
         </nav>
 
         <div className="sidebar-profile">
