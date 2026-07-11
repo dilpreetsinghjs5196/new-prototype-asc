@@ -401,6 +401,26 @@ export const db = {
        }
     }
     return true;
+  },
+
+  async updateOTExtraCost(id, updates) {
+    const { data, error } = await supabase
+      .from('ot_extra_cost')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteOTExtraCost(id) {
+    const { error } = await supabase
+      .from('ot_extra_cost')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
   }
 };
 

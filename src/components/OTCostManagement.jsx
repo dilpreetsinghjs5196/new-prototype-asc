@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { db } from '../lib/supabase';
-import { Upload, Database, CheckCircle, AlertTriangle, Loader, FileSpreadsheet } from 'lucide-react';
+import { Upload, Database, CheckCircle, AlertTriangle, Loader, FileSpreadsheet, Edit2, Trash2, X, Plus } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function OTCostManagement() {
@@ -12,6 +12,22 @@ export default function OTCostManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  
+  // Edit State
+  const [editingRowId, setEditingRowId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+
+  // Add State
+  const [isAddingRecord, setIsAddingRecord] = useState(false);
+  const [newRecordData, setNewRecordData] = useState({
+    cpt_codes: '',
+    supply_cost: 0,
+    implant_cost: 0,
+    labour_cost: 0,
+    or_room_cost: 0,
+    medication_cost: 0,
+    tray_cost: 0
+  });
 
   // Columns to extract as per user requirements
   const targetColumns = {
@@ -51,6 +67,85 @@ export default function OTCostManagement() {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
+      setEditingRowId(null); // Cancel any edits when changing page
+    }
+  };
+
+  const handleEditClick = (row) => {
+    setEditingRowId(row.id);
+    setEditFormData({ ...row });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRowId(null);
+    setEditFormData({});
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      if (db.updateOTExtraCost) {
+        await db.updateOTExtraCost(editingRowId, editFormData);
+        Swal.fire('Success', 'Record updated successfully', 'success');
+        setEditingRowId(null);
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error updating record:', error);
+      Swal.fire('Error', 'Failed to update record', 'error');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#475569',
+      confirmButtonText: 'Yes, delete it!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        if (db.deleteOTExtraCost) {
+          await db.deleteOTExtraCost(id);
+          Swal.fire('Deleted!', 'Record has been deleted.', 'success');
+          fetchData();
+        }
+      } catch (error) {
+        console.error('Error deleting record:', error);
+        Swal.fire('Error', 'Failed to delete record', 'error');
+      }
+    }
+  };
+
+  const handleAddRecord = async (e) => {
+    e.preventDefault();
+    try {
+      if (!newRecordData.cpt_codes) {
+        Swal.fire('Error', 'CPT Code is required', 'error');
+        return;
+      }
+      
+      if (db.upsertOTExtraCosts) {
+        await db.upsertOTExtraCosts([newRecordData]);
+        Swal.fire('Success', 'Record added successfully', 'success');
+        setIsAddingRecord(false);
+        setNewRecordData({
+          cpt_codes: '',
+          supply_cost: 0,
+          implant_cost: 0,
+          labour_cost: 0,
+          or_room_cost: 0,
+          medication_cost: 0,
+          tray_cost: 0
+        });
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error adding record:', error);
+      Swal.fire('Error', 'Failed to add record', 'error');
     }
   };
 
@@ -226,9 +321,14 @@ export default function OTCostManagement() {
         <div className="dashboard-card">
           <div className="card-header">
             <h3 className="card-title"><Database size={18} /> Database Records (Total: {dbData.length} rows)</h3>
-            <button className="btn-header" onClick={fetchData} disabled={isLoading}>
-               {isLoading ? <Loader size={14} className="spin" /> : 'Refresh'}
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn-header btn-primary" onClick={() => setIsAddingRecord(true)}>
+                <Plus size={14} /> Add Record
+              </button>
+              <button className="btn-header" onClick={fetchData} disabled={isLoading}>
+                 {isLoading ? <Loader size={14} className="spin" /> : 'Refresh'}
+              </button>
+            </div>
           </div>
           
           <div style={{ marginTop: '16px' }}>
@@ -268,18 +368,97 @@ export default function OTCostManagement() {
                         <th>Room Cost</th>
                         <th>Medication Cost</th>
                         <th>Tray Cost</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {currentDbData.map((row, idx) => (
                         <tr key={row.id || idx}>
-                          <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{row.cpt_codes}</td>
-                          <td>${Number(row.supply_cost).toFixed(2)}</td>
-                          <td>${Number(row.implant_cost).toFixed(2)}</td>
-                          <td>${Number(row.labour_cost).toFixed(2)}</td>
-                          <td>${Number(row.or_room_cost).toFixed(2)}</td>
-                          <td>${Number(row.medication_cost).toFixed(2)}</td>
-                          <td>${Number(row.tray_cost).toFixed(2)}</td>
+                          {editingRowId === row.id ? (
+                            <>
+                              <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>
+                                {row.cpt_codes}
+                              </td>
+                              <td>
+                                <input 
+                                  type="number" 
+                                  value={editFormData.supply_cost}
+                                  onChange={(e) => setEditFormData({...editFormData, supply_cost: parseFloat(e.target.value) || 0})}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                />
+                              </td>
+                              <td>
+                                <input 
+                                  type="number" 
+                                  value={editFormData.implant_cost}
+                                  onChange={(e) => setEditFormData({...editFormData, implant_cost: parseFloat(e.target.value) || 0})}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                />
+                              </td>
+                              <td>
+                                <input 
+                                  type="number" 
+                                  value={editFormData.labour_cost}
+                                  onChange={(e) => setEditFormData({...editFormData, labour_cost: parseFloat(e.target.value) || 0})}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                />
+                              </td>
+                              <td>
+                                <input 
+                                  type="number" 
+                                  value={editFormData.or_room_cost}
+                                  onChange={(e) => setEditFormData({...editFormData, or_room_cost: parseFloat(e.target.value) || 0})}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                />
+                              </td>
+                              <td>
+                                <input 
+                                  type="number" 
+                                  value={editFormData.medication_cost}
+                                  onChange={(e) => setEditFormData({...editFormData, medication_cost: parseFloat(e.target.value) || 0})}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                />
+                              </td>
+                              <td>
+                                <input 
+                                  type="number" 
+                                  value={editFormData.tray_cost}
+                                  onChange={(e) => setEditFormData({...editFormData, tray_cost: parseFloat(e.target.value) || 0})}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                />
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button onClick={handleSaveEdit} className="btn-header" style={{ color: 'var(--color-green)', borderColor: 'var(--color-green)', padding: '4px 8px' }}>
+                                    <CheckCircle size={14} />
+                                  </button>
+                                  <button onClick={handleCancelEdit} className="btn-header" style={{ color: 'var(--text-secondary)', padding: '4px 8px' }}>
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{row.cpt_codes}</td>
+                              <td>${Number(row.supply_cost).toFixed(2)}</td>
+                              <td>${Number(row.implant_cost).toFixed(2)}</td>
+                              <td>${Number(row.labour_cost).toFixed(2)}</td>
+                              <td>${Number(row.or_room_cost).toFixed(2)}</td>
+                              <td>${Number(row.medication_cost).toFixed(2)}</td>
+                              <td>${Number(row.tray_cost).toFixed(2)}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button onClick={() => handleEditClick(row)} style={{ background: 'none', border: 'none', color: 'var(--color-blue)', cursor: 'pointer' }}>
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button onClick={() => handleDelete(row.id)} style={{ background: 'none', border: 'none', color: 'var(--color-red)', cursor: 'pointer' }}>
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -318,6 +497,110 @@ export default function OTCostManagement() {
         </div>
 
       </div>
+
+      {/* ADD RECORD MODAL */}
+      {isAddingRecord && (
+        <div className="modal-overlay" onClick={() => setIsAddingRecord(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '500px', maxWidth: '95%' }}>
+            <div className="modal-header">
+              <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700' }}>
+                Add New Procedure Cost
+              </h3>
+              <button className="modal-close" onClick={() => setIsAddingRecord(false)}>×</button>
+            </div>
+
+            <form onSubmit={handleAddRecord} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>CPT Code *</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newRecordData.cpt_codes}
+                  onChange={(e) => setNewRecordData({...newRecordData, cpt_codes: e.target.value})}
+                  className="date-range-selector"
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Supply Cost</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={newRecordData.supply_cost}
+                    onChange={(e) => setNewRecordData({...newRecordData, supply_cost: parseFloat(e.target.value) || 0})}
+                    className="date-range-selector"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Implant Cost</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={newRecordData.implant_cost}
+                    onChange={(e) => setNewRecordData({...newRecordData, implant_cost: parseFloat(e.target.value) || 0})}
+                    className="date-range-selector"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Labor Cost</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={newRecordData.labour_cost}
+                    onChange={(e) => setNewRecordData({...newRecordData, labour_cost: parseFloat(e.target.value) || 0})}
+                    className="date-range-selector"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Room Cost</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={newRecordData.or_room_cost}
+                    onChange={(e) => setNewRecordData({...newRecordData, or_room_cost: parseFloat(e.target.value) || 0})}
+                    className="date-range-selector"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Medication Cost</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={newRecordData.medication_cost}
+                    onChange={(e) => setNewRecordData({...newRecordData, medication_cost: parseFloat(e.target.value) || 0})}
+                    className="date-range-selector"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Tray Cost</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={newRecordData.tray_cost}
+                    onChange={(e) => setNewRecordData({...newRecordData, tray_cost: parseFloat(e.target.value) || 0})}
+                    className="date-range-selector"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button type="button" className="btn-header" onClick={() => setIsAddingRecord(false)}>Cancel</button>
+                <button type="submit" className="btn-header btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle size={14} /> Save Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
