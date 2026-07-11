@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { db } from '../lib/supabase';
-import { Upload, Database, CheckCircle, AlertTriangle, Loader, FileSpreadsheet, Edit2, Trash2, X, Plus } from 'lucide-react';
+import { Upload, Database, CheckCircle, AlertTriangle, Loader, FileSpreadsheet, Edit2, Trash2, X, Plus, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function OTCostManagement() {
@@ -12,6 +12,7 @@ export default function OTCostManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Edit State
   const [editingRowId, setEditingRowId] = useState(null);
@@ -59,10 +60,14 @@ export default function OTCostManagement() {
     }
   };
 
+  const filteredDbData = dbData.filter(row => 
+    row.cpt_codes?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentDbData = dbData.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(dbData.length / rowsPerPage);
+  const currentDbData = filteredDbData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredDbData.length / rowsPerPage) || 1;
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -340,8 +345,22 @@ export default function OTCostManagement() {
                </div>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px', alignItems: 'center', gap: '10px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Rows per page:</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '4px 8px', width: '250px' }}>
+                    <Search size={16} style={{ color: 'var(--text-muted)', marginRight: '8px' }} />
+                    <input 
+                      type="text"
+                      placeholder="Search CPT Code..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#fff', fontSize: '0.85rem', outline: 'none', width: '100%' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Rows per page:</label>
                   <select 
                     value={rowsPerPage} 
                     onChange={(e) => {
@@ -357,6 +376,7 @@ export default function OTCostManagement() {
                     <option value={500}>500</option>
                   </select>
                 </div>
+              </div>
                 <div className="custom-table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                   <table className="custom-table">
                     <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-card)', zIndex: 1 }}>
@@ -467,7 +487,8 @@ export default function OTCostManagement() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Showing {indexOfFirstRow + 1} to {Math.min(indexOfLastRow, dbData.length)} of {dbData.length} records
+                    Showing {filteredDbData.length > 0 ? indexOfFirstRow + 1 : 0} to {Math.min(indexOfLastRow, filteredDbData.length)} of {filteredDbData.length} records
+                    {searchQuery ? " (filtered from " + dbData.length + ")" : ""}
                   </span>
                   <div style={{ display: 'flex', gap: '5px' }}>
                     <button 

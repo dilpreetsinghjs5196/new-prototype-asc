@@ -415,11 +415,19 @@ export const db = {
   },
 
   async deleteOTExtraCost(id) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('ot_extra_cost')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select();
+      
     if (error) throw error;
+    
+    // Supabase returns an empty array if no rows were deleted (e.g., due to RLS policies)
+    if (!data || data.length === 0) {
+      throw new Error("Record could not be deleted. Please check Supabase Row Level Security (RLS) policies for the 'ot_extra_cost' table to ensure DELETE operations are allowed.");
+    }
+    
     return true;
   }
 };
