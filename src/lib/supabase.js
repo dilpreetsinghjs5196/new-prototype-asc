@@ -334,5 +334,54 @@ export const db = {
       if (error) throw error;
       return data;
     }
+  },
+
+  // ==================== OT EXTRA COST ====================
+  async getOTExtraCosts() {
+    const { data, error } = await supabase
+      .from('ot_extra_cost')
+      .select('*')
+      .order('cpt_codes', { ascending: true });
+      
+    if (error) {
+       console.error("Error fetching OT extra costs:", error);
+       throw error;
+    }
+    return data || [];
+  },
+
+  async upsertOTExtraCosts(records) {
+    // We can upsert by cpt_codes if we set it as unique, or just insert
+    // Since Supabase `upsert` requires a primary key or unique constraint,
+    // and we might not have a unique constraint on cpt_codes in their schema,
+    // we will use standard insert, or upsert if they added the unique constraint.
+    // For now we will do a basic insert for new records, or delete existing and insert.
+    
+    // As a robust approach:
+    for (const record of records) {
+       // Check if exists
+       const { data: existing } = await supabase
+         .from('ot_extra_cost')
+         .select('id')
+         .eq('cpt_codes', record.cpt_codes)
+         .limit(1);
+         
+       if (existing && existing.length > 0) {
+         // Update
+         const { error: updateError } = await supabase
+           .from('ot_extra_cost')
+           .update(record)
+           .eq('id', existing[0].id);
+         if (updateError) throw updateError;
+       } else {
+         // Insert
+         const { error: insertError } = await supabase
+           .from('ot_extra_cost')
+           .insert([record]);
+         if (insertError) throw insertError;
+       }
+    }
+    return true;
   }
 };
+

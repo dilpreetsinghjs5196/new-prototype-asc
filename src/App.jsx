@@ -4,6 +4,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { db } from './lib/supabase';
 import SurgeryScheduler from './components/SurgeryScheduler';
 import CPTManagement from './components/CPTManagement';
+import OTCostManagement from './components/OTCostManagement';
 import SettingsView from './components/Settings';
 import Chatbot from './components/Chatbot';
 import AIAnalystModal from './components/AIAnalystModal';
@@ -2510,6 +2511,14 @@ export default function App() {
             CPT Codes Management
           </div>
 
+          <div
+            className={`menu-item ${activeTab === 'ot_cost_manage' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('ot_cost_manage'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><DollarSign size={16} /></div>
+            OT Cost Management
+          </div>
+
           {/* <div
             className={`menu-item ${activeTab === 'payer' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('payer'); setSelectedSurgeon(null); }}
@@ -4410,6 +4419,13 @@ export default function App() {
                   onUpdate={handleUpdateCPT}
                   onDelete={handleDeleteCPT}
                 />
+              )}
+
+              {/* ==========================================
+              TAB: OT COST MANAGEMENT
+              ========================================== */}
+              {activeTab === 'ot_cost_manage' && (
+                <OTCostManagement />
               )}
             </>
           )}
