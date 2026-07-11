@@ -338,16 +338,35 @@ export const db = {
 
   // ==================== OT EXTRA COST ====================
   async getOTExtraCosts() {
-    const { data, error } = await supabase
-      .from('ot_extra_cost')
-      .select('*')
-      .order('cpt_codes', { ascending: true });
-      
-    if (error) {
-       console.error("Error fetching OT extra costs:", error);
-       throw error;
+    let allCosts = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from('ot_extra_cost')
+            .select('*')
+            .order('cpt_codes', { ascending: true })
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+            
+        if (error) {
+           console.error("Error fetching OT extra costs:", error);
+           throw error;
+        }
+
+        if (data && data.length > 0) {
+            allCosts = [...allCosts, ...data];
+            if (data.length < pageSize) {
+                hasMore = false;
+            } else {
+                page++;
+            }
+        } else {
+            hasMore = false;
+        }
     }
-    return data || [];
+    return allCosts;
   },
 
   async upsertOTExtraCosts(records) {
