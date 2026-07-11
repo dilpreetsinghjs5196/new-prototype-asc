@@ -10,6 +10,8 @@ export default function OTCostManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const [dbData, setDbData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
 
   // Columns to extract as per user requirements
   const targetColumns = {
@@ -32,11 +34,23 @@ export default function OTCostManagement() {
       if (db.getOTExtraCosts) {
         const result = await db.getOTExtraCosts();
         setDbData(result);
+        setCurrentPage(1); // Reset to first page on refresh
       }
     } catch (error) {
       console.error('Error fetching OT extra costs:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentDbData = dbData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(dbData.length / rowsPerPage);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
     }
   };
 
@@ -225,34 +239,80 @@ export default function OTCostManagement() {
                   No records found in database. Please upload an Excel file to populate data.
                </div>
             ) : (
-              <div className="custom-table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                <table className="custom-table">
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-card)', zIndex: 1 }}>
-                    <tr>
-                      <th>CPT Code</th>
-                      <th>Supply Cost</th>
-                      <th>Implant Cost</th>
-                      <th>Labor Cost</th>
-                      <th>Room Cost</th>
-                      <th>Medication Cost</th>
-                      <th>Tray Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dbData.map((row, idx) => (
-                      <tr key={row.id || idx}>
-                        <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{row.cpt_codes}</td>
-                        <td>${Number(row.supply_cost).toFixed(2)}</td>
-                        <td>${Number(row.implant_cost).toFixed(2)}</td>
-                        <td>${Number(row.labour_cost).toFixed(2)}</td>
-                        <td>${Number(row.or_room_cost).toFixed(2)}</td>
-                        <td>${Number(row.medication_cost).toFixed(2)}</td>
-                        <td>${Number(row.tray_cost).toFixed(2)}</td>
+              <>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px', alignItems: 'center', gap: '10px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Rows per page:</label>
+                  <select 
+                    value={rowsPerPage} 
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="date-range-selector"
+                    style={{ padding: '4px 8px', fontSize: '0.8rem', backgroundColor: 'var(--bg-card)' }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={500}>500</option>
+                  </select>
+                </div>
+                <div className="custom-table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  <table className="custom-table">
+                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-card)', zIndex: 1 }}>
+                      <tr>
+                        <th>CPT Code</th>
+                        <th>Supply Cost</th>
+                        <th>Implant Cost</th>
+                        <th>Labor Cost</th>
+                        <th>Room Cost</th>
+                        <th>Medication Cost</th>
+                        <th>Tray Cost</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {currentDbData.map((row, idx) => (
+                        <tr key={row.id || idx}>
+                          <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{row.cpt_codes}</td>
+                          <td>${Number(row.supply_cost).toFixed(2)}</td>
+                          <td>${Number(row.implant_cost).toFixed(2)}</td>
+                          <td>${Number(row.labour_cost).toFixed(2)}</td>
+                          <td>${Number(row.or_room_cost).toFixed(2)}</td>
+                          <td>${Number(row.medication_cost).toFixed(2)}</td>
+                          <td>${Number(row.tray_cost).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Showing {indexOfFirstRow + 1} to {Math.min(indexOfLastRow, dbData.length)} of {dbData.length} records
+                  </span>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <button 
+                      onClick={() => handlePageChange(currentPage - 1)} 
+                      disabled={currentPage === 1}
+                      className="btn-header"
+                      style={{ padding: '4px 10px', fontSize: '0.8rem', opacity: currentPage === 1 ? 0.5 : 1 }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ padding: '4px 10px', fontSize: '0.85rem', backgroundColor: 'var(--bg-card)', borderRadius: '4px' }}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button 
+                      onClick={() => handlePageChange(currentPage + 1)} 
+                      disabled={currentPage === totalPages}
+                      className="btn-header"
+                      style={{ padding: '4px 10px', fontSize: '0.8rem', opacity: currentPage === totalPages ? 0.5 : 1 }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
