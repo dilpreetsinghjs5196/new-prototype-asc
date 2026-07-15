@@ -9,6 +9,7 @@ import SettingsView from './components/Settings';
 import Chatbot from './components/Chatbot';
 import AIAnalystModal from './components/AIAnalystModal';
 import CommandCenter from './components/CommandCenter';
+import BusinessAnalysis from './components/BusinessAnalysis';
 import { calculateMedicareRevenue, calculateORCost } from './utils/hospitalUtils';
 import InstructionPanel from './components/InstructionPanel';
 import {
@@ -58,7 +59,8 @@ import {
   Trash2,
   Plus,
   CalendarDays,
-  Bot
+  Bot,
+  Activity
 } from 'lucide-react';
 
 // ==========================================
@@ -1231,7 +1233,7 @@ export default function App() {
       const cost = includeAdvancedCosts ? (Number(surg.supplies || 0) + Number(surg.implants || 0) + Number(surg.labor || 0) + Number(surg.roomCost || 0) + Number(surg.medications_cost || 0) + Number(surg.tray_cost || 0)) : 0;
       const marg = rev - cost;
       const isCancelled = surg.status?.toLowerCase() === 'cancelled';
-      
+
       netRevenue += rev;
       operatingMargin += marg;
       totalDirectCost += cost;
@@ -1264,7 +1266,7 @@ export default function App() {
       facilityAgg[fac].directCost += cost;
       facilityAgg[fac].netMargin += marg;
       if (isCancelled) facilityAgg[fac].cancellations++;
-      
+
       const dur = parseInt(surg.duration_minutes || 60, 10);
       const actualDur = parseInt(surg.actual_duration_minutes || dur, 10);
       facilityAgg[fac].utilMinutes += actualDur;
@@ -2487,6 +2489,7 @@ export default function App() {
             Surgeon Management
           </div>
 
+
           {/* <div
             className={`menu-item ${activeTab === 'financial' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('financial'); setSelectedSurgeon(null); }}
@@ -2566,6 +2569,13 @@ export default function App() {
             <div className="menu-item-icon"><Bot size={16} /></div>
             Instruction Panel
           </div>
+          <div
+            className={`menu-item ${activeTab === 'business_analysis' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('business_analysis'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Activity size={16} /></div>
+            Full Business Analysis
+          </div>
 
           {/* <div
             className={`menu-item ${activeTab === 'data' && !selectedSurgeon ? 'active' : ''}`}
@@ -2612,6 +2622,7 @@ export default function App() {
                 <>
                   {activeTab === 'dashboard' && 'ASC Command Center'}
                   {activeTab === 'overview' && 'Executive Overview'}
+                  {activeTab === 'business_analysis' && 'Full Business Analysis'}
                   {activeTab === 'or' && 'OR Performance'}
                   {activeTab === 'surgeons' && 'Surgeon Performance'}
                   {activeTab === 'surgeon_management' && 'Surgeon Management'}
@@ -2638,6 +2649,7 @@ export default function App() {
                 <>
                   {activeTab === 'dashboard' && 'Real-time operational and financial intelligence for ambulatory surgery centers'}
                   {activeTab === 'overview' && 'Strategic summaries of health system indicators'}
+                  {activeTab === 'business_analysis' && 'System strengths, bottlenecks, and actionable improvements per OR'}
                   {activeTab === 'or' && 'Deep-dive into room allocation, turnover times, and block wastage'}
                   {activeTab === 'surgeons' && 'Caseloads, turnover performance, and financial contribution by surgeon'}
                   {activeTab === 'surgeon_management' && 'Search, filter, and manage surgeon profiles and credentials'}
@@ -2670,9 +2682,9 @@ export default function App() {
               color: '#475569',
               fontWeight: '500'
             }}>
-              <input 
-                type="checkbox" 
-                id="includeAdvancedCosts" 
+              <input
+                type="checkbox"
+                id="includeAdvancedCosts"
                 checked={includeAdvancedCosts}
                 onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
                 style={{ marginRight: '6px', cursor: 'pointer' }}
@@ -2754,6 +2766,16 @@ export default function App() {
             />
           ) : (
             <>
+              {/* ==========================================
+              TAB: BUSINESS ANALYSIS
+              ========================================== */}
+              {activeTab === 'business_analysis' && (
+                <BusinessAnalysis 
+                  surgeries={filteredSurgeries} 
+                  orMetrics={orPerformanceMetrics} 
+                />
+              )}
+
               {/* ==========================================
               TAB: ASC COMMAND CENTER (MTD CORE)
               ========================================== */}

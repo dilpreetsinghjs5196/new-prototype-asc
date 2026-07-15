@@ -1,0 +1,227 @@
+.business-analysis-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 10px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.analysis-header {
+  margin-bottom: 10px;
+}
+
+.analysis-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.analysis-title-icon {
+  color: var(--color-blue, #3b82f6);
+}
+
+.analysis-subtitle {
+  color: var(--text-secondary, #6b7280);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* OR Selector Tabs */
+.or-selector-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color, #16223f);
+  padding-bottom: 10px;
+  overflow-x: auto;
+}
+
+.or-tab {
+  background: transparent;
+  border: none;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.or-tab:hover {
+  background-color: var(--bg-card-hover, #121c33);
+  color: var(--text-primary);
+}
+
+.or-tab.active {
+  background-color: var(--color-blue, #3b82f6);
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+/* Overview Card */
+.analysis-overview-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--bg-card, #0d1527);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border-color, #16223f);
+}
+
+.analysis-overview-card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.utilization-badge {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.utilization-badge span {
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-left: 8px;
+}
+
+.utilization-badge span.high {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.utilization-badge span.low {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+/* Grid Layout */
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.analysis-card {
+  background-color: var(--bg-card, #0d1527);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border-color, #16223f);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color, #16223f);
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.good-header { color: #10b981; }
+.bad-header { color: #ef4444; }
+.improvements-header { color: var(--color-blue, #3b82f6); }
+
+/* Lists */
+.analysis-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analysis-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.list-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.good-card .list-icon { color: #10b981; }
+.bad-card .list-icon { color: #ef4444; }
+
+/* Improvements List */
+.improvements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.improvement-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: 8px;
+  border-left: 4px solid var(--color-blue, #3b82f6);
+  transition: transform 0.2s ease;
+}
+
+.improvement-item:hover {
+  transform: translateX(4px);
+}
+
+.improvement-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: var(--color-blue, #3b82f6);
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.improvement-text {
+  flex-grow: 1;
+}
+
+.improvement-text p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.improvement-arrow {
+  color: var(--color-blue, #3b82f6);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateX(-10px);
+}
+
+.improvement-item:hover .improvement-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
