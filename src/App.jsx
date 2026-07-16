@@ -1366,7 +1366,8 @@ export default function App() {
     phone: '',
     email: '',
     password: '',
-    countryCode: '+1'
+    countryCode: '+1',
+    block_templates: []
   });
   const [patientForm, setPatientForm] = useState({
     name: '',
@@ -2064,7 +2065,8 @@ export default function App() {
       phone: '',
       email: '',
       password: '',
-      countryCode: '+1'
+      countryCode: '+1',
+      block_templates: []
     });
     setSurgeonModalOpen(true);
   };
@@ -2099,7 +2101,8 @@ export default function App() {
       phone: phoneStr,
       email: s.email || '',
       password: s.password || 'surgeon123',
-      countryCode: country
+      countryCode: country,
+      block_templates: s.block_templates || []
     });
     setSurgeonModalOpen(true);
   };
@@ -2141,7 +2144,8 @@ export default function App() {
       license_number: lic,
       phone: fullPhone,
       email: email,
-      password: password
+      password: password,
+      block_templates: surgeonForm.block_templates || []
     };
 
     try {
@@ -4892,7 +4896,7 @@ export default function App() {
           ========================================== */}
       {surgeonModalOpen && (
         <div className="modal-overlay" onClick={() => setSurgeonModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '600px', maxWidth: '95%' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '750px', maxWidth: '95%' }}>
             <div className="modal-header">
               <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <UserCheck size={18} style={{ color: 'var(--color-blue)' }} />
@@ -5025,6 +5029,144 @@ export default function App() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Block Schedule Templates */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--border-light)' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-blue)', margin: 0 }}>
+                    Recurring Block Schedule
+                  </h4>
+                  <button
+                    type="button"
+                    className="btn-header"
+                    style={{ padding: '2px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-blue)', color: 'var(--color-blue)' }}
+                    onClick={() => {
+                      setSurgeonForm({
+                        ...surgeonForm,
+                        block_templates: [...(surgeonForm.block_templates || []), { week: 'First', day: 'Monday', room: 'OR 1', startTime: '07:30', endTime: '16:00' }]
+                      });
+                    }}
+                  >
+                    + Add Block
+                  </button>
+                </div>
+
+                {(!surgeonForm.block_templates || surgeonForm.block_templates.length === 0) ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', margin: 0 }}>
+                    No recurring block schedules assigned.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {surgeonForm.block_templates.map((block, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-lighter)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                        <select
+                          className="date-range-selector"
+                          style={{ height: '32px', fontSize: '0.8rem', padding: '0 4px' }}
+                          value={block.week}
+                          onChange={(e) => {
+                            const newBlocks = [...surgeonForm.block_templates];
+                            newBlocks[idx].week = e.target.value;
+                            if (e.target.value === 'Specific Date') {
+                              newBlocks[idx].day = new Date().toISOString().split('T')[0];
+                            } else if (block.week === 'Specific Date') {
+                              newBlocks[idx].day = 'Monday';
+                            }
+                            setSurgeonForm({ ...surgeonForm, block_templates: newBlocks });
+                          }}
+                        >
+                          <option value="First">First</option>
+                          <option value="Second">Second</option>
+                          <option value="Third">Third</option>
+                          <option value="Fourth">Fourth</option>
+                          <option value="Fifth">Fifth</option>
+                          <option value="Specific Date">Specific Date</option>
+                        </select>
+
+                        {block.week === 'Specific Date' ? (
+                          <input
+                            type="date"
+                            className="date-range-selector"
+                            style={{ height: '32px', fontSize: '0.8rem', padding: '0 4px' }}
+                            value={block.day}
+                            onChange={(e) => {
+                              const newBlocks = [...surgeonForm.block_templates];
+                              newBlocks[idx].day = e.target.value;
+                              setSurgeonForm({ ...surgeonForm, block_templates: newBlocks });
+                            }}
+                          />
+                        ) : (
+                          <select
+                            className="date-range-selector"
+                            style={{ height: '32px', fontSize: '0.8rem', padding: '0 4px' }}
+                            value={block.day}
+                            onChange={(e) => {
+                              const newBlocks = [...surgeonForm.block_templates];
+                              newBlocks[idx].day = e.target.value;
+                              setSurgeonForm({ ...surgeonForm, block_templates: newBlocks });
+                            }}
+                          >
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                          </select>
+                        )}
+
+                        <select
+                          className="date-range-selector"
+                          style={{ height: '32px', fontSize: '0.8rem', padding: '0 4px', flex: 1 }}
+                          value={block.room}
+                          onChange={(e) => {
+                            const newBlocks = [...surgeonForm.block_templates];
+                            newBlocks[idx].room = e.target.value;
+                            setSurgeonForm({ ...surgeonForm, block_templates: newBlocks });
+                          }}
+                        >
+                          <option value="OR 1">OR 1</option>
+                          <option value="OR 2">OR 2</option>
+                          <option value="Procedure Room">Procedure Room</option>
+                        </select>
+
+                        <input
+                          type="time"
+                          className="date-range-selector"
+                          style={{ height: '32px', fontSize: '0.8rem', padding: '0 4px', width: '90px' }}
+                          value={block.startTime}
+                          onChange={(e) => {
+                            const newBlocks = [...surgeonForm.block_templates];
+                            newBlocks[idx].startTime = e.target.value;
+                            setSurgeonForm({ ...surgeonForm, block_templates: newBlocks });
+                          }}
+                        />
+                        <span style={{ color: 'var(--text-secondary)' }}>-</span>
+                        <input
+                          type="time"
+                          className="date-range-selector"
+                          style={{ height: '32px', fontSize: '0.8rem', padding: '0 4px', width: '90px' }}
+                          value={block.endTime}
+                          onChange={(e) => {
+                            const newBlocks = [...surgeonForm.block_templates];
+                            newBlocks[idx].endTime = e.target.value;
+                            setSurgeonForm({ ...surgeonForm, block_templates: newBlocks });
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          style={{ background: 'none', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                          onClick={() => {
+                            const newBlocks = surgeonForm.block_templates.filter((_, i) => i !== idx);
+                            setSurgeonForm({ ...surgeonForm, block_templates: newBlocks });
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}

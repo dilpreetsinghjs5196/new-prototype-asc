@@ -22,6 +22,7 @@ const ORBlockSchedule = () => {
   
   const [blocks, setBlocks] = useState([]);
   const [surgeonsList, setSurgeonsList] = useState([]);
+  const [surgeonsData, setSurgeonsData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ const ORBlockSchedule = () => {
           db.getSurgeons()
         ]);
         setBlocks(blocksData.map(mapDBToBlock));
+        setSurgeonsData(surgeonsData);
         setSurgeonsList(surgeonsData.map(s => `${s.firstname} ${s.lastname}`.trim()));
       } catch (err) {
         console.error("Failed to fetch schedule data:", err);
@@ -42,6 +44,53 @@ const ORBlockSchedule = () => {
     };
     fetchData();
   }, []);
+
+  const allActiveBlocks = useMemo(() => {
+    const dynamicBlocks = [];
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    
+    const dayNameToIndex = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+    const weekToMultiplier = { 'First': 0, 'Second': 1, 'Third': 2, 'Fourth': 3, 'Fifth': 4 };
+    
+    surgeonsData.forEach(surgeon => {
+      if (!surgeon.block_templates) return;
+      surgeon.block_templates.forEach((template, tIdx) => {
+        if (template.week === 'Specific Date') {
+          dynamicBlocks.push({
+            id: `template-${surgeon.id}-${tIdx}`,
+            dateStr: template.day,
+            or: template.room,
+            surgeon: `${surgeon.firstname} ${surgeon.lastname}`.trim(),
+            type: (template.startTime && template.endTime) ? `${template.startTime} - ${template.endTime}` : 'Full Day Block (Untimed)',
+            isTemplate: true
+          });
+        } else {
+          const targetDay = dayNameToIndex[template.day];
+          if (targetDay !== undefined) {
+            const firstDayOfMonth = new Date(year, month, 1).getDay();
+            let offset = targetDay - firstDayOfMonth;
+            if (offset < 0) offset += 7;
+            const dayOfMonth = 1 + offset + (weekToMultiplier[template.week] * 7);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            if (dayOfMonth <= daysInMonth) {
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayOfMonth).padStart(2, '0')}`;
+              dynamicBlocks.push({
+                id: `template-${surgeon.id}-${tIdx}-${dateStr}`,
+                dateStr: dateStr,
+                or: template.room,
+                surgeon: `${surgeon.firstname} ${surgeon.lastname}`.trim(),
+                type: (template.startTime && template.endTime) ? `${template.startTime} - ${template.endTime}` : 'Full Day Block (Untimed)',
+                isTemplate: true
+              });
+            }
+          }
+        }
+      });
+    });
+    
+    return [...blocks, ...dynamicBlocks];
+  }, [blocks, surgeonsData, currentMonthDate]);
 
   // Dynamic Calendar Engine
   const calendarLayout = useMemo(() => {
@@ -158,7 +207,7 @@ const ORBlockSchedule = () => {
     }
   };
 
-  const selectedDateBlocks = blocks.filter(b => b.dateStr === selectedDate && b.or === selectedOR);
+  const selectedDateBlocks = allActiveBlocks.filter(b => b.dateStr === selectedDate && b.or === selectedOR);
 
   return (
     <div className="or-block-container">
@@ -167,7 +216,7 @@ const ORBlockSchedule = () => {
         <div className="or-block-title-section">
           <h1>OR Block Schedule</h1>
           <div className="or-block-stats">
-            <span className="stat-badge">Total Blocks: {blocks.length}</span>
+            <span className="stat-badge">Total Blocks: {allActiveBlocks.length}</span>
             <span className="stat-badge">Daily Pie chart</span>
           </div>
         </div>
@@ -206,7 +255,11 @@ const ORBlockSchedule = () => {
                 
                 {/* Week Rows */}
                 {dayData.weeks.map((weekData, wIndex) => {
-                  const weekBlocks = blocks.filter(b => b.dateStr === weekData.dateStr && b.or === 'OR 1');
+                  const dateStr = weekData.dateStr;
+                  const or1Blocks = allActiveBlocks.filter(b => b.dateStr === dateStr && b.or === 'OR 1');
+                  const or2Blocks = allActiveBlocks.filter(b => b.dateStr === dateStr && b.or === 'OR 2');
+                  const prBlocks = allActiveBlocks.filter(b => b.dateStr === dateStr && b.or === 'Procedure Room');
+                  
                   return (
                     <div key={wIndex} className="week-row" onClick={() => openModal(weekData.dateStr, 'OR 1')}>
                       {/* Date Cell */}
@@ -218,13 +271,13 @@ const ORBlockSchedule = () => {
                       
                       {/* Blocks Cell */}
                       <div className="blocks-cell">
-                        {weekBlocks.map(block => (
+                        {or1Blocks.map(block => (
                           <div key={block.id} className="block-card">
                             <span className="surgeon-name">{block.surgeon}</span>
                             <span className="block-time">{block.type}</span>
                           </div>
                         ))}
-                        {weekBlocks.length === 0 && (
+                        {or1Blocks.length === 0 && (
                           <div className="empty-block-state">+ Click to add blocks</div>
                         )}
                       </div>
@@ -257,8 +310,14 @@ const ORBlockSchedule = () => {
                           <span className="modal-block-type">{b.type}</span>
                         </div>
                         <div className="modal-block-actions">
-                          <button className="icon-btn"><Edit2 size={16} /></button>
-                          <button className="icon-btn" onClick={() => handleDelete(b.id)}><Trash2 size={16} /></button>
+                          {!b.isTemplate && (
+                            <>
+                              <button className="icon-btn"><Edit2 size={16} /></button>
+                              <button className="icon-btn" onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }} title="Delete Block">
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
