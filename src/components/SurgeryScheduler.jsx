@@ -39,6 +39,11 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     const [cptSearchQuery, setCptSearchQuery] = useState('');
     const [selectedBodyPart, setSelectedBodyPart] = useState('');
     const [includeLaborSupplies, setIncludeLaborSupplies] = useState(true);
+    const [otExtraCosts, setOtExtraCosts] = useState([]);
+
+    useEffect(() => {
+        db.getOTExtraCosts().then(setOtExtraCosts).catch(console.error);
+    }, []);
 
     const [formData, setFormData] = useState({
         patientId: '',
@@ -52,6 +57,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         suppliesCost: 0,
         implantsCost: 0,
         medicationsCost: 0,
+        labourCost: 0,
+        orRoomCost: 0,
         actualStartTime: '',
         actualEndTime: '',
         actualDurationMinutes: 0,
@@ -79,6 +86,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             suppliesCost: 0,
             implantsCost: 0,
             medicationsCost: 0,
+            labourCost: 0,
+            orRoomCost: 0,
             actualStartTime: '',
             actualEndTime: '',
             actualDurationMinutes: 0,
@@ -112,10 +121,30 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         // Parse CPT codes array
         let selectedCpts = [];
         if (Array.isArray(surgery.cpt_codes)) {
-            selectedCpts = surgery.cpt_codes;
+            selectedCpts = surgery.cpt_codes.map(String);
         } else if (typeof surgery.cpt_codes === 'string') {
             selectedCpts = surgery.cpt_codes.split(',').map(s => s.trim()).filter(Boolean);
         }
+
+        // Calculate default costs based on already selected CPTs
+        let calcSupplies = 0;
+        let calcImplants = 0;
+        let calcMeds = 0;
+        let calcTray = 0;
+        let calcLabour = 0;
+        let calcOrRoom = 0;
+
+        selectedCpts.forEach(code => {
+            const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
+            if (extraCostData) {
+                calcSupplies += parseFloat(extraCostData.supply_cost || 0);
+                calcImplants += parseFloat(extraCostData.implant_cost || 0);
+                calcMeds += parseFloat(extraCostData.medication_cost || 0);
+                calcTray += parseFloat(extraCostData.tray_cost || 0);
+                calcLabour += parseFloat(extraCostData.labour_cost || 0);
+                calcOrRoom += parseFloat(extraCostData.or_room_cost || 0);
+            }
+        });
 
         setFormData({
             patientId: surgery.patient_id || '',
@@ -125,10 +154,12 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             durationMinutes: surgery.duration_minutes || 60,
             turnoverTime: surgery.turnover_time || 20,
             selectedCptCodes: selectedCpts,
-            trayCost: trayCostVal,
-            suppliesCost: surgery.supplies_cost || 0,
-            implantsCost: surgery.implants_cost || 0,
-            medicationsCost: surgery.medications_cost || 0,
+            trayCost: trayCostVal || calcTray || 0,
+            suppliesCost: surgery.supplies_cost || calcSupplies || 0,
+            implantsCost: surgery.implants_cost || calcImplants || 0,
+            medicationsCost: surgery.medications_cost || calcMeds || 0,
+            labourCost: surgery.labour_cost || calcLabour || 0,
+            orRoomCost: surgery.or_room_cost || calcOrRoom || 0,
             actualStartTime: formatTimeForInput(surgery.actual_start_time || surgery.start_time),
             actualEndTime: formatTimeForInput(surgery.actual_end_time),
             actualDurationMinutes: surgery.actual_duration_minutes || surgery.duration_minutes || 0,
@@ -340,7 +371,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         setFormData(prev => {
             const index = prev.selectedCptCodes.indexOf(code);
             let newCodes = [...prev.selectedCptCodes];
-            if (index > -1) {
+            const isRemoving = index > -1;
+            
+            if (isRemoving) {
                 newCodes.splice(index, 1);
             } else {
                 newCodes.push(code);
@@ -357,11 +390,51 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 }
             });
 
+            // Calculate cost deltas
+            let addedSupplies = 0;
+            let addedImplants = 0;
+            let addedMedications = 0;
+            let addedTray = 0;
+            let addedLabour = 0;
+            let addedOrRoom = 0;
+            
+            const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
+            if (extraCostData) {
+                const supplies = parseFloat(extraCostData.supply_cost || 0);
+                const implants = parseFloat(extraCostData.implant_cost || 0);
+                const meds = parseFloat(extraCostData.medication_cost || 0);
+                const tray = parseFloat(extraCostData.tray_cost || 0);
+                const labour = parseFloat(extraCostData.labour_cost || 0);
+                const orRoom = parseFloat(extraCostData.or_room_cost || 0);
+                
+                if (isRemoving) {
+                    addedSupplies -= supplies;
+                    addedImplants -= implants;
+                    addedMedications -= meds;
+                    addedTray -= tray;
+                    addedLabour -= labour;
+                    addedOrRoom -= orRoom;
+                } else {
+                    addedSupplies += supplies;
+                    addedImplants += implants;
+                    addedMedications += meds;
+                    addedTray += tray;
+                    addedLabour += labour;
+                    addedOrRoom += orRoom;
+                }
+            }
+
             return {
                 ...prev,
                 selectedCptCodes: newCodes,
                 durationMinutes: totalDuration > 0 ? totalDuration : prev.durationMinutes,
-                turnoverTime: totalTurnover > 0 ? totalTurnover : prev.turnoverTime
+                turnoverTime: totalTurnover > 0 ? totalTurnover : prev.turnoverTime,
+                suppliesCost: Math.max(0, (parseFloat(prev.suppliesCost || 0) + addedSupplies).toFixed(2)),
+                implantsCost: Math.max(0, (parseFloat(prev.implantsCost || 0) + addedImplants).toFixed(2)),
+                medicationsCost: Math.max(0, (parseFloat(prev.medicationsCost || 0) + addedMedications).toFixed(2)),
+                trayCost: Math.max(0, (parseFloat(prev.trayCost || 0) + addedTray).toFixed(2)),
+                labourCost: Math.max(0, (parseFloat(prev.labourCost || 0) + addedLabour).toFixed(2)),
+                orRoomCost: Math.max(0, (parseFloat(prev.orRoomCost || 0) + addedOrRoom).toFixed(2))
             };
         });
     };
@@ -454,8 +527,14 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             const matchesBodyPart = !selectedBodyPart || (cpt.details?.body_part === selectedBodyPart);
 
             return matchesSpecialty && matchesQuery && matchesBodyPart;
+        }).sort((a, b) => {
+            const aSelected = formData.selectedCptCodes.includes(a.code);
+            const bSelected = formData.selectedCptCodes.includes(b.code);
+            if (aSelected && !bSelected) return -1;
+            if (!aSelected && bSelected) return 1;
+            return 0;
         });
-    }, [cptCodes, formData.doctorName, surgeons, cptSearchQuery, selectedBodyPart]);
+    }, [cptCodes, formData.doctorName, surgeons, cptSearchQuery, selectedBodyPart, formData.selectedCptCodes]);
 
     const uniqueSelectedCodes = useMemo(() => {
         return formData.selectedCptCodes.map(code => {
@@ -709,63 +788,91 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 </div>
                             </div>
 
-                            {/* Supplies, Implants, Tray Cost & Medications */}
+                            {/* Supplies, Implants, Tray Cost, Medications, Labour, OR Room */}
                             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px' }}>
                                 <h4 style={{ fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Material & Facility Expenses</h4>
-                                <div className="form-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                                <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                                     <div className="form-group">
-                                        <label>Surgical Supplies Cost</label>
+                                        <label style={{ fontSize: '0.7rem' }}>Supply Cost</label>
                                         <div style={{ position: 'relative' }}>
                                             <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 className="form-input"
-                                                style={{ paddingLeft: '24px' }}
+                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
                                                 value={formData.suppliesCost || ''}
                                                 onChange={(e) => setFormData({ ...formData, suppliesCost: parseFloat(e.target.value) || 0 })}
                                             />
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Implants & Devices Cost</label>
+                                        <label style={{ fontSize: '0.7rem' }}>Implants & Devices</label>
                                         <div style={{ position: 'relative' }}>
                                             <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 className="form-input"
-                                                style={{ paddingLeft: '24px' }}
+                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
                                                 value={formData.implantsCost || ''}
                                                 onChange={(e) => setFormData({ ...formData, implantsCost: parseFloat(e.target.value) || 0 })}
                                             />
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Tray Cost (New)</label>
+                                        <label style={{ fontSize: '0.7rem' }}>Tray Cost (New)</label>
                                         <div style={{ position: 'relative' }}>
                                             <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 className="form-input"
-                                                style={{ paddingLeft: '24px' }}
+                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
                                                 value={formData.trayCost || ''}
                                                 onChange={(e) => setFormData({ ...formData, trayCost: parseFloat(e.target.value) || 0 })}
                                             />
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Medications Cost</label>
+                                        <label style={{ fontSize: '0.7rem' }}>Medications</label>
                                         <div style={{ position: 'relative' }}>
                                             <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 className="form-input"
-                                                style={{ paddingLeft: '24px' }}
+                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
                                                 value={formData.medicationsCost || ''}
                                                 onChange={(e) => setFormData({ ...formData, medicationsCost: parseFloat(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '0.7rem' }}>Labour Cost</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                className="form-input"
+                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                value={formData.labourCost || ''}
+                                                onChange={(e) => setFormData({ ...formData, labourCost: parseFloat(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '0.7rem' }}>OR Room Cost</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                className="form-input"
+                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                value={formData.orRoomCost || ''}
+                                                onChange={(e) => setFormData({ ...formData, orRoomCost: parseFloat(e.target.value) || 0 })}
                                             />
                                         </div>
                                     </div>
