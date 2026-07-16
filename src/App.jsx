@@ -10,6 +10,7 @@ import Chatbot from './components/Chatbot';
 import AIAnalystModal from './components/AIAnalystModal';
 import CommandCenter from './components/CommandCenter';
 import BusinessAnalysis from './components/BusinessAnalysis';
+import ORBlockSchedule from './components/ORBlockSchedule';
 import { calculateMedicareRevenue, calculateORCost } from './utils/hospitalUtils';
 import InstructionPanel from './components/InstructionPanel';
 import {
@@ -2545,6 +2546,14 @@ export default function App() {
             <div className="menu-item-icon"><XCircle size={16} /></div>
             Cancellations
           </div>
+          
+          <div
+            className={`menu-item ${activeTab === 'or_block_schedule' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('or_block_schedule'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><CalendarDays size={16} /></div>
+            OR Block Schedule
+          </div>
 
           {/* <div
             className={`menu-item ${activeTab === 'reports' && !selectedSurgeon ? 'active' : ''}`}
@@ -2774,6 +2783,13 @@ export default function App() {
                   surgeries={filteredSurgeries} 
                   orMetrics={orPerformanceMetrics} 
                 />
+              )}
+
+              {/* ==========================================
+              TAB: OR BLOCK SCHEDULE
+              ========================================== */}
+              {activeTab === 'or_block_schedule' && (
+                <ORBlockSchedule />
               )}
 
               {/* ==========================================
