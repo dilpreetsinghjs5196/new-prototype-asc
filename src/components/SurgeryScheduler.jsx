@@ -64,7 +64,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         actualDurationMinutes: 0,
         writeOff: 0,
         isProbono: false,
-        orRoom: 'OR 1'
+        orRoom: 'OR 1',
+        cptExpenses: {}
     });
 
     // Pagination
@@ -93,7 +94,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             actualDurationMinutes: 0,
             writeOff: 0,
             isProbono: false,
-            orRoom: 'OR 1'
+            orRoom: 'OR 1',
+            cptExpenses: {}
         });
     };
 
@@ -126,7 +128,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             selectedCpts = surgery.cpt_codes.split(',').map(s => s.trim()).filter(Boolean);
         }
 
-        // Calculate default costs based on already selected CPTs
+        let calcCptExpenses = {};
         let calcSupplies = 0;
         let calcImplants = 0;
         let calcMeds = 0;
@@ -134,17 +136,57 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         let calcLabour = 0;
         let calcOrRoom = 0;
 
-        selectedCpts.forEach(code => {
-            const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
-            if (extraCostData) {
-                calcSupplies += parseFloat(extraCostData.supply_cost || 0);
-                calcImplants += parseFloat(extraCostData.implant_cost || 0);
-                calcMeds += parseFloat(extraCostData.medication_cost || 0);
-                calcTray += parseFloat(extraCostData.tray_cost || 0);
-                calcLabour += parseFloat(extraCostData.labour_cost || 0);
-                calcOrRoom += parseFloat(extraCostData.or_room_cost || 0);
-            }
-        });
+        if (surgery.cpt_expenses && typeof surgery.cpt_expenses === 'object' && Object.keys(surgery.cpt_expenses).length > 0) {
+            calcCptExpenses = JSON.parse(JSON.stringify(surgery.cpt_expenses));
+            
+            Object.values(calcCptExpenses).forEach(exp => {
+                calcSupplies += parseFloat(exp.suppliesCost || 0);
+                calcImplants += parseFloat(exp.implantsCost || 0);
+                calcMeds += parseFloat(exp.medicationsCost || 0);
+                calcTray += parseFloat(exp.trayCost || 0);
+                calcLabour += parseFloat(exp.labourCost || 0);
+                calcOrRoom += parseFloat(exp.orRoomCost || 0);
+            });
+        } else {
+            selectedCpts.forEach(code => {
+                const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
+                
+                const exp = {
+                    suppliesCost: parseFloat(extraCostData?.supply_cost || 0),
+                    implantsCost: parseFloat(extraCostData?.implant_cost || 0),
+                    medicationsCost: parseFloat(extraCostData?.medication_cost || 0),
+                    trayCost: parseFloat(extraCostData?.tray_cost || 0),
+                    labourCost: parseFloat(extraCostData?.labour_cost || 0),
+                    orRoomCost: parseFloat(extraCostData?.or_room_cost || 0)
+                };
+                calcCptExpenses[code] = exp;
+                
+                calcSupplies += exp.suppliesCost;
+                calcImplants += exp.implantsCost;
+                calcMeds += exp.medicationsCost;
+                calcTray += exp.trayCost;
+                calcLabour += exp.labourCost;
+                calcOrRoom += exp.orRoomCost;
+            });
+        }
+
+        // Distribute any discrepancy (e.g. from past custom edits) to the first selected CPT
+        if (selectedCpts.length > 0) {
+            const first = selectedCpts[0];
+            const dbSupplies = parseFloat(surgery.supplies_cost || calcSupplies || 0);
+            const dbImplants = parseFloat(surgery.implants_cost || calcImplants || 0);
+            const dbMeds = parseFloat(surgery.medications_cost || calcMeds || 0);
+            const dbTray = parseFloat(trayCostVal || calcTray || 0);
+            const dbLabour = parseFloat(surgery.labour_cost || calcLabour || 0);
+            const dbOrRoom = parseFloat(surgery.or_room_cost || calcOrRoom || 0);
+
+            if (calcSupplies !== dbSupplies) calcCptExpenses[first].suppliesCost = Math.max(0, calcCptExpenses[first].suppliesCost + (dbSupplies - calcSupplies));
+            if (calcImplants !== dbImplants) calcCptExpenses[first].implantsCost = Math.max(0, calcCptExpenses[first].implantsCost + (dbImplants - calcImplants));
+            if (calcMeds !== dbMeds) calcCptExpenses[first].medicationsCost = Math.max(0, calcCptExpenses[first].medicationsCost + (dbMeds - calcMeds));
+            if (calcTray !== dbTray) calcCptExpenses[first].trayCost = Math.max(0, calcCptExpenses[first].trayCost + (dbTray - calcTray));
+            if (calcLabour !== dbLabour) calcCptExpenses[first].labourCost = Math.max(0, calcCptExpenses[first].labourCost + (dbLabour - calcLabour));
+            if (calcOrRoom !== dbOrRoom) calcCptExpenses[first].orRoomCost = Math.max(0, calcCptExpenses[first].orRoomCost + (dbOrRoom - calcOrRoom));
+        }
 
         setFormData({
             patientId: surgery.patient_id || '',
@@ -165,7 +207,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             actualDurationMinutes: surgery.actual_duration_minutes || surgery.duration_minutes || 0,
             writeOff: surgery.write_off || 0,
             isProbono: !!surgery.is_probono,
-            orRoom: surgery.or_room || 'OR 1'
+            orRoom: surgery.or_room || 'OR 1',
+            cptExpenses: calcCptExpenses
         });
 
         setIsFormOpen(true);
@@ -206,16 +249,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             }
         });
 
-        // Room Cost & Labor Cost base calculations
-        // Room Cost: $25 per min for first 60m, then $300 per 30m block
-        const totalMinutes = parseInt(formData.actualDurationMinutes || formData.durationMinutes) + parseInt(formData.turnoverTime);
-        let roomCost = 0;
-        if (totalMinutes <= 60) {
-            roomCost = totalMinutes * 25;
-        } else {
-            roomCost = 1500 + Math.ceil((totalMinutes - 60) / 30) * 300;
-        }
-        const laborCost = roomCost * 0.3;
+        // Room Cost & Labor Cost are now directly mapped from the user-entered CPT expense values
+        const roomCost = parseFloat(formData.orRoomCost || 0);
+        const laborCost = parseFloat(formData.labourCost || 0);
 
         const surgeryData = {
             patient_id: parseInt(formData.patientId),
@@ -240,7 +276,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             expected_reimbursement: parseFloat(reimbursementSum),
             write_off: parseFloat(formData.writeOff || 0),
             is_probono: formData.isProbono,
-            or_room: formData.orRoom
+            or_room: formData.orRoom,
+            cpt_expenses: formData.cptExpenses
         };
 
         try {
@@ -390,51 +427,90 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 }
             });
 
-            // Calculate cost deltas
-            let addedSupplies = 0;
-            let addedImplants = 0;
-            let addedMedications = 0;
-            let addedTray = 0;
-            let addedLabour = 0;
-            let addedOrRoom = 0;
-            
-            const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
-            if (extraCostData) {
-                const supplies = parseFloat(extraCostData.supply_cost || 0);
-                const implants = parseFloat(extraCostData.implant_cost || 0);
-                const meds = parseFloat(extraCostData.medication_cost || 0);
-                const tray = parseFloat(extraCostData.tray_cost || 0);
-                const labour = parseFloat(extraCostData.labour_cost || 0);
-                const orRoom = parseFloat(extraCostData.or_room_cost || 0);
-                
-                if (isRemoving) {
-                    addedSupplies -= supplies;
-                    addedImplants -= implants;
-                    addedMedications -= meds;
-                    addedTray -= tray;
-                    addedLabour -= labour;
-                    addedOrRoom -= orRoom;
-                } else {
-                    addedSupplies += supplies;
-                    addedImplants += implants;
-                    addedMedications += meds;
-                    addedTray += tray;
-                    addedLabour += labour;
-                    addedOrRoom += orRoom;
+            const newCptExpenses = { ...prev.cptExpenses };
+
+            if (isRemoving) {
+                if (newCptExpenses[code]) {
+                    delete newCptExpenses[code];
                 }
+            } else {
+                const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
+                const exp = {
+                    suppliesCost: parseFloat(extraCostData?.supply_cost || 0),
+                    implantsCost: parseFloat(extraCostData?.implant_cost || 0),
+                    medicationsCost: parseFloat(extraCostData?.medication_cost || 0),
+                    trayCost: parseFloat(extraCostData?.tray_cost || 0),
+                    labourCost: parseFloat(extraCostData?.labour_cost || 0),
+                    orRoomCost: parseFloat(extraCostData?.or_room_cost || 0)
+                };
+                newCptExpenses[code] = exp;
+            }
+
+            // Calculate total expenses from all selected CPTs directly
+            let totalSupplies = 0;
+            let totalImplants = 0;
+            let totalMeds = 0;
+            let totalTray = 0;
+            let totalLabour = 0;
+            let totalOrRoom = 0;
+
+            if (newCodes.length > 0) {
+                Object.values(newCptExpenses).forEach(exp => {
+                    totalSupplies += parseFloat(exp.suppliesCost || 0);
+                    totalImplants += parseFloat(exp.implantsCost || 0);
+                    totalMeds += parseFloat(exp.medicationsCost || 0);
+                    totalTray += parseFloat(exp.trayCost || 0);
+                    totalLabour += parseFloat(exp.labourCost || 0);
+                    totalOrRoom += parseFloat(exp.orRoomCost || 0);
+                });
+            } else {
+                // If no CPT codes are selected, revert to whatever they were before (or keep global intact)
+                totalSupplies = parseFloat(prev.suppliesCost || 0);
+                totalImplants = parseFloat(prev.implantsCost || 0);
+                totalMeds = parseFloat(prev.medicationsCost || 0);
+                totalTray = parseFloat(prev.trayCost || 0);
+                totalLabour = parseFloat(prev.labourCost || 0);
+                totalOrRoom = parseFloat(prev.orRoomCost || 0);
             }
 
             return {
                 ...prev,
                 selectedCptCodes: newCodes,
+                cptExpenses: newCptExpenses,
                 durationMinutes: totalDuration > 0 ? totalDuration : prev.durationMinutes,
                 turnoverTime: totalTurnover > 0 ? totalTurnover : prev.turnoverTime,
-                suppliesCost: Math.max(0, (parseFloat(prev.suppliesCost || 0) + addedSupplies).toFixed(2)),
-                implantsCost: Math.max(0, (parseFloat(prev.implantsCost || 0) + addedImplants).toFixed(2)),
-                medicationsCost: Math.max(0, (parseFloat(prev.medicationsCost || 0) + addedMedications).toFixed(2)),
-                trayCost: Math.max(0, (parseFloat(prev.trayCost || 0) + addedTray).toFixed(2)),
-                labourCost: Math.max(0, (parseFloat(prev.labourCost || 0) + addedLabour).toFixed(2)),
-                orRoomCost: Math.max(0, (parseFloat(prev.orRoomCost || 0) + addedOrRoom).toFixed(2))
+                suppliesCost: totalSupplies,
+                implantsCost: totalImplants,
+                medicationsCost: totalMeds,
+                trayCost: totalTray,
+                labourCost: totalLabour,
+                orRoomCost: totalOrRoom
+            };
+        });
+    };
+
+    const handleCptExpenseChange = (cptCode, field, value) => {
+        setFormData(prev => {
+            const numVal = parseFloat(value) || 0;
+            
+            const newCptExpenses = {
+                ...prev.cptExpenses,
+                [cptCode]: {
+                    ...prev.cptExpenses[cptCode],
+                    [field]: numVal
+                }
+            };
+            
+            // Recalculate total for this field based on all selected CPT codes
+            let newTotal = 0;
+            prev.selectedCptCodes.forEach(code => {
+                newTotal += parseFloat(newCptExpenses[code]?.[field] || 0);
+            });
+
+            return {
+                ...prev,
+                cptExpenses: newCptExpenses,
+                [field]: newTotal
             };
         });
     };
@@ -791,92 +867,203 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                             {/* Supplies, Implants, Tray Cost, Medications, Labour, OR Room */}
                             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px' }}>
                                 <h4 style={{ fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Material & Facility Expenses</h4>
-                                <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-                                    <div className="form-group">
-                                        <label style={{ fontSize: '0.7rem' }}>Supply Cost</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                value={formData.suppliesCost || ''}
-                                                onChange={(e) => setFormData({ ...formData, suppliesCost: parseFloat(e.target.value) || 0 })}
-                                            />
+                                {formData.selectedCptCodes.length === 0 ? (
+                                    <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+                                        <div className="form-group">
+                                            <label style={{ fontSize: '0.7rem' }}>Supply Cost</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="form-input"
+                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                    value={formData.suppliesCost || ''}
+                                                    onChange={(e) => setFormData({ ...formData, suppliesCost: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ fontSize: '0.7rem' }}>Implants & Devices</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="form-input"
+                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                    value={formData.implantsCost || ''}
+                                                    onChange={(e) => setFormData({ ...formData, implantsCost: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ fontSize: '0.7rem' }}>Tray Cost (New)</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="form-input"
+                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                    value={formData.trayCost || ''}
+                                                    onChange={(e) => setFormData({ ...formData, trayCost: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ fontSize: '0.7rem' }}>Medications</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="form-input"
+                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                    value={formData.medicationsCost || ''}
+                                                    onChange={(e) => setFormData({ ...formData, medicationsCost: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ fontSize: '0.7rem' }}>Labour Cost</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="form-input"
+                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                    value={formData.labourCost || ''}
+                                                    onChange={(e) => setFormData({ ...formData, labourCost: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ fontSize: '0.7rem' }}>OR Room Cost</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="form-input"
+                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                    value={formData.orRoomCost || ''}
+                                                    onChange={(e) => setFormData({ ...formData, orRoomCost: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="form-group">
-                                        <label style={{ fontSize: '0.7rem' }}>Implants & Devices</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                value={formData.implantsCost || ''}
-                                                onChange={(e) => setFormData({ ...formData, implantsCost: parseFloat(e.target.value) || 0 })}
-                                            />
-                                        </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        {formData.selectedCptCodes.map(code => (
+                                            <div key={code} style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--primary-color)' }}>CPT {code} Expenses</div>
+                                                <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+                                                    <div className="form-group">
+                                                        <label style={{ fontSize: '0.7rem' }}>Supply Cost</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-input"
+                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                value={formData.cptExpenses[code]?.suppliesCost || ''}
+                                                                onChange={(e) => handleCptExpenseChange(code, 'suppliesCost', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label style={{ fontSize: '0.7rem' }}>Implants & Devices</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-input"
+                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                value={formData.cptExpenses[code]?.implantsCost || ''}
+                                                                onChange={(e) => handleCptExpenseChange(code, 'implantsCost', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label style={{ fontSize: '0.7rem' }}>Tray Cost (New)</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-input"
+                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                value={formData.cptExpenses[code]?.trayCost || ''}
+                                                                onChange={(e) => handleCptExpenseChange(code, 'trayCost', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label style={{ fontSize: '0.7rem' }}>Medications</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-input"
+                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                value={formData.cptExpenses[code]?.medicationsCost || ''}
+                                                                onChange={(e) => handleCptExpenseChange(code, 'medicationsCost', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label style={{ fontSize: '0.7rem' }}>Labour Cost</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-input"
+                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                value={formData.cptExpenses[code]?.labourCost || ''}
+                                                                onChange={(e) => handleCptExpenseChange(code, 'labourCost', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label style={{ fontSize: '0.7rem' }}>OR Room Cost</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-input"
+                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                value={formData.cptExpenses[code]?.orRoomCost || ''}
+                                                                onChange={(e) => handleCptExpenseChange(code, 'orRoomCost', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        {/* Show grand totals summary if multiple CPTs */}
+                                        {formData.selectedCptCodes.length > 1 && (
+                                            <div style={{ padding: '8px 12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>Surgery Grand Total Expenses:</span>
+                                                <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: '#fff' }}>
+                                                    <span>Supplies: {formatCurrency(formData.suppliesCost)}</span>
+                                                    <span>Implants: {formatCurrency(formData.implantsCost)}</span>
+                                                    <span>Tray: {formatCurrency(formData.trayCost)}</span>
+                                                    <span>Meds: {formatCurrency(formData.medicationsCost)}</span>
+                                                    <span>Labour: {formatCurrency(formData.labourCost)}</span>
+                                                    <span>OR Room: {formatCurrency(formData.orRoomCost)}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="form-group">
-                                        <label style={{ fontSize: '0.7rem' }}>Tray Cost (New)</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                value={formData.trayCost || ''}
-                                                onChange={(e) => setFormData({ ...formData, trayCost: parseFloat(e.target.value) || 0 })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="form-group">
-                                        <label style={{ fontSize: '0.7rem' }}>Medications</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                value={formData.medicationsCost || ''}
-                                                onChange={(e) => setFormData({ ...formData, medicationsCost: parseFloat(e.target.value) || 0 })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="form-group">
-                                        <label style={{ fontSize: '0.7rem' }}>Labour Cost</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                value={formData.labourCost || ''}
-                                                onChange={(e) => setFormData({ ...formData, labourCost: parseFloat(e.target.value) || 0 })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="form-group">
-                                        <label style={{ fontSize: '0.7rem' }}>OR Room Cost</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                value={formData.orRoomCost || ''}
-                                                onChange={(e) => setFormData({ ...formData, orRoomCost: parseFloat(e.target.value) || 0 })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
                             {/* Actual Timing overrides */}
@@ -957,7 +1144,116 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 </div>
                             </div>
 
-                            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                            {/* Financial Projection Box */}
+                            <div style={{ marginTop: '24px', padding: '20px', borderRadius: '12px', border: '2px solid var(--success-color)', backgroundColor: 'rgba(16, 185, 129, 0.05)', position: 'relative' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', fontWeight: '600' }}>Financial Projection</h3>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={includeLaborSupplies}
+                                                onChange={(e) => setIncludeLaborSupplies(e.target.checked)}
+                                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                            />
+                                            Include Labor/Supplies
+                                        </label>
+
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    let revenue = 0;
+                                    formData.selectedCptCodes.forEach(code => {
+                                        const cpt = cptCodes.find(c => String(c.code) === String(code));
+                                        if (cpt) revenue += parseFloat(cpt.reimbursement || 0);
+                                    });
+                                    const room = parseFloat(formData.orRoomCost || 0);
+                                    const labor = parseFloat(formData.labourCost || 0);
+                                    const supplies = parseFloat(formData.suppliesCost || 0) + parseFloat(formData.implantsCost || 0) + parseFloat(formData.medicationsCost || 0) + parseFloat(formData.trayCost || 0);
+                                    const internalCost = includeLaborSupplies ? (room + labor + supplies) : 0;
+                                    const writeOff = parseFloat(formData.writeOff || 0);
+                                    let netProfit = revenue - writeOff - internalCost;
+                                    if (formData.isProbono) netProfit = 0;
+                                    const isPositive = netProfit >= 0;
+
+                                    return (
+                                        <>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Rev (CPT+Fee):</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--success-color)' }}>{formatCurrency(revenue)}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--danger-color)' }}>Write-Off / Disc:</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>- {formatCurrency(writeOff)}</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Actual Room Cost:</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(room)}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Actual Labor:</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(labor)}</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Supplies:</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.suppliesCost || 0))}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Implants:</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.implantsCost || 0))}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Tray:</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.trayCost || 0))}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Meds:</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.medicationsCost || 0))}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '16px 0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Actual Internal Cost:</span>
+                                                    <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--danger-color)' }}>{formatCurrency(internalCost)}</span>
+                                                </div>
+                                                <div style={{ fontSize: '0.85rem' }}>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>Cost Tier: </span>
+                                                    <span style={{ fontWeight: 'bold', color: 'var(--success-color)' }}>Standard</span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ backgroundColor: isPositive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '8px', border: `1px solid ${isPositive ? 'var(--success-color)' : 'var(--danger-color)'}`, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                {isPositive ? (
+                                                    <div style={{ background: 'var(--success-color)', borderRadius: '4px', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Check size={14} color="#fff" strokeWidth={3} />
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ background: 'var(--danger-color)', borderRadius: '4px', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <AlertCircle size={14} color="#fff" strokeWidth={3} />
+                                                    </div>
+                                                )}
+                                                <span style={{ fontSize: '0.85rem', color: isPositive ? 'var(--success-color)' : 'var(--danger-color)', fontWeight: '500' }}>
+                                                    {isPositive ? "Excellent! This case has a positive margin and stays within the standard cost tier." : "Warning! This case has a negative margin. Please review costs and write-offs."}
+                                                </span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+
+                            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
                                 <button type="button" className="btn-cancel" onClick={handleCancelEdit}>Cancel</button>
                                 <button type="submit" className="btn-save">{editingSurgery ? 'Save Changes' : 'Schedule Case'}</button>
                             </div>
