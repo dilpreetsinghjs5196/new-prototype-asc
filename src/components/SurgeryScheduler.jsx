@@ -1196,57 +1196,45 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                 <div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
                                                         <span style={{ color: 'var(--text-secondary)' }}>Actual Room Cost:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(room)}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? room : 0)}</span>
                                                     </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                                         <span style={{ color: 'var(--text-secondary)' }}>Actual Labor:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(labor)}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? labor : 0)}</span>
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
                                                         <span style={{ color: 'var(--text-secondary)' }}>Supplies:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.suppliesCost || 0))}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.suppliesCost || 0) : 0)}</span>
                                                     </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
                                                         <span style={{ color: 'var(--text-secondary)' }}>Implants:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.implantsCost || 0))}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.implantsCost || 0) : 0)}</span>
                                                     </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
                                                         <span style={{ color: 'var(--text-secondary)' }}>Tray:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.trayCost || 0))}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.trayCost || 0) : 0)}</span>
                                                     </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                                         <span style={{ color: 'var(--text-secondary)' }}>Meds:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(parseFloat(formData.medicationsCost || 0))}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.medicationsCost || 0) : 0)}</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '16px 0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Actual Internal Cost:</span>
-                                                    <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--danger-color)' }}>{formatCurrency(internalCost)}</span>
+                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Full Total:</span>
+                                                    {(() => {
+                                                        const patientBillTotal = revenue - writeOff + internalCost;
+                                                        return (
+                                                            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)' }}>
+                                                                {formatCurrency(patientBillTotal)}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
-                                                <div style={{ fontSize: '0.85rem' }}>
-                                                    <span style={{ color: 'var(--text-secondary)' }}>Cost Tier: </span>
-                                                    <span style={{ fontWeight: 'bold', color: 'var(--success-color)' }}>Standard</span>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ backgroundColor: isPositive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '8px', border: `1px solid ${isPositive ? 'var(--success-color)' : 'var(--danger-color)'}`, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                {isPositive ? (
-                                                    <div style={{ background: 'var(--success-color)', borderRadius: '4px', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <Check size={14} color="#fff" strokeWidth={3} />
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ background: 'var(--danger-color)', borderRadius: '4px', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <AlertCircle size={14} color="#fff" strokeWidth={3} />
-                                                    </div>
-                                                )}
-                                                <span style={{ fontSize: '0.85rem', color: isPositive ? 'var(--success-color)' : 'var(--danger-color)', fontWeight: '500' }}>
-                                                    {isPositive ? "Excellent! This case has a positive margin and stays within the standard cost tier." : "Warning! This case has a negative margin. Please review costs and write-offs."}
-                                                </span>
                                             </div>
                                         </>
                                     );
