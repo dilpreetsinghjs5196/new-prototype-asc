@@ -40,9 +40,11 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     const [selectedBodyPart, setSelectedBodyPart] = useState('');
     const [includeLaborSupplies, setIncludeLaborSupplies] = useState(true);
     const [otExtraCosts, setOtExtraCosts] = useState([]);
+    const [orBlocks, setOrBlocks] = useState([]);
 
     useEffect(() => {
         db.getOTExtraCosts().then(setOtExtraCosts).catch(console.error);
+        db.getORBlockSchedule().then(setOrBlocks).catch(console.error);
     }, []);
 
     const [formData, setFormData] = useState({
@@ -67,6 +69,52 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         orRoom: 'OR 1',
         cptExpenses: {}
     });
+
+    const availableSurgeons = useMemo(() => {
+        if (!formData?.date || !surgeons || surgeons.length === 0) return surgeons;
+        const [yearStr, monthStr, dayStr] = formData.date.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+        const day = parseInt(dayStr, 10);
+        
+        return surgeons.filter(surgeon => {
+            const format1 = `${surgeon.firstname} ${surgeon.lastname}`.trim(); // e.g. "Kelly Malinoski"
+            const format2 = surgeon.name || `Dr. ${surgeon.lastname} ${surgeon.firstname}`.trim(); // e.g. "Dr. Malinoski Kelly"
+            
+            // Check explicit DB blocks
+            if (orBlocks.some(b => b.date === formData.date && (b.provider_name === format1 || b.provider_name === format2))) {
+                return true;
+            }
+            
+            // Check recurring templates
+            let templates = surgeon.block_templates;
+            if (typeof templates === 'string') {
+                try { templates = JSON.parse(templates); } catch(e) { templates = []; }
+            }
+            
+            if (Array.isArray(templates) && templates.length > 0) {
+                const dayNameToIndex = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+                const weekToMultiplier = { 'First': 0, 'Second': 1, 'Third': 2, 'Fourth': 3, 'Fifth': 4 };
+                
+                return templates.some(template => {
+                    if (template.week === 'Specific Date') {
+                        return template.day === formData.date;
+                    } else {
+                        const targetDay = dayNameToIndex[template.day];
+                        if (targetDay !== undefined) {
+                            const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
+                            let offset = targetDay - firstDayOfMonth;
+                            if (offset < 0) offset += 7;
+                            const dayOfMonth = 1 + offset + (weekToMultiplier[template.week] * 7);
+                            if (dayOfMonth === day) return true;
+                        }
+                    }
+                    return false;
+                });
+            }
+            return false;
+        });
+    }, [formData?.date, surgeons, orBlocks]);
 
     // Pagination
     const surgeriesPerPage = 5;
@@ -140,12 +188,15 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             calcCptExpenses = JSON.parse(JSON.stringify(surgery.cpt_expenses));
             
             Object.values(calcCptExpenses).forEach(exp => {
-                calcSupplies += parseFloat(exp.suppliesCost || 0);
-                calcImplants += parseFloat(exp.implantsCost || 0);
-                calcMeds += parseFloat(exp.medicationsCost || 0);
-                calcTray += parseFloat(exp.trayCost || 0);
-                calcLabour += parseFloat(exp.labourCost || 0);
-                calcOrRoom += parseFloat(exp.orRoomCost || 0);
+                // Ignore special underscore keys when summing up costs
+                if (typeof exp === 'object' && exp !== null) {
+                    calcSupplies += parseFloat(exp.suppliesCost || 0);
+                    calcImplants += parseFloat(exp.implantsCost || 0);
+                    calcMeds += parseFloat(exp.medicationsCost || 0);
+                    calcTray += parseFloat(exp.trayCost || 0);
+                    calcLabour += parseFloat(exp.labourCost || 0);
+                    calcOrRoom += parseFloat(exp.orRoomCost || 0);
+                }
             });
         } else {
             selectedCpts.forEach(code => {
@@ -188,9 +239,23 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             if (calcOrRoom !== dbOrRoom) calcCptExpenses[first].orRoomCost = Math.max(0, calcCptExpenses[first].orRoomCost + (dbOrRoom - calcOrRoom));
         }
 
+        // Format the doctorName exactly how the dropdown expects it
+        let formattedDoctorName = surgery.doctor_name || '';
+        if (formattedDoctorName && surgeons && surgeons.length > 0) {
+            const cleanDbName = formattedDoctorName.replace(/^Dr\.\s*/i, '').trim();
+            const surgeonObj = surgeons.find(s => 
+                s.name === formattedDoctorName || 
+                `${s.firstname} ${s.lastname}`.trim() === cleanDbName || 
+                `${s.lastname} ${s.firstname}`.trim() === cleanDbName
+            );
+            if (surgeonObj) {
+                formattedDoctorName = `Dr. ${surgeonObj.lastname} ${surgeonObj.firstname}`.trim();
+            }
+        }
+
         setFormData({
             patientId: surgery.patient_id || '',
-            doctorName: surgery.doctor_name || '',
+            doctorName: formattedDoctorName,
             date: surgery.date || '',
             startTime: formatTimeForInput(surgery.start_time),
             durationMinutes: surgery.duration_minutes || 60,
@@ -207,7 +272,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             actualDurationMinutes: surgery.actual_duration_minutes || surgery.duration_minutes || 0,
             writeOff: surgery.write_off || 0,
             isProbono: !!surgery.is_probono,
-            orRoom: surgery.or_room || 'OR 1',
+            orRoom: surgery.or_room ? (String(surgery.or_room).startsWith('OR') ? surgery.or_room : `OR ${surgery.or_room}`) : 'OR 1',
             cptExpenses: calcCptExpenses
         });
 
@@ -252,6 +317,25 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         // Room Cost & Labor Cost are now directly mapped from the user-entered CPT expense values
         const roomCost = parseFloat(formData.orRoomCost || 0);
         const laborCost = parseFloat(formData.labourCost || 0);
+        const suppliesCostTotal = parseFloat(formData.suppliesCost || 0) + parseFloat(formData.implantsCost || 0) + parseFloat(formData.medicationsCost || 0) + parseFloat(formData.trayCost || 0);
+
+        // Calculate Full Total based on current UI toggle state
+        const internalCost = includeLaborSupplies ? (roomCost + laborCost + suppliesCostTotal) : 0;
+        const writeOff = parseFloat(formData.writeOff || 0);
+        const patientBillTotal = reimbursementSum - writeOff + internalCost;
+        
+        let netProfit = reimbursementSum - writeOff - (roomCost + laborCost + suppliesCostTotal);
+        if (formData.isProbono) netProfit = 0;
+
+        // Save into notes to ensure they are captured in DB
+        noteText += (noteText ? ' ' : '') + `[Full Total: ${patientBillTotal}]`;
+        
+        const enhancedCptExpenses = {
+            ...formData.cptExpenses,
+            _full_total: patientBillTotal,
+            _net_profit: netProfit,
+            _include_labor_supplies: includeLaborSupplies
+        };
 
         const surgeryData = {
             patient_id: parseInt(formData.patientId),
@@ -266,7 +350,6 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             supplies_cost: parseFloat(formData.suppliesCost || 0),
             implants_cost: parseFloat(formData.implantsCost || 0),
             medications_cost: parseFloat(formData.medicationsCost || 0),
-            tray_cost: parseFloat(formData.trayCost || 0), // Save directly to DB if supported
             notes: noteText || null, // Fallback notes container
             actual_start_time: formData.actualStartTime || formData.startTime || null,
             actual_end_time: formData.actualEndTime || null,
@@ -276,8 +359,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             expected_reimbursement: parseFloat(reimbursementSum),
             write_off: parseFloat(formData.writeOff || 0),
             is_probono: formData.isProbono,
-            or_room: formData.orRoom,
-            cpt_expenses: formData.cptExpenses
+            or_room: formData.orRoom ? parseInt(formData.orRoom.replace(/\D/g, '')) || null : null,
+            cpt_expenses: enhancedCptExpenses
         };
 
         try {
@@ -309,7 +392,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             console.error(err);
             Swal.fire({
                 title: 'Error',
-                text: 'Failed to save surgery to the database.',
+                text: `Failed to save surgery: ${err.message || err.toString()}`,
                 icon: 'error',
                 background: 'var(--bg-card)',
                 color: '#fff'
@@ -703,7 +786,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         onChange={(e) => setFormData({ ...formData, doctorName: e.target.value })}
                                     >
                                         <option value="">-- Select Surgeon --</option>
-                                        {surgeons.map(s => {
+                                        {availableSurgeons.map(s => {
                                             const name = `Dr. ${s.lastname} ${s.firstname}`.trim();
                                             return (
                                                 <option key={s.id} value={name}>
@@ -711,6 +794,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                 </option>
                                             );
                                         })}
+                                        {availableSurgeons.length === 0 && (
+                                            <option value="" disabled>No surgeons scheduled for this date</option>
+                                        )}
                                     </select>
                                 </div>
 

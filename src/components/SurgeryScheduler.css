@@ -115,6 +115,11 @@
     cursor: not-allowed;
 }
 
+.form-input option {
+    background-color: #0f172a; /* Dark background for dropdown menu */
+    color: #ffffff; /* Light text */
+}
+
 /* Tables */
 .table-container {
     overflow-x: auto;
