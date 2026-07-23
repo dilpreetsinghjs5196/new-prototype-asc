@@ -628,6 +628,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         const cost = supplies + implants + meds + labor + room + trayCost;
         let displayProfit = revenue - cost;
 
+        const writeOff = parseFloat(surgery.write_off || 0);
+        const fullTotal = includeLaborSupplies ? (revenue - writeOff + cost) : revenue;
+
         if (!includeLaborSupplies && !surgery.is_probono) {
             // Include only billing margin (omit internal room overhead, labor, and supplies)
             displayProfit = revenue;
@@ -644,7 +647,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             room,
             trayCost,
             totalCost: cost,
-            netProfit: displayProfit
+            netProfit: displayProfit,
+            fullTotal
         };
     };
 
@@ -1322,7 +1326,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                     <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Full Total:</span>
                                                     {(() => {
-                                                        const patientBillTotal = revenue - writeOff + internalCost;
+                                                        const patientBillTotal = includeLaborSupplies ? (revenue - writeOff + internalCost) : revenue;
                                                         return (
                                                             <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)' }}>
                                                                 {formatCurrency(patientBillTotal)}
@@ -1376,10 +1380,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 const monthSurgeries = surgeriesByMonth[monthKey] || [];
                                 const isExpanded = expandedMonths.has(monthKey);
 
-                                // Month total margin
-                                const monthTotalMargin = monthSurgeries.reduce((sum, s) => {
-                                    const { netProfit } = calculateSurgeryFinancials(s);
-                                    return sum + netProfit;
+                                // Month total price
+                                const monthTotalPrice = monthSurgeries.reduce((sum, s) => {
+                                    const { fullTotal } = calculateSurgeryFinancials(s);
+                                    return sum + fullTotal;
                                 }, 0);
 
                                 // Pagination calculation
@@ -1413,8 +1417,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                     {monthSurgeries.length} cases
                                                 </span>
                                             </div>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: monthTotalMargin >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
-                                                {formatCurrency(monthTotalMargin)}
+                                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--color-green)' }}>
+                                                {formatCurrency(monthTotalPrice)}
                                             </span>
                                         </div>
 
@@ -1430,7 +1434,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                             <th>CPT Code(s)</th>
                                                             <th>Occupancy</th>
                                                             <th>Tray Cost</th>
-                                                            <th>Net Margin</th>
+                                                            <th>Total Price</th>
                                                             <th>Status</th>
                                                             <th>Actions</th>
                                                         </tr>
@@ -1448,7 +1452,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                 selectedCpts = s.cpt_codes.split(',').map(str => str.trim()).filter(Boolean);
                                                             }
 
-                                                            const { trayCost, netProfit } = calculateSurgeryFinancials(s);
+                                                            const { trayCost, fullTotal } = calculateSurgeryFinancials(s);
 
                                                             return (
                                                                 <tr key={s.id}>
@@ -1470,8 +1474,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>turnover</div>
                                                                     </td>
                                                                     <td style={{ fontFamily: 'monospace' }}>{formatCurrency(trayCost)}</td>
-                                                                    <td style={{ fontWeight: '700', color: netProfit >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
-                                                                        {formatCurrency(netProfit)}
+                                                                    <td style={{ fontWeight: '700', color: 'var(--color-green)' }}>
+                                                                        {formatCurrency(fullTotal)}
                                                                     </td>
                                                                     <td>
                                                                         <span className={`status-badge status-${s.status}`}>
