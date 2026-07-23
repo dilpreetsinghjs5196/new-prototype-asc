@@ -173,7 +173,16 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         if (Array.isArray(surgery.cpt_codes)) {
             selectedCpts = surgery.cpt_codes.map(String);
         } else if (typeof surgery.cpt_codes === 'string') {
-            selectedCpts = surgery.cpt_codes.split(',').map(s => s.trim()).filter(Boolean);
+            try {
+                const parsed = JSON.parse(surgery.cpt_codes);
+                if (Array.isArray(parsed)) {
+                    selectedCpts = parsed.map(String);
+                } else {
+                    selectedCpts = [String(parsed)];
+                }
+            } catch (e) {
+                selectedCpts = surgery.cpt_codes.split(',').map(s => s.trim()).filter(Boolean);
+            }
         }
 
         let calcCptExpenses = {};
