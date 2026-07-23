@@ -29,6 +29,25 @@ const formatTimeForInput = (time) => {
     return t;
 };
 
+// Cosmetic fee calculator based on duration
+export const calculateCosmeticFees = (durationMinutes) => {
+    const facilityRates = {
+        30: 750, 60: 1500, 90: 1800, 120: 2100, 150: 2500,
+        180: 2900, 210: 3300, 240: 3700, 270: 4100, 300: 4500,
+        330: 4900, 360: 5300, 390: 5700, 420: 6100, 480: 6500, 540: 6900
+    };
+    const anesthesiaRates = {
+        30: 600, 60: 750, 90: 900, 120: 1050, 150: 1200,
+        180: 1350, 210: 1500, 240: 1650, 270: 1800, 300: 1950,
+        330: 2100, 360: 2250, 390: 2400, 420: 2550, 480: 2700, 540: 2850
+    };
+    const lookupDuration = Math.ceil(durationMinutes / 30) * 30;
+    return {
+        facilityFee: facilityRates[lookupDuration] || 0,
+        anesthesiaFee: anesthesiaRates[lookupDuration] || 0
+    };
+};
+
 const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeries = [], onSchedule, onUpdate, onDelete }) => {
     // ----- State -----------------------------------------------------------
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -67,7 +86,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         writeOff: 0,
         isProbono: false,
         orRoom: 'OR 1',
-        cptExpenses: {}
+        cptExpenses: {},
+        applyFixedCosmeticFee: false,
+        cosmeticFacilityFee: calculateCosmeticFees(60).facilityFee,
+        cosmeticAnesthesiaFee: calculateCosmeticFees(60).anesthesiaFee
     });
 
     const availableSurgeons = useMemo(() => {
@@ -119,6 +141,22 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     // Pagination
     const surgeriesPerPage = 5;
 
+    useEffect(() => {
+        if (formData.durationMinutes > 0) {
+            const fees = calculateCosmeticFees(formData.durationMinutes);
+            setFormData(prev => {
+                if (prev.cosmeticFacilityFee === fees.facilityFee && prev.cosmeticAnesthesiaFee === fees.anesthesiaFee) {
+                    return prev;
+                }
+                return {
+                    ...prev,
+                    cosmeticFacilityFee: fees.facilityFee,
+                    cosmeticAnesthesiaFee: fees.anesthesiaFee
+                };
+            });
+        }
+    }, [formData.durationMinutes]);
+
     // ----- Reset Form -----
     const handleCancelEdit = () => {
         setEditingSurgery(null);
@@ -143,9 +181,20 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             writeOff: 0,
             isProbono: false,
             orRoom: 'OR 1',
-            cptExpenses: {}
+            cptExpenses: {},
+            applyFixedCosmeticFee: false,
+            cosmeticFacilityFee: calculateCosmeticFees(60).facilityFee,
+            cosmeticAnesthesiaFee: calculateCosmeticFees(60).anesthesiaFee
         });
     };
+
+    const selectedSurgeon = useMemo(() => {
+        return surgeons.find(s => s.name === formData.doctorName || `${s.lastname} ${s.firstname}`.trim() === formData.doctorName.replace(/^Dr\.\s*/i, '').trim());
+    }, [surgeons, formData.doctorName]);
+
+    const isCosmeticSurgeon = selectedSurgeon?.is_cosmetic_surgeon ||
+        selectedSurgeon?.specialty?.toLowerCase().includes('plastic') ||
+        selectedSurgeon?.specialty?.toLowerCase().includes('cosmetic');
 
     const toggleForm = () => {
         if (isFormOpen) {
@@ -282,7 +331,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             writeOff: surgery.write_off || 0,
             isProbono: !!surgery.is_probono,
             orRoom: surgery.or_room ? (String(surgery.or_room).startsWith('OR') ? surgery.or_room : `OR ${surgery.or_room}`) : 'OR 1',
-            cptExpenses: calcCptExpenses
+            cptExpenses: calcCptExpenses,
+            applyFixedCosmeticFee: false, // Per request: always off by default when starting edit, or pull from DB if it existed? Let's default to false as in old system
+            cosmeticFacilityFee: calculateCosmeticFees(surgery.duration_minutes || 60).facilityFee,
+            cosmeticAnesthesiaFee: calculateCosmeticFees(surgery.duration_minutes || 60).anesthesiaFee
         });
 
         setIsFormOpen(true);
@@ -316,12 +368,17 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
         // Expected Reimbursement logic
         let reimbursementSum = 0;
-        formData.selectedCptCodes.forEach(code => {
-            const cpt = cptCodes.find(c => String(c.code) === String(code));
-            if (cpt) {
-                reimbursementSum += parseFloat(cpt.reimbursement || 0);
-            }
-        });
+        if (formData.applyFixedCosmeticFee) {
+            reimbursementSum = formData.cosmeticFacilityFee;
+            noteText += (noteText ? '; ' : '') + `Fixed Facility Fee Case - Facility: $${formData.cosmeticFacilityFee.toLocaleString()}, Anesthesia: $${formData.cosmeticAnesthesiaFee.toLocaleString()}`;
+        } else {
+            formData.selectedCptCodes.forEach(code => {
+                const cpt = cptCodes.find(c => String(c.code) === String(code));
+                if (cpt) {
+                    reimbursementSum += parseFloat(cpt.reimbursement || 0);
+                }
+            });
+        }
 
         // Room Cost & Labor Cost are now directly mapped from the user-entered CPT expense values
         const roomCost = parseFloat(formData.orRoomCost || 0);
@@ -904,6 +961,43 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 </div>
                             </div>
 
+                            {isCosmeticSurgeon && (
+                                <div className="form-group" style={{ 
+                                    marginTop: '8px',
+                                    marginBottom: '16px',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    background: formData.applyFixedCosmeticFee ? '#fff7ed' : '#f8fafc',
+                                    border: `2px solid ${formData.applyFixedCosmeticFee ? '#fb923c' : '#e2e8f0'}`,
+                                    transition: 'all 0.2s ease'
+                                }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.applyFixedCosmeticFee}
+                                            onChange={(e) => setFormData({ ...formData, applyFixedCosmeticFee: e.target.checked })}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ fontSize: '0.95rem', fontWeight: '700', color: formData.applyFixedCosmeticFee ? '#c2410c' : 'var(--text-color)' }}>
+                                            Apply Fixed Facility Fee (Cosmetic/Plastics)
+                                        </span>
+                                    </label>
+                                    
+                                    {formData.applyFixedCosmeticFee && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #fed7aa' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: '600', marginBottom: '4px', textTransform: 'uppercase' }}>Est. Facility Fee</div>
+                                                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ea580c' }}>{formatCurrency(formData.cosmeticFacilityFee)}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: '600', marginBottom: '4px', textTransform: 'uppercase' }}>Est. Anesthesia</div>
+                                                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ea580c' }}>{formatCurrency(formData.cosmeticAnesthesiaFee)}</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* CPT Codes Selection */}
                             <div className="form-group">
                                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1244,47 +1338,69 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                             </div>
 
                             {/* Financial Projection Box */}
-                            <div style={{ marginTop: '24px', padding: '20px', borderRadius: '12px', border: '2px solid var(--success-color)', backgroundColor: 'rgba(16, 185, 129, 0.05)', position: 'relative' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', fontWeight: '600' }}>Financial Projection</h3>
+                            {(formData.selectedCptCodes.length > 0 || formData.applyFixedCosmeticFee || formData.isProbono) && (
+                                <div style={{ 
+                                    marginTop: '24px', 
+                                    padding: '20px', 
+                                    borderRadius: '12px', 
+                                    background: formData.isProbono ? '#fdf2f8' : (formData.applyFixedCosmeticFee ? '#eff6ff' : 'rgba(16, 185, 129, 0.05)'),
+                                    border: `2px solid ${formData.isProbono ? '#db2777' : (formData.applyFixedCosmeticFee ? '#3b82f6' : 'var(--success-color)')}`, 
+                                    position: 'relative' 
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {!formData.applyFixedCosmeticFee && !formData.isProbono && (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                                            )}
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: formData.isProbono ? '#9d174d' : (formData.applyFixedCosmeticFee ? '#1e40af' : 'var(--text-color)'), fontWeight: '700' }}>
+                                                {formData.isProbono ? '💗 Pro-Bono Case Summary' : (formData.applyFixedCosmeticFee ? '💰 Cosmetic Fee Breakdown' : 'Financial Projection')}
+                                            </h3>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                            {!formData.applyFixedCosmeticFee && (
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={includeLaborSupplies}
+                                                        onChange={(e) => setIncludeLaborSupplies(e.target.checked)}
+                                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                                    />
+                                                    Include Labor/Supplies
+                                                </label>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={includeLaborSupplies}
-                                                onChange={(e) => setIncludeLaborSupplies(e.target.checked)}
-                                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                            />
-                                            Include Labor/Supplies
-                                        </label>
 
-                                    </div>
-                                </div>
+                                    {(() => {
+                                        let revenue = 0;
+                                        if (formData.applyFixedCosmeticFee) {
+                                            revenue = formData.cosmeticFacilityFee;
+                                        } else {
+                                            formData.selectedCptCodes.forEach(code => {
+                                                const cpt = cptCodes.find(c => String(c.code) === String(code));
+                                                if (cpt) revenue += parseFloat(cpt.reimbursement || 0);
+                                            });
+                                        }
+                                        const room = parseFloat(formData.orRoomCost || 0);
+                                        const labor = parseFloat(formData.labourCost || 0);
+                                        const supplies = parseFloat(formData.suppliesCost || 0) + parseFloat(formData.implantsCost || 0) + parseFloat(formData.medicationsCost || 0) + parseFloat(formData.trayCost || 0);
+                                        const internalCost = includeLaborSupplies ? (room + labor + supplies) : 0;
+                                        const writeOff = parseFloat(formData.writeOff || 0);
+                                        let netProfit = revenue - writeOff - internalCost;
+                                        if (formData.isProbono) netProfit = 0;
+                                        const isPositive = netProfit >= 0;
 
-                                {(() => {
-                                    let revenue = 0;
-                                    formData.selectedCptCodes.forEach(code => {
-                                        const cpt = cptCodes.find(c => String(c.code) === String(code));
-                                        if (cpt) revenue += parseFloat(cpt.reimbursement || 0);
-                                    });
-                                    const room = parseFloat(formData.orRoomCost || 0);
-                                    const labor = parseFloat(formData.labourCost || 0);
-                                    const supplies = parseFloat(formData.suppliesCost || 0) + parseFloat(formData.implantsCost || 0) + parseFloat(formData.medicationsCost || 0) + parseFloat(formData.trayCost || 0);
-                                    const internalCost = includeLaborSupplies ? (room + labor + supplies) : 0;
-                                    const writeOff = parseFloat(formData.writeOff || 0);
-                                    let netProfit = revenue - writeOff - internalCost;
-                                    if (formData.isProbono) netProfit = 0;
-                                    const isPositive = netProfit >= 0;
-
-                                    return (
-                                        <>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                        return (
+                                            <>
+                                                {formData.applyFixedCosmeticFee ? (
+                                                    <div style={{ marginBottom: '16px', fontSize: '0.9rem', color: '#1e40af', backgroundColor: '#dbeafe', padding: '12px', borderRadius: '6px', borderLeft: '4px solid #3b82f6' }}>
+                                                        <strong>Note:</strong> When enabled, the surgery will be billed as a flat-rate cosmetic case based on duration, ignoring CPT reimbursements for facility revenue.
+                                                    </div>
+                                                ) : null}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                                                 <div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Rev (CPT+Fee):</span>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>{formData.applyFixedCosmeticFee ? 'Facility Fee:' : 'Rev (CPT+Fee):'}</span>
                                                         <span style={{ fontWeight: 'bold', color: 'var(--success-color)' }}>{formatCurrency(revenue)}</span>
                                                     </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
@@ -1324,11 +1440,15 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
                                             <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '16px 0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Full Total:</span>
+                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: formData.applyFixedCosmeticFee ? '#1e40af' : 'inherit' }}>
+                                                        {formData.applyFixedCosmeticFee ? 'Total Fees Paid by User:' : 'Full Total:'}
+                                                    </span>
                                                     {(() => {
-                                                        const patientBillTotal = includeLaborSupplies ? (revenue - writeOff + internalCost) : revenue;
+                                                        const patientBillTotal = formData.applyFixedCosmeticFee ? 
+                                                            (formData.cosmeticFacilityFee + formData.cosmeticAnesthesiaFee) : 
+                                                            (includeLaborSupplies ? (revenue - writeOff + internalCost) : revenue);
                                                         return (
-                                                            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)' }}>
+                                                            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: formData.applyFixedCosmeticFee ? '#1d4ed8' : (patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)') }}>
                                                                 {formatCurrency(patientBillTotal)}
                                                             </span>
                                                         );
@@ -1338,7 +1458,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         </>
                                     );
                                 })()}
-                            </div>
+                                </div>
+                            )}
 
                             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
                                 <button type="button" className="btn-cancel" onClick={handleCancelEdit}>Cancel</button>
