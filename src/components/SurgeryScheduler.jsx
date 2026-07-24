@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { db } from '../lib/supabase';
 import { 
     Search, Plus, Edit, Trash2, Clock, Calendar, 
-    DollarSign, AlertCircle, Filter, Check, ChevronDown, ChevronUp 
+    DollarSign, AlertCircle, Filter, Check, ChevronDown, ChevronUp, Wand2
 } from 'lucide-react';
 import ORBlockSchedule from './ORBlockSchedule';
 import './SurgeryScheduler.css';
@@ -1586,6 +1586,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
                                                             const { trayCost, fullTotal } = calculateSurgeryFinancials(s);
 
+                                                            const isCosmetic = s.notes && s.notes.includes('Fixed Facility Fee Case');
+
                                                             return (
                                                                 <tr key={s.id}>
                                                                     <td style={{ color: 'var(--color-blue)', fontWeight: '600' }}>{patientMrn}</td>
@@ -1593,13 +1595,21 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                     <td>{formatTimeForInput(s.start_time)}</td>
                                                                     <td style={{ fontWeight: '500' }}>{s.doctor_name}</td>
                                                                     <td>
-                                                                        {selectedCpts.length > 0 ? (
-                                                                            selectedCpts.map(code => (
-                                                                                <span key={code} className="badge badge-blue" style={{ marginRight: '4px' }}>{code}</span>
-                                                                            ))
-                                                                        ) : (
-                                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>None</span>
-                                                                        )}
+                                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                                                                            {isCosmetic && (
+                                                                                <span style={{ backgroundColor: '#f59e0b', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                                                    <Wand2 size={12} />
+                                                                                    Cosmetic Surgery
+                                                                                </span>
+                                                                            )}
+                                                                            {selectedCpts.length > 0 ? (
+                                                                                selectedCpts.map(code => (
+                                                                                    <span key={code} className="badge badge-blue">{code}</span>
+                                                                                ))
+                                                                            ) : (!isCosmetic && (
+                                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>None</span>
+                                                                            ))}
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <div>{s.duration_minutes || 0}m + <span style={{ color: 'var(--color-orange)' }}>{s.turnover_time || 0}m</span></div>
