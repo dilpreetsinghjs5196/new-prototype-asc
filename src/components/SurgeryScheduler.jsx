@@ -139,7 +139,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     }, [formData?.date, surgeons, orBlocks]);
 
     // Pagination
-    const surgeriesPerPage = 5;
+    const surgeriesPerPage = 10;
 
     useEffect(() => {
         if (formData.durationMinutes > 0) {
@@ -1581,7 +1581,16 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                             if (Array.isArray(s.cpt_codes)) {
                                                                 selectedCpts = s.cpt_codes;
                                                             } else if (typeof s.cpt_codes === 'string') {
-                                                                selectedCpts = s.cpt_codes.split(',').map(str => str.trim()).filter(Boolean);
+                                                                try {
+                                                                    const parsed = JSON.parse(s.cpt_codes);
+                                                                    if (Array.isArray(parsed)) {
+                                                                        selectedCpts = parsed.map(String);
+                                                                    } else {
+                                                                        selectedCpts = s.cpt_codes.replace(/[\[\]"']/g, '').split(',').map(str => str.trim()).filter(Boolean);
+                                                                    }
+                                                                } catch (e) {
+                                                                    selectedCpts = s.cpt_codes.replace(/[\[\]"']/g, '').split(',').map(str => str.trim()).filter(Boolean);
+                                                                }
                                                             }
 
                                                             const { trayCost, fullTotal } = calculateSurgeryFinancials(s);
