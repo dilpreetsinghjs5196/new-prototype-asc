@@ -286,8 +286,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             const dbImplants = parseFloat(surgery.implants_cost || calcImplants || 0);
             const dbMeds = parseFloat(surgery.medications_cost || calcMeds || 0);
             const dbTray = parseFloat(trayCostVal || calcTray || 0);
-            const dbLabour = parseFloat(surgery.labour_cost || calcLabour || 0);
-            const dbOrRoom = parseFloat(surgery.or_room_cost || calcOrRoom || 0);
+            const dbLabour = parseFloat(surgery.actual_labor_cost || calcLabour || 0);
+            const dbOrRoom = parseFloat(surgery.actual_room_cost || calcOrRoom || 0);
 
             if (calcSupplies !== dbSupplies) calcCptExpenses[first].suppliesCost = Math.max(0, calcCptExpenses[first].suppliesCost + (dbSupplies - calcSupplies));
             if (calcImplants !== dbImplants) calcCptExpenses[first].implantsCost = Math.max(0, calcCptExpenses[first].implantsCost + (dbImplants - calcImplants));
@@ -323,8 +323,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             suppliesCost: surgery.supplies_cost || calcSupplies || 0,
             implantsCost: surgery.implants_cost || calcImplants || 0,
             medicationsCost: surgery.medications_cost || calcMeds || 0,
-            labourCost: surgery.labour_cost || calcLabour || 0,
-            orRoomCost: surgery.or_room_cost || calcOrRoom || 0,
+            labourCost: surgery.actual_labor_cost || calcLabour || 0,
+            orRoomCost: surgery.actual_room_cost || calcOrRoom || 0,
             actualStartTime: formatTimeForInput(surgery.actual_start_time || surgery.start_time),
             actualEndTime: formatTimeForInput(surgery.actual_end_time),
             actualDurationMinutes: surgery.actual_duration_minutes || surgery.duration_minutes || 0,
@@ -388,7 +388,13 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         // Calculate Full Total based on current UI toggle state
         const internalCost = includeLaborSupplies ? (roomCost + laborCost + suppliesCostTotal) : 0;
         const writeOff = parseFloat(formData.writeOff || 0);
-        const patientBillTotal = reimbursementSum - writeOff + internalCost;
+        
+        let patientBillTotal;
+        if (formData.applyFixedCosmeticFee) {
+            patientBillTotal = reimbursementSum + roomCost + laborCost + suppliesCostTotal - writeOff;
+        } else {
+            patientBillTotal = reimbursementSum - writeOff + internalCost;
+        }
         
         let netProfit = reimbursementSum - writeOff - (roomCost + laborCost + suppliesCostTotal);
         if (formData.isProbono) netProfit = 0;
@@ -984,14 +990,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                     </label>
                                     
                                     {formData.applyFixedCosmeticFee && (
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #fed7aa' }}>
+                                        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #fed7aa' }}>
                                             <div>
                                                 <div style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: '600', marginBottom: '4px', textTransform: 'uppercase' }}>Est. Facility Fee</div>
                                                 <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ea580c' }}>{formatCurrency(formData.cosmeticFacilityFee)}</div>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: '600', marginBottom: '4px', textTransform: 'uppercase' }}>Est. Anesthesia</div>
-                                                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ea580c' }}>{formatCurrency(formData.cosmeticAnesthesiaFee)}</div>
                                             </div>
                                         </div>
                                     )}
@@ -1397,46 +1399,55 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                         <strong>Note:</strong> When enabled, the surgery will be billed as a flat-rate cosmetic case based on duration, ignoring CPT reimbursements for facility revenue.
                                                     </div>
                                                 ) : null}
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                                                <div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>{formData.applyFixedCosmeticFee ? 'Facility Fee:' : 'Rev (CPT+Fee):'}</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--success-color)' }}>{formatCurrency(revenue)}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--danger-color)' }}>Write-Off / Disc:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>- {formatCurrency(writeOff)}</span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Actual Room Cost:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? room : 0)}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Actual Labor:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? labor : 0)}</span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Supplies:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.suppliesCost || 0) : 0)}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Implants:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.implantsCost || 0) : 0)}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Tray:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.trayCost || 0) : 0)}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Meds:</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.medicationsCost || 0) : 0)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                {(() => {
+                                                    const isLightBg = formData.isProbono || formData.applyFixedCosmeticFee;
+                                                    const labelColor = isLightBg ? '#475569' : 'var(--text-secondary)';
+                                                    const valGreen = isLightBg ? '#166534' : 'var(--color-green)';
+                                                    const valRed = isLightBg ? '#991b1b' : 'var(--color-red)';
+                                                    
+                                                    return (
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                            <div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>{formData.applyFixedCosmeticFee ? 'Facility Fee:' : 'Rev (CPT+Fee):'}</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valGreen }}>{formatCurrency(revenue)}</span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: valRed }}>Write-Off / Disc:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>- {formatCurrency(writeOff)}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>Actual Room Cost:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? room : 0)}</span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>Actual Labor:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? labor : 0)}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>Supplies:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.suppliesCost || 0) : 0)}</span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>Implants:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.implantsCost || 0) : 0)}</span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>Tray:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.trayCost || 0) : 0)}</span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>Meds:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.medicationsCost || 0) : 0)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
 
                                             <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '16px 0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1445,7 +1456,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                     </span>
                                                     {(() => {
                                                         const patientBillTotal = formData.applyFixedCosmeticFee ? 
-                                                            (formData.cosmeticFacilityFee + formData.cosmeticAnesthesiaFee) : 
+                                                            (formData.cosmeticFacilityFee + room + labor + supplies - writeOff) : 
                                                             (includeLaborSupplies ? (revenue - writeOff + internalCost) : revenue);
                                                         return (
                                                             <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: formData.applyFixedCosmeticFee ? '#1d4ed8' : (patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)') }}>
