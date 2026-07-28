@@ -3080,7 +3080,7 @@ export default function App() {
 
                     <div className="kpi-card">
                       <div className="kpi-card-header">
-                        <span className="kpi-label">EBITDA %</span>
+                        <span className="kpi-label">EBITDA Margin</span>
                         <div className="kpi-icon-container orange"><DollarSign size={12} /></div>
                       </div>
                       <span className="kpi-value">{executiveOverviewMetrics.ebitdaPct}%</span>
@@ -3101,7 +3101,7 @@ export default function App() {
                     {/* Financial Trends combination chart */}
                     <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column' }}>
                       <div className="card-header">
-                        <h3 className="card-title">Weekly Revenue, Costs & Margin</h3>
+                        <h3 className="card-title">Weekly Financial Performance</h3>
                       </div>
                       <div style={{ width: '100%', height: '240px', marginTop: '10px' }}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -3120,7 +3120,7 @@ export default function App() {
                     {/* Specialty Case Distribution Donut */}
                     <div className="dashboard-card">
                       <div className="card-header">
-                        <h3 className="card-title">Specialty Case Distribution</h3>
+                        <h3 className="card-title">Case Distribution</h3>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '240px', alignItems: 'center' }}>
@@ -3186,7 +3186,7 @@ export default function App() {
                       </div>
                       <div>
                         <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.9rem' }}>
-                          Executive Strategic Action Brief
+                          Executive Insights & Recommendations
                         </h4>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: '1.3' }}>
                           1. Orthopedic implant card consolidation shows <strong>$45,000 savings opportunity</strong>.<br />
