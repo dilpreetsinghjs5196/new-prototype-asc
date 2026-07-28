@@ -1049,7 +1049,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                 >
                                                     <div className="cpt-card-header">
                                                         <span className="cpt-code-badge">{c.code}</span>
-                                                        <span className="cpt-price">{formatCurrency(c.reimbursement)}</span>
+                                                        <span className="cpt-price">{formatCurrency(c.gross_charge)}</span>
                                                     </div>
                                                     <span className="cpt-description">{c.description}</span>
                                                 </div>
