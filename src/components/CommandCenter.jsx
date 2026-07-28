@@ -226,7 +226,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       <div className="kpi-row">
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">EBITDA %</span>
+            <span className="kpi-label">EBITDA Margin</span>
             <div className="kpi-icon-container blue"><DollarSign size={12} /></div>
           </div>
           <span className="kpi-value" style={{ color: parseFloat(kpis.ebitdaPercent) >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
@@ -244,7 +244,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">OR Utilization</span>
+            <span className="kpi-label">Operating Room Utilization</span>
             <div className="kpi-icon-container blue"><Clock size={12} /></div>
           </div>
           <span className="kpi-value">{kpis.orUtil}%</span>
@@ -260,7 +260,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Profitable Utilization</span>
+            <span className="kpi-label">Profitable OR Utilization</span>
             <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
           </div>
           <span className="kpi-value">{kpis.profitableUtil}%</span>
@@ -292,7 +292,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Margin per OR Hour</span>
+            <span className="kpi-label">Net Margin per OR Hour</span>
             <div className="kpi-icon-container green"><TrendingUp size={12} /></div>
           </div>
           <span className="kpi-value" style={{ color: kpis.marginPerHour >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
@@ -310,7 +310,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
 
         <div className="kpi-card">
           <div className="kpi-card-header">
-            <span className="kpi-label">Avg Turnover (mins)</span>
+            <span className="kpi-label">Average Turnover Time</span>
             <div className="kpi-icon-container orange"><Clock size={12} /></div>
           </div>
           <span className="kpi-value">{kpis.avgTurnover}</span>
