@@ -2815,7 +2815,7 @@ export default function App() {
                     {/* Supply Cost Breakdown */}
                     <div className="dashboard-card">
                       <div className="card-header">
-                        <h3 className="card-title">Supply Cost Breakdown (MTD)</h3>
+                        <h3 className="card-title">Supply Cost Analysis (MTD)</h3>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '8px', height: '200px', alignItems: 'center' }}>
@@ -2910,7 +2910,7 @@ export default function App() {
                     {/* Cancellation Recovery Insights */}
                     <div className="dashboard-card">
                       <div className="card-header">
-                        <h3 className="card-title">Cancellation Recovery Insights</h3>
+                        <h3 className="card-title">Cancellation Impact Analysis</h3>
                       </div>
 
                       <div className="cancel-recovery-header">
@@ -2965,7 +2965,7 @@ export default function App() {
                   {/* Bottom Table: Profitability Summary */}
                   <div className="dashboard-card">
                     <div className="card-header">
-                      <h3 className="card-title">Profitability Summary (MTD)</h3>
+                      <h3 className="card-title">Financial Performance Summary (MTD)</h3>
                       <span className="card-subtitle-note">Last updated: May 29, 2026 8:30 AM</span>
                     </div>
 
