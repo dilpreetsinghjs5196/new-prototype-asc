@@ -3257,12 +3257,12 @@ export default function App() {
                       <span className="kpi-trend positive">↗ -3 mins vs last month</span>
                     </div>
                     <div className="kpi-card">
-                      <span className="kpi-label">Block Time Leakage</span>
+                      <span className="kpi-label">Unused Block Time</span>
                       <span className="kpi-value">{orPerformanceMetrics.leakageHrs} hrs</span>
                       <span className="kpi-trend negative">↘ +1.2 hrs wastage</span>
                     </div>
                     <div className="kpi-card">
-                      <span className="kpi-label">Gaps Detected (&gt;30m)</span>
+                      <span className="kpi-label">Scheduling Gaps (&gt;30m)</span>
                       <span className="kpi-value">{orPerformanceMetrics.gaps} Gaps</span>
                       <span className="kpi-trend positive">↗ Reduced from 12</span>
                     </div>
@@ -3323,7 +3323,7 @@ export default function App() {
                     {/* Under-Utilization Root Causes Pie */}
                     <div className="dashboard-card">
                       <div className="card-header">
-                        <h3 className="card-title">Root Cause Distribution</h3>
+                        <h3 className="card-title">Root Cause Analysis</h3>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
@@ -3417,7 +3417,7 @@ export default function App() {
                     {/* Turnover Efficiency splits Pie */}
                     <div className="dashboard-card">
                       <div className="card-header">
-                        <h3 className="card-title">Turnover Efficiency Splits</h3>
+                        <h3 className="card-title">Turnover Time Distribution</h3>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr', gap: '8px', height: '200px', alignItems: 'center' }}>
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
