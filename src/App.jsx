@@ -2443,7 +2443,7 @@ export default function App() {
             onClick={() => { setActiveTab('dashboard'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><LayoutDashboard size={16} /></div>
-            Command Center
+            Executive Dashboard
           </div>
 
           <div
@@ -2451,7 +2451,7 @@ export default function App() {
             onClick={() => { setActiveTab('overview'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><TrendingUp size={16} /></div>
-            Executive Overview
+            Executive Summary
           </div>
 
           <div
@@ -2459,7 +2459,7 @@ export default function App() {
             onClick={() => { setActiveTab('or'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><Clock size={16} /></div>
-            OR Performance
+            Operating Room Performance
           </div>
 
           <div
@@ -2467,7 +2467,7 @@ export default function App() {
             onClick={() => { setActiveTab('scheduler'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><CalendarDays size={16} /></div>
-            Surgery Log & OR
+            Surgical Case Log
           </div>
 
           <div
@@ -2483,7 +2483,7 @@ export default function App() {
             onClick={() => { setActiveTab('patients'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><Users size={16} /></div>
-            Patient Management
+            Patient Registry
           </div>
 
           <div
@@ -2524,7 +2524,7 @@ export default function App() {
             onClick={() => { setActiveTab('ot_cost_manage'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><DollarSign size={16} /></div>
-            OT Cost Management
+            Operating Room Costs
           </div>
 
           {/* <div
@@ -2548,15 +2548,15 @@ export default function App() {
             onClick={() => { setActiveTab('cancellations'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><XCircle size={16} /></div>
-            Cancellations
+            Case Cancellations
           </div>
-          
+
           <div
             className={`menu-item ${activeTab === 'or_block_schedule' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('or_block_schedule'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><CalendarDays size={16} /></div>
-            OR Block Schedule
+            Operation Room Scheduling
           </div>
 
           {/* <div
@@ -2603,7 +2603,7 @@ export default function App() {
             onClick={() => { setActiveTab('settings'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><Settings size={16} /></div>
-            Settings
+            System Settings
           </div>
 
           {/* <div
@@ -2783,9 +2783,9 @@ export default function App() {
               TAB: BUSINESS ANALYSIS
               ========================================== */}
               {activeTab === 'business_analysis' && (
-                <BusinessAnalysis 
-                  surgeries={filteredSurgeries} 
-                  orMetrics={orPerformanceMetrics} 
+                <BusinessAnalysis
+                  surgeries={filteredSurgeries}
+                  orMetrics={orPerformanceMetrics}
                 />
               )}
 

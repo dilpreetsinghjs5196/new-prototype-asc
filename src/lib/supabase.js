@@ -171,9 +171,22 @@ export const db = {
 
   // Add a new OR block schedule
   async addORBlockSchedule(schedule) {
+    const { data: maxData, error: maxError } = await supabase
+      .from('or_block_schedule')
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1);
+    
+    if (maxError) throw maxError;
+    
+    const maxId = maxData && maxData.length > 0 ? maxData[0].id : 0;
+    const nextId = maxId + 1;
+    
+    const payload = { ...schedule, id: nextId };
+
     const { data, error } = await supabase
       .from('or_block_schedule')
-      .insert([schedule])
+      .insert([payload])
       .select()
       .single();
     if (error) throw error;
