@@ -328,12 +328,12 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       {/* Sub-tabs menu */}
       <div className="subtabs-menu">
         <button className="subtab-item active" onClick={() => onTabChange('dashboard')}>Overview</button>
-        <button className="subtab-item" onClick={() => onTabChange('or')}>OR Performance</button>
+        <button className="subtab-item" onClick={() => onTabChange('or')}>ORPerformance</button>
         <button className="subtab-item" onClick={() => onTabChange('surgeons')}>Surgeon Performance</button>
-        <button className="subtab-item" onClick={() => onTabChange('patients')}>Patient Management</button>
+        <button className="subtab-item" onClick={() => onTabChange('patients')}>Patient Registry</button>
         {/* <button className="subtab-item" onClick={() => onTabChange('financial')}>Financial Performance</button> */}
         {/* <button className="subtab-item" onClick={() => onTabChange('cpt')}>Case Profitability</button> */}
-        <button className="subtab-item" onClick={() => onTabChange('cancellations')}>Cancellations</button>
+        <button className="subtab-item" onClick={() => onTabChange('cancellations')}>Case Cancellations</button>
         {/* <button className="subtab-item" onClick={() => onTabChange('supply')}>Supply Chain</button> */}
         <button className="subtab-item" onClick={() => onTabChange('ai')}>AI Insights</button>
       </div>
@@ -344,7 +344,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
         {/* OR Utilization Trend */}
         <div className="dashboard-card">
           <div className="card-header">
-            <h3 className="card-title">OR Utilization Trend (Last 6 Months)</h3>
+            <h3 className="card-title">OR Utilization (Last 6 Months)</h3>
           </div>
           <div style={{ width: '100%', height: '220px' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -385,7 +385,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
         {/* Case Profitability */}
         <div className="dashboard-card">
           <div className="card-header">
-            <h3 className="card-title">Case Profitability Distribution</h3>
+            <h3 className="card-title">Case Profitability Analysis</h3>
           </div>
           <div style={{ width: '100%', height: '220px', display: 'flex', alignItems: 'center' }}>
             <ResponsiveContainer width="50%" height="100%">

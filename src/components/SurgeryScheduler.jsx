@@ -755,12 +755,18 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         const specialty = surgeonObj?.specialty;
 
         return cptCodes.filter(cpt => {
-            // Specialty filter
-            const matchesSpecialty = !specialty || cpt.category === specialty || cpt.category === 'General' || cpt.category === 'General Surgery';
             // Search query filter
             const matchesQuery = !cptSearchQuery || 
                 cpt.code.toLowerCase().includes(cptSearchQuery.toLowerCase()) || 
                 cpt.description.toLowerCase().includes(cptSearchQuery.toLowerCase());
+                
+            // If user is actively searching, bypass the specialty/body part filters to allow finding any CPT
+            if (cptSearchQuery) {
+                return matchesQuery;
+            }
+
+            // Specialty filter
+            const matchesSpecialty = !specialty || cpt.category === specialty || cpt.category === 'General' || cpt.category === 'General Surgery';
             // Body part filter
             const matchesBodyPart = !selectedBodyPart || (cpt.details?.body_part === selectedBodyPart);
 
