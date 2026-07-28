@@ -375,7 +375,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             formData.selectedCptCodes.forEach(code => {
                 const cpt = cptCodes.find(c => String(c.code) === String(code));
                 if (cpt) {
-                    reimbursementSum += parseFloat(cpt.reimbursement || 0);
+                    reimbursementSum += parseFloat(cpt.gross_charge || 0);
                 }
             });
         }
@@ -390,7 +390,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         const writeOff = parseFloat(formData.writeOff || 0);
         
         let patientBillTotal;
-        if (formData.applyFixedCosmeticFee) {
+        if (formData.isProbono) {
+            patientBillTotal = 0;
+        } else if (formData.applyFixedCosmeticFee) {
             patientBillTotal = reimbursementSum + roomCost + laborCost + suppliesCostTotal - writeOff;
         } else {
             patientBillTotal = reimbursementSum - writeOff + internalCost;
@@ -692,13 +694,14 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         let displayProfit = revenue - cost;
 
         const writeOff = parseFloat(surgery.write_off || 0);
-        const fullTotal = includeLaborSupplies ? (revenue - writeOff + cost) : revenue;
+        let fullTotal = includeLaborSupplies ? (revenue - writeOff + cost) : revenue;
 
-        if (!includeLaborSupplies && !surgery.is_probono) {
+        if (surgery.is_probono) {
+            displayProfit = 0; // Charity loss
+            fullTotal = 0;
+        } else if (!includeLaborSupplies) {
             // Include only billing margin (omit internal room overhead, labor, and supplies)
             displayProfit = revenue;
-        } else if (surgery.is_probono) {
-            displayProfit = 0; // Charity loss
         }
 
         return {
@@ -773,7 +776,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
     const uniqueSelectedCodes = useMemo(() => {
         return formData.selectedCptCodes.map(code => {
-            return cptCodes.find(c => String(c.code) === String(code)) || { code, description: 'Selected CPT Code', reimbursement: 0 };
+            return cptCodes.find(c => String(c.code) === String(code)) || { code, description: 'Selected CPT Code', gross_charge: 0 };
         });
     }, [formData.selectedCptCodes, cptCodes]);
 
@@ -1380,7 +1383,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         } else {
                                             formData.selectedCptCodes.forEach(code => {
                                                 const cpt = cptCodes.find(c => String(c.code) === String(code));
-                                                if (cpt) revenue += parseFloat(cpt.reimbursement || 0);
+                                                if (cpt) revenue += parseFloat(cpt.gross_charge || 0);
                                             });
                                         }
                                         const room = parseFloat(formData.orRoomCost || 0);
@@ -1420,29 +1423,29 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                             <div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
                                                                     <span style={{ color: labelColor }}>Actual Room Cost:</span>
-                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? room : 0)}</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency((includeLaborSupplies || formData.isProbono) ? room : 0)}</span>
                                                                 </div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                                                     <span style={{ color: labelColor }}>Actual Labor:</span>
-                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? labor : 0)}</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency((includeLaborSupplies || formData.isProbono) ? labor : 0)}</span>
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
                                                                     <span style={{ color: labelColor }}>Supplies:</span>
-                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.suppliesCost || 0) : 0)}</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency((includeLaborSupplies || formData.isProbono) ? parseFloat(formData.suppliesCost || 0) : 0)}</span>
                                                                 </div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
                                                                     <span style={{ color: labelColor }}>Implants:</span>
-                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.implantsCost || 0) : 0)}</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency((includeLaborSupplies || formData.isProbono) ? parseFloat(formData.implantsCost || 0) : 0)}</span>
                                                                 </div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
                                                                     <span style={{ color: labelColor }}>Tray:</span>
-                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.trayCost || 0) : 0)}</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency((includeLaborSupplies || formData.isProbono) ? parseFloat(formData.trayCost || 0) : 0)}</span>
                                                                 </div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                                                     <span style={{ color: labelColor }}>Meds:</span>
-                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(includeLaborSupplies ? parseFloat(formData.medicationsCost || 0) : 0)}</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency((includeLaborSupplies || formData.isProbono) ? parseFloat(formData.medicationsCost || 0) : 0)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1455,9 +1458,12 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                         {formData.applyFixedCosmeticFee ? 'Total Fees Paid by User:' : 'Full Total:'}
                                                     </span>
                                                     {(() => {
-                                                        const patientBillTotal = formData.applyFixedCosmeticFee ? 
-                                                            (formData.cosmeticFacilityFee + room + labor + supplies - writeOff) : 
-                                                            (includeLaborSupplies ? (revenue - writeOff + internalCost) : revenue);
+                                                        let patientBillTotal = 0;
+                                                        if (!formData.isProbono) {
+                                                            patientBillTotal = formData.applyFixedCosmeticFee ? 
+                                                                (formData.cosmeticFacilityFee + room + labor + supplies - writeOff) : 
+                                                                (includeLaborSupplies ? (revenue - writeOff + internalCost) : revenue);
+                                                        }
                                                         return (
                                                             <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: formData.applyFixedCosmeticFee ? '#1d4ed8' : (patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)') }}>
                                                                 {formatCurrency(patientBillTotal)}
@@ -1626,7 +1632,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                     </td>
                                                                     <td style={{ fontFamily: 'monospace' }}>{formatCurrency(trayCost)}</td>
                                                                     <td style={{ fontWeight: '700', color: 'var(--color-green)' }}>
-                                                                        {formatCurrency(fullTotal)}
+                                                                        {s.is_probono ? (
+                                                                            <span style={{ backgroundColor: '#db2777', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold' }}>Pro-Bono</span>
+                                                                        ) : formatCurrency(fullTotal)}
                                                                     </td>
                                                                     <td>
                                                                         <span className={`status-badge status-${s.status}`}>
