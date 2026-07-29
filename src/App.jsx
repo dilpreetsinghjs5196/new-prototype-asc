@@ -2029,14 +2029,15 @@ export default function App() {
       setPatientModalOpen(false);
     } catch (err) {
       console.error("Database patient write failed, updating locally:", err);
+      const dbErrMsg = err.message || JSON.stringify(err);
       // fallback
       if (editingPatient) {
         setPatients(prev => prev.map(p => p.id === editingPatient.id ? { ...p, ...dbPayload } : p));
-        alert('Patient updated locally (Database sync failed).');
+        alert('Patient updated locally (Database sync failed: ' + dbErrMsg + ')');
       } else {
         const localId = Date.now();
         setPatients(prev => [{ ...dbPayload, id: localId, created_at: new Date().toISOString() }, ...prev]);
-        alert('Patient added locally (Database sync failed).');
+        alert('Patient added locally (Database sync failed: ' + dbErrMsg + ')');
       }
       setPatientModalOpen(false);
     }
