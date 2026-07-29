@@ -1492,7 +1492,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                         if (!formData.isProbono) {
                                                             patientBillTotal = formData.applyFixedCosmeticFee ? 
                                                                 (formData.cosmeticFacilityFee + room + labor + supplies - writeOff) : 
-                                                                (includeLaborSupplies ? (revenue - writeOff + internalCost) : revenue);
+                                                                (revenue + (includeLaborSupplies ? internalCost : 0) - writeOff);
                                                         }
                                                         return (
                                                             <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: formData.applyFixedCosmeticFee ? '#1d4ed8' : (patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)') }}>
