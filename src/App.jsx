@@ -8,6 +8,7 @@ import OTCostManagement from './components/OTCostManagement';
 import SettingsView from './components/Settings';
 import Chatbot from './components/Chatbot';
 import AIAnalystModal from './components/AIAnalystModal';
+import AIOperationsAnalyst from './components/AIOperationsAnalyst';
 import CommandCenter from './components/CommandCenter';
 import BusinessAnalysis from './components/BusinessAnalysis';
 import ORBlockSchedule from './components/ORBlockSchedule';
@@ -2575,6 +2576,13 @@ export default function App() {
             AI Insights
           </div>
           <div
+            className={`menu-item ${activeTab === 'ai_ops_analyst' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('ai_ops_analyst'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Sparkles size={16} /></div>
+            AI Ops Analyst
+          </div>
+          <div
             className={`menu-item ${activeTab === 'instruction' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('instruction'); setSelectedSurgeon(null); }}
             style={activeTab === 'instruction' ? { backgroundColor: '#10b981', color: 'white' } : {}}
@@ -2649,6 +2657,7 @@ export default function App() {
                   {activeTab === 'cancellations' && 'Cancellations'}
                   {activeTab === 'reports' && 'Reports & Analytics'}
                   {activeTab === 'ai' && 'AI Insights'}
+                  {activeTab === 'ai_ops_analyst' && 'AI Operations Analyst'}
                   {activeTab === 'data' && 'Data Explorer'}
                   {activeTab === 'settings' && 'System Configuration Settings'}
                   {activeTab === 'help' && 'Help & Support'}
@@ -2675,6 +2684,7 @@ export default function App() {
                   {activeTab === 'cancellations' && 'Cancellations tracking, revenue leak analysis, and predictive risk analysis'}
                   {activeTab === 'reports' && 'Standard financial and operational reports export'}
                   {activeTab === 'ai' && 'Prescriptive actions powered by the ASC Recommendation Engine'}
+                  {activeTab === 'ai_ops_analyst' && 'Modular operational optimization engine'}
                   {activeTab === 'data' && 'Ad-hoc data querying and reports builder'}
                   {activeTab === 'settings' && 'Manage operational baseline costs, roles, and integrations'}
                   {activeTab === 'help' && 'Support desk and user guides'}
@@ -4468,6 +4478,16 @@ export default function App() {
               ========================================== */}
               {activeTab === 'ot_cost_manage' && (
                 <OTCostManagement />
+              )}
+
+              {/* ==========================================
+              TAB: AI OPS ANALYST
+              ========================================== */}
+              {activeTab === 'ai_ops_analyst' && (
+                <AIOperationsAnalyst 
+                  surgeries={filteredSurgeries}
+                  cptCodes={cptCodesList}
+                />
               )}
             </>
           )}
