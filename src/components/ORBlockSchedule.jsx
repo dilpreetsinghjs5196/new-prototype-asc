@@ -156,6 +156,7 @@ const ORBlockSchedule = () => {
   const [newSurgeon, setNewSurgeon] = useState('');
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
+  const [editingBlockId, setEditingBlockId] = useState(null);
 
   const openModal = (dateStr, orRoom) => {
     setSelectedDate(dateStr);
@@ -169,6 +170,26 @@ const ORBlockSchedule = () => {
     setNewSurgeon('');
     setNewStart('');
     setNewEnd('');
+    setEditingBlockId(null);
+  };
+
+  const handleEditOpen = (block) => {
+    setEditingBlockId(block.id);
+    setNewSurgeon(block.surgeon);
+    
+    let start = '';
+    let end = '';
+    if (block.type && block.type.includes(' - ')) {
+      const parts = block.type.split(' - ');
+      if (parts.length === 2) {
+        start = parts[0].trim();
+        end = parts[1].trim();
+      }
+    }
+    
+    setNewStart(start);
+    setNewEnd(end);
+    setModalMode('add');
   };
 
   const handleDelete = async (id) => {
@@ -193,17 +214,26 @@ const ORBlockSchedule = () => {
         end_time: newEnd || null
       };
       
-      const newDbBlock = await db.addORBlockSchedule(schedule);
-      if (newDbBlock) {
-        setBlocks([...blocks, mapDBToBlock(newDbBlock)]);
+      if (editingBlockId) {
+        const updatedDbBlock = await db.updateORBlockSchedule(editingBlockId, schedule);
+        if (updatedDbBlock) {
+          setBlocks(blocks.map(b => b.id === editingBlockId ? mapDBToBlock(updatedDbBlock) : b));
+        }
+      } else {
+        const newDbBlock = await db.addORBlockSchedule(schedule);
+        if (newDbBlock) {
+          setBlocks([...blocks, mapDBToBlock(newDbBlock)]);
+        }
       }
+      
       setModalMode('list');
       setNewSurgeon('');
       setNewStart('');
       setNewEnd('');
+      setEditingBlockId(null);
     } catch (err) {
-      console.error("Failed to add block:", err);
-      alert("Failed to add block. Please check your permissions.");
+      console.error("Failed to save block:", err);
+      alert("Failed to save block. Please check your permissions.");
     }
   };
 
@@ -312,7 +342,9 @@ const ORBlockSchedule = () => {
                         <div className="modal-block-actions">
                           {!b.isTemplate && (
                             <>
-                              <button className="icon-btn"><Edit2 size={16} /></button>
+                              <button className="icon-btn" onClick={(e) => { e.stopPropagation(); handleEditOpen(b); }} title="Edit Block">
+                                <Edit2 size={16} />
+                              </button>
                               <button className="icon-btn" onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }} title="Delete Block">
                                 <Trash2 size={16} />
                               </button>
@@ -356,8 +388,10 @@ const ORBlockSchedule = () => {
                 </div>
 
                 <div className="modal-footer-actions">
-                  <button className="btn-back" onClick={() => setModalMode('list')}>Back</button>
-                  <button className="btn-primary" onClick={handleAddSubmit}>Add Block</button>
+                  <button className="btn-back" onClick={() => { setModalMode('list'); setEditingBlockId(null); setNewSurgeon(''); setNewStart(''); setNewEnd(''); }}>Back</button>
+                  <button className="btn-primary" onClick={handleAddSubmit}>
+                    {editingBlockId ? 'Save Changes' : 'Add Block'}
+                  </button>
                 </div>
               </div>
             )}
