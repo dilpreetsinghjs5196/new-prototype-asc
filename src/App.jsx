@@ -2569,18 +2569,11 @@ export default function App() {
           </div> */}
 
           <div
-            className={`menu-item ${activeTab === 'ai' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('ai'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Sparkles size={16} /></div>
-            AI Insights
-          </div>
-          <div
             className={`menu-item ${activeTab === 'ai_ops_analyst' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('ai_ops_analyst'); setSelectedSurgeon(null); }}
           >
             <div className="menu-item-icon"><Sparkles size={16} /></div>
-            AI Ops Analyst
+            AI Insights
           </div>
           <div
             className={`menu-item ${activeTab === 'instruction' && !selectedSurgeon ? 'active' : ''}`}
@@ -2656,8 +2649,7 @@ export default function App() {
                   {activeTab === 'supply' && 'Supply Chain'}
                   {activeTab === 'cancellations' && 'Cancellations'}
                   {activeTab === 'reports' && 'Reports & Analytics'}
-                  {activeTab === 'ai' && 'AI Insights'}
-                  {activeTab === 'ai_ops_analyst' && 'AI Operations Analyst'}
+                  {activeTab === 'ai_ops_analyst' && 'AI Insights'}
                   {activeTab === 'data' && 'Data Explorer'}
                   {activeTab === 'settings' && 'System Configuration Settings'}
                   {activeTab === 'help' && 'Help & Support'}
@@ -2683,7 +2675,6 @@ export default function App() {
                   {activeTab === 'supply' && 'Supply variance tracking and preference card standardization tools'}
                   {activeTab === 'cancellations' && 'Cancellations tracking, revenue leak analysis, and predictive risk analysis'}
                   {activeTab === 'reports' && 'Standard financial and operational reports export'}
-                  {activeTab === 'ai' && 'Prescriptive actions powered by the ASC Recommendation Engine'}
                   {activeTab === 'ai_ops_analyst' && 'Modular operational optimization engine'}
                   {activeTab === 'data' && 'Ad-hoc data querying and reports builder'}
                   {activeTab === 'settings' && 'Manage operational baseline costs, roles, and integrations'}
@@ -4345,50 +4336,6 @@ export default function App() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     Export monthly clinical logs, surgeon score sheets, and billing ledgers.
                   </p>
-                </div>
-              )}
-
-              {/* ==========================================
-              TAB: AI INSIGHTS
-              ========================================== */}
-              {activeTab === 'ai' && (
-                <div className="dashboard-card">
-                  <div className="card-header">
-                    <h3 className="card-title"><Sparkles size={18} /> Prescriptive AI Actions Hub</h3>
-                    <button
-                      className="btn-header btn-primary"
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
-                      onClick={() => { setShowAscAnalyst(true); setAnalystResult(null); }}
-                    >
-                      <Sparkles size={14} /> ASC Analyst
-                    </button>
-                  </div>
-
-                  <div className="ai-recommendations-list">
-                    <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-blue)', backgroundColor: 'rgba(59,130,246,0.05)', borderRadius: '4px', marginBottom: '10px' }}>
-                      <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Schedule Optimization Suggestion</h4>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        OR 2 is scheduled at 81% utilization, but has two 45-minute gaps. Moving Cataract cases of Dr. Gardner to OR 3 frees up OR 2 block time from 1:30 PM onwards, enabling a 3.5 hour orthopedic slot.
-                      </p>
-                      <button className="btn-header btn-primary" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px' }} onClick={() => alert('Applied recommendation: Shifting cases.')}>Apply Auto-Shift</button>
-                    </div>
-
-                    <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-green)', backgroundColor: 'rgba(16,185,129,0.05)', borderRadius: '4px', marginBottom: '10px' }}>
-                      <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Preference Card Cost Reduction</h4>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        Dr. Malinoski Kelly spends an average of $250 more on anchors/sutures than Dr. Bonett Andrew for CPT 29827. Swapping to the standard anchor brand will save the facility $12,000 based on his annual caseload.
-                      </p>
-                      <button className="btn-header" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px', color: 'var(--color-green)', borderColor: 'var(--color-green)' }} onClick={() => alert('Sent standardization alert to Dr. Malinoski.')}>Initiate Standardization</button>
-                    </div>
-
-                    <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--color-orange)', backgroundColor: 'rgba(245,158,11,0.05)', borderRadius: '4px' }}>
-                      <h4 style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>Cancellation Hazard Notice</h4>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        Three patients scheduled for May 14 have outstanding pre-auth codes. There is an 80% risk of cancellation. Auto-reminders have been generated for billing staff to contact insurers.
-                      </p>
-                      <button className="btn-header" style={{ padding: '4px 10px', fontSize: '0.75rem', marginTop: '10px', color: 'var(--color-orange)', borderColor: 'var(--color-orange)' }} onClick={() => alert('Sent high priority alerts to Billing Desk.')}>Send Staff Reminders</button>
-                    </div>
-                  </div>
                 </div>
               )}
 
