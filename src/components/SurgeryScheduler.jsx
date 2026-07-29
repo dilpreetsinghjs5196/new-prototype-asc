@@ -757,6 +757,11 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         const specialty = surgeonObj?.specialty;
 
         return cptCodes.filter(cpt => {
+            // ALWAYS show selected CPTs so they can be viewed/removed at the top
+            if (formData.selectedCptCodes.includes(cpt.code)) {
+                return true;
+            }
+
             // Search query filter
             const matchesQuery = !cptSearchQuery || 
                 cpt.code.toLowerCase().includes(cptSearchQuery.toLowerCase()) || 
