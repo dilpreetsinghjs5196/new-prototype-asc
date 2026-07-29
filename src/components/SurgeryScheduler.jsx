@@ -245,9 +245,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         if (surgery.cpt_expenses && typeof surgery.cpt_expenses === 'object' && Object.keys(surgery.cpt_expenses).length > 0) {
             calcCptExpenses = JSON.parse(JSON.stringify(surgery.cpt_expenses));
             
-            Object.values(calcCptExpenses).forEach(exp => {
-                // Ignore special underscore keys when summing up costs
-                if (typeof exp === 'object' && exp !== null) {
+            selectedCpts.forEach(code => {
+                const exp = calcCptExpenses[code];
+                if (exp && typeof exp === 'object') {
                     calcSupplies += parseFloat(exp.suppliesCost || 0);
                     calcImplants += parseFloat(exp.implantsCost || 0);
                     calcMeds += parseFloat(exp.medicationsCost || 0);
@@ -560,17 +560,16 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         }
     };
 
-    // ----- CPT Toggles -----
-    const handleCptToggle = (code) => {
+    // ----- CPT Controls -----
+    const handleCptChange = (code, action) => {
         setFormData(prev => {
-            const index = prev.selectedCptCodes.indexOf(code);
             let newCodes = [...prev.selectedCptCodes];
-            const isRemoving = index > -1;
             
-            if (isRemoving) {
-                newCodes.splice(index, 1);
-            } else {
+            if (action === 'add') {
                 newCodes.push(code);
+            } else if (action === 'remove') {
+                const index = newCodes.lastIndexOf(code);
+                if (index > -1) newCodes.splice(index, 1);
             }
 
             // Recalculate duration & turnover averages based on CPT codes
@@ -586,11 +585,11 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
             const newCptExpenses = { ...prev.cptExpenses };
 
-            if (isRemoving) {
+            if (!newCodes.includes(code)) {
                 if (newCptExpenses[code]) {
                     delete newCptExpenses[code];
                 }
-            } else {
+            } else if (action === 'add' && !prev.selectedCptCodes.includes(code)) {
                 const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
                 const exp = {
                     suppliesCost: parseFloat(extraCostData?.supply_cost || 0),
@@ -612,13 +611,16 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             let totalOrRoom = 0;
 
             if (newCodes.length > 0) {
-                Object.values(newCptExpenses).forEach(exp => {
-                    totalSupplies += parseFloat(exp.suppliesCost || 0);
-                    totalImplants += parseFloat(exp.implantsCost || 0);
-                    totalMeds += parseFloat(exp.medicationsCost || 0);
-                    totalTray += parseFloat(exp.trayCost || 0);
-                    totalLabour += parseFloat(exp.labourCost || 0);
-                    totalOrRoom += parseFloat(exp.orRoomCost || 0);
+                newCodes.forEach(cCode => {
+                    const exp = newCptExpenses[cCode];
+                    if (exp) {
+                        totalSupplies += parseFloat(exp.suppliesCost || 0);
+                        totalImplants += parseFloat(exp.implantsCost || 0);
+                        totalMeds += parseFloat(exp.medicationsCost || 0);
+                        totalTray += parseFloat(exp.trayCost || 0);
+                        totalLabour += parseFloat(exp.labourCost || 0);
+                        totalOrRoom += parseFloat(exp.orRoomCost || 0);
+                    }
                 });
             } else {
                 // If no CPT codes are selected, revert to whatever they were before (or keep global intact)
@@ -1049,18 +1051,37 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px' }}>
                                     <div className="cpt-grid">
                                         {filteredCptCodes.map(c => {
-                                            const isSelected = formData.selectedCptCodes.includes(c.code);
+                                            const count = formData.selectedCptCodes.filter(code => code === c.code).length;
+                                            const isSelected = count > 0;
                                             return (
                                                 <div
                                                     key={c.code}
                                                     className={`cpt-card ${isSelected ? 'selected' : ''}`}
-                                                    onClick={() => handleCptToggle(c.code)}
+                                                    style={{ display: 'flex', flexDirection: 'column' }}
                                                 >
                                                     <div className="cpt-card-header">
-                                                        <span className="cpt-code-badge">{c.code}</span>
+                                                        <span className="cpt-code-badge">{c.code} {count > 1 ? `(x${count})` : ''}</span>
                                                         <span className="cpt-price">{formatCurrency(c.gross_charge)}</span>
                                                     </div>
-                                                    <span className="cpt-description">{c.description}</span>
+                                                    <span className="cpt-description" style={{ flex: 1 }}>{c.description}</span>
+                                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', gap: '8px' }}>
+                                                        {count > 0 && (
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={(e) => { e.stopPropagation(); handleCptChange(c.code, 'remove'); }}
+                                                                style={{ padding: '4px 8px', borderRadius: '4px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                                            >
+                                                                - Remove
+                                                            </button>
+                                                        )}
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={(e) => { e.stopPropagation(); handleCptChange(c.code, 'add'); }}
+                                                            style={{ padding: '4px 8px', borderRadius: '4px', background: 'var(--color-blue)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                                        >
+                                                            + Add
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -1160,9 +1181,11 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                     </div>
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        {formData.selectedCptCodes.map(code => (
+                                        {Array.from(new Set(formData.selectedCptCodes)).map(code => {
+                                            const count = formData.selectedCptCodes.filter(c => c === code).length;
+                                            return (
                                             <div key={code} style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--primary-color)' }}>CPT {code} Expenses</div>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--primary-color)' }}>CPT {code} Expenses {count > 1 ? `(x${count})` : ''}</div>
                                                 <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                                                     <div className="form-group">
                                                         <label style={{ fontSize: '0.7rem' }}>Supply Cost</label>
@@ -1250,7 +1273,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                         
                                         {/* Show grand totals summary if multiple CPTs */}
                                         {formData.selectedCptCodes.length > 1 && (

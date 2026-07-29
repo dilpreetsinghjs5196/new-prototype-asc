@@ -6,12 +6,19 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
     const [utilizationTarget, setUtilizationTarget] = useState(80);
     const [numberOfORs, setNumberOfORs] = useState(1);
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const [selectedSurgeon, setSelectedSurgeon] = useState('All');
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [recommendation, setRecommendation] = useState(null);
     const [errorMsg, setErrorMsg] = useState(null);
 
     // Get unique categories from CPT codes
     const categories = ['All', ...new Set(cptCodes.map(c => c.category).filter(Boolean))];
+
+    // Get unique surgeons from historical surgeries
+    const surgeonsList = ['All', ...new Set(surgeries.map(s => {
+        if (s.surgeons) return `${s.surgeons.firstname} ${s.surgeons.lastname}`.trim();
+        return s.doctorName || s.surgeon_name || s.doctor_name;
+    }).filter(Boolean))].sort();
 
     // Reset state when modal opens
     useEffect(() => {
@@ -21,6 +28,7 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
             setUtilizationTarget(80);
             setNumberOfORs(1);
             setSelectedCategory('All');
+            setSelectedSurgeon('All');
         }
     }, [isOpen]);
 
@@ -90,10 +98,44 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                     ? surgeries.reduce((sum, s) => sum + ((parseFloat(s.supplies_cost) || 0) + (parseFloat(s.implants_cost) || 0) + (parseFloat(s.medications_cost) || 0)), 0) / surgeries.length
                     : 500; // Default $500 if no data
 
-                // Filter CPT codes by selected category
-                const filteredCptCodes = selectedCategory === 'All'
-                    ? cptCodes
-                    : cptCodes.filter(cpt => cpt.category === selectedCategory);
+                // Filter CPT codes by selected category and surgeon
+                const filteredCptCodes = cptCodes.filter(cpt => {
+                    const matchCategory = selectedCategory === 'All' || cpt.category === selectedCategory;
+                    let matchSurgeon = true;
+                    
+                    if (selectedSurgeon !== 'All') {
+                        // Find surgeries performed by this surgeon
+                        const surgeonSurgeries = surgeries.filter(s => {
+                            const sName = s.surgeons ? `${s.surgeons.firstname} ${s.surgeons.lastname}`.trim() : (s.doctorName || s.surgeon_name || s.doctor_name);
+                            return sName === selectedSurgeon;
+                        });
+                        
+                        // Collect all CPT codes performed by this surgeon historically
+                        const surgeonCpts = new Set();
+                        surgeonSurgeries.forEach(s => {
+                            let rawCodes = s.cpt_codes || s.cptCodes || [];
+                            let codes = [];
+                            if (typeof rawCodes === 'string') {
+                                if (rawCodes.trim().startsWith('[')) {
+                                    try { codes = JSON.parse(rawCodes); } catch (e) { codes = rawCodes.split(',').map(c => c.trim()); }
+                                } else {
+                                    codes = rawCodes.split(',').map(c => c.trim());
+                                }
+                            } else if (Array.isArray(rawCodes)) {
+                                codes = rawCodes;
+                            } else if (rawCodes != null) {
+                                codes = [String(rawCodes)];
+                            }
+                            codes.forEach(c => surgeonCpts.add(c));
+                        });
+                        
+                        matchSurgeon = surgeonCpts.has(cpt.code);
+                    }
+                    
+                    return matchCategory && matchSurgeon;
+                });
+                console.log("AI Analyst selected category:", selectedCategory, "selected surgeon:", selectedSurgeon);
+                console.log("Filtered CPT codes count:", filteredCptCodes.length, "Total CPTs:", cptCodes.length);
 
                 // Prepare items for knapsack-like problem
                 // We want to maximize PROFIT (Revenue - OR Cost - Labor Cost - Supplies Cost) within Time Constraint
@@ -101,17 +143,17 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                     // Priority: 1) CPT average_duration, 2) Historical average, 3) Default 60 min
                     const duration = cpt.average_duration || avgDurations[cpt.code] || 60;
                     const estimatedORCost = calculateORCost(duration);
-
+                    
                     // Estimate labor cost (30% of OR cost as approximation)
                     const estimatedLaborCost = estimatedORCost * 0.3;
-
-                    // Use average supplies cost
-                    const estimatedSuppliesCost = avgSuppliesCost;
+                    
+                    // Use average supplies cost, but cap it at 40% of reimbursement so low-paying procedures aren't instantly rendered massively unprofitable by high-cost outliers like total joints
+                    const reimbursement = parseFloat(cpt.gross_charge || cpt.reimbursement || 0);
+                    const estimatedSuppliesCost = Math.min(avgSuppliesCost, reimbursement * 0.4) || 200;
 
                     const totalCost = estimatedORCost + estimatedLaborCost + estimatedSuppliesCost;
-                    const reimbursement = parseFloat(cpt.reimbursement || cpt.gross_charge || 0);
                     const estimatedProfit = reimbursement - totalCost;
-
+                    
                     return {
                         ...cpt,
                         duration,
@@ -121,13 +163,13 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                         totalCost,
                         estimatedProfit,
                         reimbursement,
-                        // Efficiency = Profit per Minute
                         efficiency: estimatedProfit / duration
                     };
                 });
-
+                
                 // Sort by efficiency (Profit per Minute) descending
                 items.sort((a, b) => b.efficiency - a.efficiency);
+                console.log("Profitable items:", items.filter(i => i.estimatedProfit > 0).length);
 
                 let currentMinutes = 0;
                 let currentRevenue = 0;
@@ -136,15 +178,19 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                 let currentLaborCost = 0;
                 let currentSuppliesCost = 0;
                 const selectedSurgeries = [];
+                const cptCounts = {};
+                const maxCptCount = 3 * numberOfORs; // Prevent endless duplication, force variety
 
                 // Greedy approach: Add most efficient surgeries that fit
                 let attempts = 0;
                 while (currentMinutes < targetMinutes && attempts < 100) {
                     let added = false;
                     for (const item of items) {
-                        // Only add if it fits AND is profitable
-                        if (currentMinutes + item.duration <= targetMinutes + 30 && item.estimatedProfit > 0) {
-                            selectedSurgeries.push(item);
+                        const currentCount = cptCounts[item.code] || 0;
+                        // Only add if it fits AND hasn't exceeded limits (even if profit is negative, we still need to schedule the best available)
+                        if (currentMinutes + item.duration <= targetMinutes + 30 && currentCount < maxCptCount) {
+                            selectedSurgeries.push({ ...item });
+                            cptCounts[item.code] = currentCount + 1;
                             currentMinutes += item.duration;
                             currentRevenue += item.reimbursement;
                             currentProfit += item.estimatedProfit;
@@ -158,6 +204,29 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                     if (!added) break; // Nothing fits anymore
                     attempts++;
                 }
+
+                // Group identical surgeries and sort by gross charge (reimbursement) descending
+                const groupedSurgeriesMap = {};
+                selectedSurgeries.forEach(item => {
+                    if (!groupedSurgeriesMap[item.code]) {
+                        groupedSurgeriesMap[item.code] = { 
+                            ...item, 
+                            quantity: 0, 
+                            totalGroupCost: 0, 
+                            totalGroupProfit: 0, 
+                            totalGroupDuration: 0, 
+                            totalGroupRevenue: 0 
+                        };
+                    }
+                    groupedSurgeriesMap[item.code].quantity += 1;
+                    groupedSurgeriesMap[item.code].totalGroupCost += item.totalCost;
+                    groupedSurgeriesMap[item.code].totalGroupProfit += item.estimatedProfit;
+                    groupedSurgeriesMap[item.code].totalGroupDuration += item.duration;
+                    groupedSurgeriesMap[item.code].totalGroupRevenue += item.reimbursement;
+                });
+                
+                const groupedSurgeries = Object.values(groupedSurgeriesMap);
+                groupedSurgeries.sort((a, b) => b.reimbursement - a.reimbursement);
 
                 // Apply MPPR if enabled in settings
                 // When enabled, assume average 15% reduction due to multiple procedures being combined
@@ -173,7 +242,7 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                 const realisticProfit = realisticRevenue - (currentORCost + currentLaborCost + currentSuppliesCost);
 
                 setRecommendation({
-                    surgeries: selectedSurgeries,
+                    surgeries: groupedSurgeries,
                     totalMinutes: currentMinutes,
                     totalRevenue: realisticRevenue,  // Use realistic revenue
                     optimisticRevenue: currentRevenue,  // Keep original for reference
@@ -236,6 +305,25 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                                     <option value="2">2 ORs</option>
                                     <option value="3">3 ORs</option>
                                     <option value="4">4 ORs</option>
+                                </select>
+                            </div>
+                            <div className="control-group">
+                                <label>Surgeon</label>
+                                <select
+                                    value={selectedSurgeon}
+                                    onChange={(e) => setSelectedSurgeon(e.target.value)}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #cbd5e1',
+                                        fontSize: '0.95rem',
+                                        cursor: 'pointer',
+                                        minWidth: '180px'
+                                    }}
+                                >
+                                    {surgeonsList.map(s => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="control-group">
@@ -350,24 +438,23 @@ const AIAnalystModal = ({ isOpen, onClose, surgeries = [], cptCodes = [], settin
                                     <div key={idx} className="recommendation-item">
                                         <div className="rec-info">
                                             <span className="rec-code">{item.code}</span>
-                                            <span className="rec-desc">{item.description}</span>
+                                            <span className="rec-desc">
+                                                {item.description}
+                                                {item.quantity > 1 && (
+                                                    <strong style={{ color: 'var(--color-blue)', marginLeft: '8px', fontSize: '0.9rem', backgroundColor: 'rgba(29, 78, 216, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                        x{item.quantity}
+                                                    </strong>
+                                                )}
+                                            </span>
                                         </div>
                                         <div className="rec-metrics">
                                             <div className="rec-metric">
-                                                <span>Est. Time</span>
-                                                <span>{item.duration} min</span>
+                                                <span>Total Est. Time</span>
+                                                <span>{item.totalGroupDuration} min</span>
                                             </div>
                                             <div className="rec-metric">
-                                                <span>Revenue</span>
-                                                <span style={{ color: '#059669' }}>{formatCurrency(item.reimbursement)}</span>
-                                            </div>
-                                            <div className="rec-metric">
-                                                <span>Costs</span>
-                                                <span style={{ color: '#ef4444' }}>{formatCurrency(item.totalCost)}</span>
-                                            </div>
-                                            <div className="rec-metric">
-                                                <span>Profit</span>
-                                                <span style={{ color: '#10b981', fontWeight: '600' }}>{formatCurrency(item.estimatedProfit)}</span>
+                                                <span>Total Gross Charge</span>
+                                                <span style={{ color: '#059669', fontWeight: '600' }}>{formatCurrency(item.totalGroupRevenue)}</span>
                                             </div>
                                         </div>
                                     </div>
