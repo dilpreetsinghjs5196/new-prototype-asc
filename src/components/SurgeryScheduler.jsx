@@ -799,8 +799,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
     return (
         <div className="management-container fade-in">
-            <div className="management-header">
-                <h2 className="management-title">Surgery Log & OR Schedule</h2>
+            <div className="management-header" style={{ justifyContent: 'flex-end', borderBottom: 'none' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         className="btn-add"
@@ -1521,7 +1520,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                     <div className="content-card">
                         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                                <h3>Surgery Log Book</h3>
+                                <h3>Monthly Case Logs</h3>
                                 <p className="card-subtitle">Review MTD case list sorted by calendar month with itemized financials.</p>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
