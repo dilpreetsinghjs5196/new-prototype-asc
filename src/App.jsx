@@ -2050,9 +2050,8 @@ export default function App() {
       setPatients(prev => prev.filter(p => p.id !== patient.id));
       alert('Patient deleted successfully.');
     } catch (err) {
-      console.error("Database patient delete failed, deleting locally:", err);
-      setPatients(prev => prev.filter(p => p.id !== patient.id));
-      alert('Patient deleted locally (Database sync failed).');
+      console.error("Database patient delete failed:", err);
+      alert('Failed to delete patient. This usually happens if the patient has associated surgical records. Please delete their scheduled surgeries first before deleting the patient profile.');
     }
   };
 
