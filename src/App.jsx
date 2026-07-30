@@ -2965,7 +2965,7 @@ export default function App() {
                   </div>
 
                   {/* Bottom Table: Profitability Summary */}
-                  <div className="dashboard-card">
+                  {/* <div className="dashboard-card">
                     <div className="card-header">
                       <h3 className="card-title">Financial Performance Summary (MTD)</h3>
                       <span className="card-subtitle-note">Last updated: May 29, 2026 8:30 AM</span>
@@ -3020,7 +3020,7 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
-                  </div>
+                  </div> */}
                 </>
               )}
 
@@ -4432,7 +4432,7 @@ export default function App() {
               TAB: AI OPS ANALYST
               ========================================== */}
               {activeTab === 'ai_ops_analyst' && (
-                <AIOperationsAnalyst 
+                <AIOperationsAnalyst
                   surgeries={filteredSurgeries}
                   cptCodes={cptCodesList}
                 />
