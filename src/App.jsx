@@ -1357,6 +1357,8 @@ export default function App() {
   // Surgeon Management State
   const [surgeonsList, setSurgeonsList] = useState([]);
   const [surgeonSearchQuery, setSurgeonSearchQuery] = useState('');
+  const [surgeonSortField, setSurgeonSortField] = useState('');
+  const [surgeonSortDirection, setSurgeonSortDirection] = useState('asc');
   const [surgeonPage, setSurgeonPage] = useState(1);
   const [surgeonLimit, setSurgeonLimit] = useState(10);
   const [surgeonModalOpen, setSurgeonModalOpen] = useState(false);
@@ -2370,12 +2372,41 @@ export default function App() {
       (s.email && s.email.toLowerCase().includes(q)) ||
       (s.phone && s.phone.toLowerCase().includes(q))
     );
+  }).sort((a, b) => {
+    if (!surgeonSortField) return 0;
+    
+    let valA = '';
+    let valB = '';
+
+    if (surgeonSortField === 'license') {
+      valA = a.license_number || '';
+      valB = b.license_number || '';
+    } else if (surgeonSortField === 'name') {
+      valA = `${a.lastname || ''} ${a.firstname || ''}`;
+      valB = `${b.lastname || ''} ${b.firstname || ''}`;
+    }
+
+    valA = String(valA).toLowerCase();
+    valB = String(valB).toLowerCase();
+    
+    if (valA < valB) return surgeonSortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return surgeonSortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const surgeonTotalPages = Math.ceil(filteredSurgeons.length / surgeonLimit) || 1;
   const surgeonStartIndex = (surgeonPage - 1) * surgeonLimit;
   const surgeonEndIndex = surgeonStartIndex + surgeonLimit;
   const paginatedSurgeons = filteredSurgeons.slice(surgeonStartIndex, surgeonEndIndex);
+
+  const handleSurgeonSort = (field) => {
+    if (surgeonSortField === field) {
+      setSurgeonSortDirection(surgeonSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSurgeonSortField(field);
+      setSurgeonSortDirection('asc');
+    }
+  };
 
   const renderSurgeonPageNumbers = () => {
     const pages = [];
@@ -3809,8 +3840,12 @@ export default function App() {
                     <table className="custom-table">
                       <thead>
                         <tr>
-                          <th>NPI / License</th>
-                          <th>Surgeon Name</th>
+                          <th onClick={() => handleSurgeonSort('license')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            NPI / License {surgeonSortField === 'license' ? (surgeonSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
+                          <th onClick={() => handleSurgeonSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Surgeon Name {surgeonSortField === 'name' ? (surgeonSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
                           <th>Specialty</th>
                           <th>Email</th>
                           <th>Phone</th>
