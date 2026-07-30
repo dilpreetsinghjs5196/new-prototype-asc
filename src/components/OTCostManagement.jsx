@@ -60,9 +60,40 @@ export default function OTCostManagement() {
     }
   };
 
+  const [sortField, setSortField] = useState('cpt_codes');
+  const [sortDirection, setSortDirection] = useState('asc');
+
   const filteredDbData = dbData.filter(row => 
     row.cpt_codes?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ).sort((a, b) => {
+    if (!sortField) return 0;
+    
+    let valA = a[sortField];
+    let valB = b[sortField];
+
+    // Handle numeric sorting for cost fields
+    if (sortField !== 'cpt_codes') {
+      valA = Number(valA) || 0;
+      valB = Number(valB) || 0;
+    } else {
+      valA = String(valA || '').toLowerCase();
+      valB = String(valB || '').toLowerCase();
+    }
+    
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
 
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
@@ -381,13 +412,27 @@ export default function OTCostManagement() {
                   <table className="custom-table">
                     <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-card)', zIndex: 1 }}>
                       <tr>
-                        <th>CPT Code</th>
-                        <th>Supply Cost</th>
-                        <th>Implant Cost</th>
-                        <th>Labor Cost</th>
-                        <th>Room Cost</th>
-                        <th>Medication Cost</th>
-                        <th>Tray Cost</th>
+                        <th onClick={() => handleSort('cpt_codes')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          CPT Code {sortField === 'cpt_codes' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th onClick={() => handleSort('supply_cost')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Supply Cost {sortField === 'supply_cost' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th onClick={() => handleSort('implant_cost')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Implant Cost {sortField === 'implant_cost' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th onClick={() => handleSort('labour_cost')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Labor Cost {sortField === 'labour_cost' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th onClick={() => handleSort('or_room_cost')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Room Cost {sortField === 'or_room_cost' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th onClick={() => handleSort('medication_cost')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Medication Cost {sortField === 'medication_cost' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th onClick={() => handleSort('tray_cost')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Tray Cost {sortField === 'tray_cost' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                        </th>
                         <th style={{ textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
