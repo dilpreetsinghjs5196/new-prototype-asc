@@ -1344,6 +1344,8 @@ export default function App() {
   const [facilityComparative, setFacilityComparative] = useState(MOCK_FACILITY_COMPARATIVE);
   const [patients, setPatients] = useState(MOCK_PATIENTS);
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [patientSortField, setPatientSortField] = useState('');
+  const [patientSortDirection, setPatientSortDirection] = useState('asc');
   const [patientPage, setPatientPage] = useState(1);
   const [patientLimit, setPatientLimit] = useState(10);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
@@ -2280,12 +2282,38 @@ export default function App() {
       (p.mrn && p.mrn.toLowerCase().includes(q)) ||
       (p.insurance_provider && p.insurance_provider.toLowerCase().includes(q))
     );
+  }).sort((a, b) => {
+    if (!patientSortField) return 0;
+    
+    let valA = a[patientSortField] || '';
+    let valB = b[patientSortField] || '';
+    
+    if (patientSortField === 'mrn') {
+      valA = parseInt(String(valA).replace(/\D/g, '')) || 0;
+      valB = parseInt(String(valB).replace(/\D/g, '')) || 0;
+    } else {
+      valA = String(valA).toLowerCase();
+      valB = String(valB).toLowerCase();
+    }
+    
+    if (valA < valB) return patientSortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return patientSortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const totalPages = Math.ceil(filteredPatients.length / patientLimit) || 1;
   const startIndex = (patientPage - 1) * patientLimit;
   const endIndex = startIndex + patientLimit;
   const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const handlePatientSort = (field) => {
+    if (patientSortField === field) {
+      setPatientSortDirection(patientSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setPatientSortField(field);
+      setPatientSortDirection('asc');
+    }
+  };
 
   const renderPageNumbers = () => {
     const pages = [];
@@ -3584,8 +3612,12 @@ export default function App() {
                     <table className="custom-table">
                       <thead>
                         <tr>
-                          <th>MRN</th>
-                          <th>Patient Name</th>
+                          <th onClick={() => handlePatientSort('mrn')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            MRN {patientSortField === 'mrn' ? (patientSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
+                          <th onClick={() => handlePatientSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Patient Name {patientSortField === 'name' ? (patientSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
                           <th>DOB</th>
                           <th>Gender</th>
                           <th>Insurance Provider</th>
