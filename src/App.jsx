@@ -2688,84 +2688,88 @@ export default function App() {
           </div>
 
           <div className="header-actions">
-            {/* Toggle Advanced Costs Checkbox */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginRight: '15px',
-              fontSize: '0.85rem',
-              color: '#475569',
-              fontWeight: '500'
-            }}>
-              <input
-                type="checkbox"
-                id="includeAdvancedCosts"
-                checked={includeAdvancedCosts}
-                onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
-                style={{ marginRight: '6px', cursor: 'pointer' }}
-              />
-              <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer' }}>Include Costs</label>
-            </div>
+            {!['settings', 'business_analysis', 'instruction', 'ai_ops_analyst', 'or_block_schedule', 'cancellations', 'ot_cost_manage', 'cpt_manage', 'surgeons_manage', 'patients', 'scheduler'].includes(activeTab) && (
+              <>
+                {/* Toggle Advanced Costs Checkbox */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginRight: '15px',
+                  fontSize: '0.85rem',
+                  color: '#475569',
+                  fontWeight: '500'
+                }}>
+                  <input
+                    type="checkbox"
+                    id="includeAdvancedCosts"
+                    checked={includeAdvancedCosts}
+                    onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
+                    style={{ marginRight: '6px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer' }}>Include Costs</label>
+                </div>
 
-            {/* Toggle Group */}
-            <div style={{
-              display: 'flex',
-              backgroundColor: '#f1f5f9',
-              borderRadius: '8px',
-              padding: '4px',
-              alignItems: 'center',
-              marginRight: '10px'
-            }}>
-              {['Day', 'Week', 'Month', 'Year', 'All'].map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => setTimeFilter(filter)}
-                  style={{
-                    border: 'none',
-                    background: timeFilter === filter ? '#fff' : 'transparent',
-                    color: timeFilter === filter ? '#3b82f6' : '#64748b',
-                    padding: '6px 16px',
-                    borderRadius: '6px',
+                {/* Toggle Group */}
+                <div style={{
+                  display: 'flex',
+                  backgroundColor: '#f1f5f9',
+                  borderRadius: '8px',
+                  padding: '4px',
+                  alignItems: 'center',
+                  marginRight: '10px'
+                }}>
+                  {['Day', 'Week', 'Month', 'Year', 'All'].map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => setTimeFilter(filter)}
+                      style={{
+                        border: 'none',
+                        background: timeFilter === filter ? '#fff' : 'transparent',
+                        color: timeFilter === filter ? '#3b82f6' : '#64748b',
+                        padding: '6px 16px',
+                        borderRadius: '6px',
+                        fontSize: '0.9rem',
+                        fontWeight: timeFilter === filter ? '600' : '500',
+                        cursor: 'pointer',
+                        boxShadow: timeFilter === filter ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.2s',
+                        outline: 'none'
+                      }}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Date Selector */}
+                {timeFilter !== 'All' && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: '#f1f5f9',
+                    borderRadius: '8px',
+                    padding: '6px 14px',
+                    gap: '10px',
+                    color: '#334155',
                     fontSize: '0.9rem',
-                    fontWeight: timeFilter === filter ? '600' : '500',
-                    cursor: 'pointer',
-                    boxShadow: timeFilter === filter ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s',
-                    outline: 'none'
-                  }}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-
-            {/* Date Selector */}
-            {timeFilter !== 'All' && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#f1f5f9',
-                borderRadius: '8px',
-                padding: '6px 14px',
-                gap: '10px',
-                color: '#334155',
-                fontSize: '0.9rem',
-                fontWeight: '500',
-                border: '1px solid #e2e8f0',
-                cursor: 'pointer'
-              }}>
-                <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
-                <DatePicker
-                  selected={filterDate}
-                  onChange={(date) => setFilterDate(date)}
-                  filterDate={timeFilter === 'Week' ? (date) => date.getDay() === 1 : undefined}
-                  showMonthYearPicker={timeFilter === 'Month'}
-                  showYearPicker={timeFilter === 'Year'}
-                  dateFormat={timeFilter === 'Month' ? 'MM/yyyy' : timeFilter === 'Year' ? 'yyyy' : 'MM/dd/yyyy'}
-                  customInput={<CustomDateInput />}
-                  popperPlacement="bottom-end"
-                />
-              </div>
+                    fontWeight: '500',
+                    border: '1px solid #e2e8f0',
+                    cursor: 'pointer'
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
+                    <DatePicker
+                      selected={filterDate}
+                      onChange={(date) => setFilterDate(date)}
+                      filterDate={timeFilter === 'Week' ? (date) => date.getDay() === 1 : undefined}
+                      showMonthYearPicker={timeFilter === 'Month'}
+                      showYearPicker={timeFilter === 'Year'}
+                      dateFormat={timeFilter === 'Month' ? 'MM/yyyy' : timeFilter === 'Year' ? 'yyyy' : 'MM/dd/yyyy'}
+                      customInput={<CustomDateInput />}
+                      popperPlacement="bottom-end"
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </header>
