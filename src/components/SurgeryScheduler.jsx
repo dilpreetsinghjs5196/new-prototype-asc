@@ -925,7 +925,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         value={formData.durationMinutes}
                                         onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })}
                                     >
-                                        {Array.from({ length: 24 }, (_, i) => (i + 1) * 15).map(mins => {
+                                        {Array.from({ length: 40 }, (_, i) => (i + 1) * 15).map(mins => {
                                             const hours = mins / 60;
                                             return (
                                                 <option key={mins} value={mins}>
