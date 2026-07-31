@@ -696,14 +696,14 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         let displayProfit = revenue - cost;
 
         const writeOff = parseFloat(surgery.write_off || 0);
-        let fullTotal = includeLaborSupplies ? (revenue - writeOff + cost) : revenue;
+        let fullTotal = includeLaborSupplies ? (revenue - writeOff + cost) : (revenue - writeOff);
 
         if (surgery.is_probono) {
             displayProfit = 0; // Charity loss
             fullTotal = 0;
         } else if (!includeLaborSupplies) {
             // Include only billing margin (omit internal room overhead, labor, and supplies)
-            displayProfit = revenue;
+            displayProfit = revenue - writeOff;
         }
 
         return {

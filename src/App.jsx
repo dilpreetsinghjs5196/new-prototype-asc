@@ -1344,6 +1344,8 @@ export default function App() {
   const [facilityComparative, setFacilityComparative] = useState(MOCK_FACILITY_COMPARATIVE);
   const [patients, setPatients] = useState(MOCK_PATIENTS);
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [patientSortField, setPatientSortField] = useState('');
+  const [patientSortDirection, setPatientSortDirection] = useState('asc');
   const [patientPage, setPatientPage] = useState(1);
   const [patientLimit, setPatientLimit] = useState(10);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
@@ -1355,6 +1357,8 @@ export default function App() {
   // Surgeon Management State
   const [surgeonsList, setSurgeonsList] = useState([]);
   const [surgeonSearchQuery, setSurgeonSearchQuery] = useState('');
+  const [surgeonSortField, setSurgeonSortField] = useState('');
+  const [surgeonSortDirection, setSurgeonSortDirection] = useState('asc');
   const [surgeonPage, setSurgeonPage] = useState(1);
   const [surgeonLimit, setSurgeonLimit] = useState(10);
   const [surgeonModalOpen, setSurgeonModalOpen] = useState(false);
@@ -2280,12 +2284,38 @@ export default function App() {
       (p.mrn && p.mrn.toLowerCase().includes(q)) ||
       (p.insurance_provider && p.insurance_provider.toLowerCase().includes(q))
     );
+  }).sort((a, b) => {
+    if (!patientSortField) return 0;
+    
+    let valA = a[patientSortField] || '';
+    let valB = b[patientSortField] || '';
+    
+    if (patientSortField === 'mrn') {
+      valA = parseInt(String(valA).replace(/\D/g, '')) || 0;
+      valB = parseInt(String(valB).replace(/\D/g, '')) || 0;
+    } else {
+      valA = String(valA).toLowerCase();
+      valB = String(valB).toLowerCase();
+    }
+    
+    if (valA < valB) return patientSortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return patientSortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const totalPages = Math.ceil(filteredPatients.length / patientLimit) || 1;
   const startIndex = (patientPage - 1) * patientLimit;
   const endIndex = startIndex + patientLimit;
   const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const handlePatientSort = (field) => {
+    if (patientSortField === field) {
+      setPatientSortDirection(patientSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setPatientSortField(field);
+      setPatientSortDirection('asc');
+    }
+  };
 
   const renderPageNumbers = () => {
     const pages = [];
@@ -2342,12 +2372,41 @@ export default function App() {
       (s.email && s.email.toLowerCase().includes(q)) ||
       (s.phone && s.phone.toLowerCase().includes(q))
     );
+  }).sort((a, b) => {
+    if (!surgeonSortField) return 0;
+    
+    let valA = '';
+    let valB = '';
+
+    if (surgeonSortField === 'license') {
+      valA = a.license_number || '';
+      valB = b.license_number || '';
+    } else if (surgeonSortField === 'name') {
+      valA = `${a.lastname || ''} ${a.firstname || ''}`;
+      valB = `${b.lastname || ''} ${b.firstname || ''}`;
+    }
+
+    valA = String(valA).toLowerCase();
+    valB = String(valB).toLowerCase();
+    
+    if (valA < valB) return surgeonSortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return surgeonSortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const surgeonTotalPages = Math.ceil(filteredSurgeons.length / surgeonLimit) || 1;
   const surgeonStartIndex = (surgeonPage - 1) * surgeonLimit;
   const surgeonEndIndex = surgeonStartIndex + surgeonLimit;
   const paginatedSurgeons = filteredSurgeons.slice(surgeonStartIndex, surgeonEndIndex);
+
+  const handleSurgeonSort = (field) => {
+    if (surgeonSortField === field) {
+      setSurgeonSortDirection(surgeonSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSurgeonSortField(field);
+      setSurgeonSortDirection('asc');
+    }
+  };
 
   const renderSurgeonPageNumbers = () => {
     const pages = [];
@@ -2688,84 +2747,88 @@ export default function App() {
           </div>
 
           <div className="header-actions">
-            {/* Toggle Advanced Costs Checkbox */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginRight: '15px',
-              fontSize: '0.85rem',
-              color: '#475569',
-              fontWeight: '500'
-            }}>
-              <input
-                type="checkbox"
-                id="includeAdvancedCosts"
-                checked={includeAdvancedCosts}
-                onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
-                style={{ marginRight: '6px', cursor: 'pointer' }}
-              />
-              <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer' }}>Include Costs</label>
-            </div>
+            {!['settings', 'business_analysis', 'instruction', 'ai_ops_analyst', 'or_block_schedule', 'cancellations', 'ot_cost_manage', 'cpt_manage', 'surgeons_manage', 'patients', 'scheduler'].includes(activeTab) && (
+              <>
+                {/* Toggle Advanced Costs Checkbox */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginRight: '15px',
+                  fontSize: '0.85rem',
+                  color: '#475569',
+                  fontWeight: '500'
+                }}>
+                  <input
+                    type="checkbox"
+                    id="includeAdvancedCosts"
+                    checked={includeAdvancedCosts}
+                    onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
+                    style={{ marginRight: '6px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer' }}>Include Costs</label>
+                </div>
 
-            {/* Toggle Group */}
-            <div style={{
-              display: 'flex',
-              backgroundColor: '#f1f5f9',
-              borderRadius: '8px',
-              padding: '4px',
-              alignItems: 'center',
-              marginRight: '10px'
-            }}>
-              {['Day', 'Week', 'Month', 'Year', 'All'].map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => setTimeFilter(filter)}
-                  style={{
-                    border: 'none',
-                    background: timeFilter === filter ? '#fff' : 'transparent',
-                    color: timeFilter === filter ? '#3b82f6' : '#64748b',
-                    padding: '6px 16px',
-                    borderRadius: '6px',
+                {/* Toggle Group */}
+                <div style={{
+                  display: 'flex',
+                  backgroundColor: '#f1f5f9',
+                  borderRadius: '8px',
+                  padding: '4px',
+                  alignItems: 'center',
+                  marginRight: '10px'
+                }}>
+                  {['Day', 'Week', 'Month', 'Year', 'All'].map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => setTimeFilter(filter)}
+                      style={{
+                        border: 'none',
+                        background: timeFilter === filter ? '#fff' : 'transparent',
+                        color: timeFilter === filter ? '#3b82f6' : '#64748b',
+                        padding: '6px 16px',
+                        borderRadius: '6px',
+                        fontSize: '0.9rem',
+                        fontWeight: timeFilter === filter ? '600' : '500',
+                        cursor: 'pointer',
+                        boxShadow: timeFilter === filter ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.2s',
+                        outline: 'none'
+                      }}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Date Selector */}
+                {timeFilter !== 'All' && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: '#f1f5f9',
+                    borderRadius: '8px',
+                    padding: '6px 14px',
+                    gap: '10px',
+                    color: '#334155',
                     fontSize: '0.9rem',
-                    fontWeight: timeFilter === filter ? '600' : '500',
-                    cursor: 'pointer',
-                    boxShadow: timeFilter === filter ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s',
-                    outline: 'none'
-                  }}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-
-            {/* Date Selector */}
-            {timeFilter !== 'All' && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#f1f5f9',
-                borderRadius: '8px',
-                padding: '6px 14px',
-                gap: '10px',
-                color: '#334155',
-                fontSize: '0.9rem',
-                fontWeight: '500',
-                border: '1px solid #e2e8f0',
-                cursor: 'pointer'
-              }}>
-                <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
-                <DatePicker
-                  selected={filterDate}
-                  onChange={(date) => setFilterDate(date)}
-                  filterDate={timeFilter === 'Week' ? (date) => date.getDay() === 1 : undefined}
-                  showMonthYearPicker={timeFilter === 'Month'}
-                  showYearPicker={timeFilter === 'Year'}
-                  dateFormat={timeFilter === 'Month' ? 'MM/yyyy' : timeFilter === 'Year' ? 'yyyy' : 'MM/dd/yyyy'}
-                  customInput={<CustomDateInput />}
-                  popperPlacement="bottom-end"
-                />
-              </div>
+                    fontWeight: '500',
+                    border: '1px solid #e2e8f0',
+                    cursor: 'pointer'
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
+                    <DatePicker
+                      selected={filterDate}
+                      onChange={(date) => setFilterDate(date)}
+                      filterDate={timeFilter === 'Week' ? (date) => date.getDay() === 1 : undefined}
+                      showMonthYearPicker={timeFilter === 'Month'}
+                      showYearPicker={timeFilter === 'Year'}
+                      dateFormat={timeFilter === 'Month' ? 'MM/yyyy' : timeFilter === 'Year' ? 'yyyy' : 'MM/dd/yyyy'}
+                      customInput={<CustomDateInput />}
+                      popperPlacement="bottom-end"
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </header>
@@ -3580,8 +3643,12 @@ export default function App() {
                     <table className="custom-table">
                       <thead>
                         <tr>
-                          <th>MRN</th>
-                          <th>Patient Name</th>
+                          <th onClick={() => handlePatientSort('mrn')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            MRN {patientSortField === 'mrn' ? (patientSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
+                          <th onClick={() => handlePatientSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Patient Name {patientSortField === 'name' ? (patientSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
                           <th>DOB</th>
                           <th>Gender</th>
                           <th>Insurance Provider</th>
@@ -3773,8 +3840,12 @@ export default function App() {
                     <table className="custom-table">
                       <thead>
                         <tr>
-                          <th>NPI / License</th>
-                          <th>Surgeon Name</th>
+                          <th onClick={() => handleSurgeonSort('license')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            NPI / License {surgeonSortField === 'license' ? (surgeonSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
+                          <th onClick={() => handleSurgeonSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Surgeon Name {surgeonSortField === 'name' ? (surgeonSortDirection === 'asc' ? '▲' : '▼') : ''}
+                          </th>
                           <th>Specialty</th>
                           <th>Email</th>
                           <th>Phone</th>

@@ -71,6 +71,8 @@ export default function CPTManagement({
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortField, setSortField] = useState('code');
+  const [sortDirection, setSortDirection] = useState('asc');
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Form & Modal States
@@ -102,7 +104,9 @@ export default function CPTManagement({
           search: searchQuery,
           category: categoryFilter,
           page: currentPage,
-          limit: rowsPerPage
+          limit: rowsPerPage,
+          sortField,
+          sortDirection
         });
         if (active) {
           setCpts(fetched);
@@ -118,12 +122,24 @@ export default function CPTManagement({
     return () => {
       active = false;
     };
-  }, [searchQuery, categoryFilter, currentPage, rowsPerPage, refreshKey]);
+  }, [searchQuery, categoryFilter, currentPage, rowsPerPage, sortField, sortDirection, refreshKey]);
 
   // Pagination calculations
   const totalPages = Math.ceil(totalCount / rowsPerPage) || 1;
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
+
+  // Handle sorting
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    // reset to page 1 on sort change
+    setCurrentPage(1);
+  };
 
   // Open modal for add
   const handleOpenAdd = () => {
@@ -386,16 +402,24 @@ export default function CPTManagement({
           <table className="custom-table">
             <thead>
               <tr>
-                <th>Code</th>
+                <th onClick={() => handleSort('code')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Code {sortField === 'code' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                </th>
                 <th>Description</th>
                 <th>Category</th>
                 <th>Procedure Group</th>
                 <th>Indicator</th>
                 <th>Body Part</th>
-                <th>Duration</th>
+                <th onClick={() => handleSort('average_duration')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Duration {sortField === 'average_duration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                </th>
                 <th>Turnover</th>
-                <th style={{ textAlign: 'right' }}>Gross Charge</th>
-                <th style={{ textAlign: 'right' }}>Reimbursement</th>
+                <th onClick={() => handleSort('gross_charge')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                  Gross Charge {sortField === 'gross_charge' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                </th>
+                <th onClick={() => handleSort('reimbursement')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                  Reimbursement {sortField === 'reimbursement' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                </th>
                 <th style={{ textAlign: 'center' }}>Status</th>
                 <th style={{ textAlign: 'center' }}>Actions</th>
               </tr>

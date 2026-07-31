@@ -225,7 +225,7 @@ export const db = {
   },
 
   // Fetch CPT codes list with server-side filtering, search, and pagination
-  async getCPTCodesPaged({ search = '', category = 'All', page = 1, limit = 10 }) {
+  async getCPTCodesPaged({ search = '', category = 'All', page = 1, limit = 10, sortField = 'code', sortDirection = 'asc' }) {
     let query = supabase
       .from('cpt_codes')
       .select('*', { count: 'exact' });
@@ -238,7 +238,7 @@ export const db = {
       query = query.eq('category', category);
     }
 
-    query = query.order('code', { ascending: true });
+    query = query.order(sortField, { ascending: sortDirection === 'asc' });
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
