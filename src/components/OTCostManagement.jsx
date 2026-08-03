@@ -408,7 +408,7 @@ export default function OTCostManagement() {
                   </select>
                 </div>
               </div>
-                <div className="custom-table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <div className="custom-table-container">
                   <table className="custom-table">
                     <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-card)', zIndex: 1 }}>
                       <tr>
