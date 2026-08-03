@@ -17,8 +17,11 @@ const mapDBToBlock = (dbBlock) => {
 };
 
 const ORBlockSchedule = () => {
-  // Use a real Date object for navigation, starting at May 2026 to match mock data
-  const [currentMonthDate, setCurrentMonthDate] = useState(new Date(2026, 4, 1));
+  // Use a dynamic Date object initialized to the 1st day of the current month
+  const [currentMonthDate, setCurrentMonthDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   
   const [blocks, setBlocks] = useState([]);
   const [surgeonsList, setSurgeonsList] = useState([]);
