@@ -320,7 +320,7 @@ export default function OTCostManagement() {
           {/* Preview extracted data */}
           {data.length > 0 && (
             <div style={{ marginTop: '20px' }}>
-              <h4 style={{ fontSize: '0.95rem', marginBottom: '10px', color: '#fff' }}>Extracted Data Preview (Showing top 5)</h4>
+              <h4 style={{ fontSize: '0.95rem', marginBottom: '10px', color: 'var(--text-primary)' }}>Extracted Data Preview (Showing top 5)</h4>
               <div className="custom-table-container">
                 <table className="custom-table">
                   <thead>
@@ -387,7 +387,7 @@ export default function OTCostManagement() {
                         setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      style={{ background: 'none', border: 'none', color: '#fff', fontSize: '0.85rem', outline: 'none', width: '100%' }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', width: '100%' }}
                     />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -449,7 +449,7 @@ export default function OTCostManagement() {
                                   type="number" 
                                   value={editFormData.supply_cost}
                                   onChange={(e) => setEditFormData({...editFormData, supply_cost: parseFloat(e.target.value) || 0})}
-                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                 />
                               </td>
                               <td>
@@ -457,7 +457,7 @@ export default function OTCostManagement() {
                                   type="number" 
                                   value={editFormData.implant_cost}
                                   onChange={(e) => setEditFormData({...editFormData, implant_cost: parseFloat(e.target.value) || 0})}
-                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                 />
                               </td>
                               <td>
@@ -465,7 +465,7 @@ export default function OTCostManagement() {
                                   type="number" 
                                   value={editFormData.labour_cost}
                                   onChange={(e) => setEditFormData({...editFormData, labour_cost: parseFloat(e.target.value) || 0})}
-                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                 />
                               </td>
                               <td>
@@ -473,7 +473,7 @@ export default function OTCostManagement() {
                                   type="number" 
                                   value={editFormData.or_room_cost}
                                   onChange={(e) => setEditFormData({...editFormData, or_room_cost: parseFloat(e.target.value) || 0})}
-                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                 />
                               </td>
                               <td>
@@ -481,7 +481,7 @@ export default function OTCostManagement() {
                                   type="number" 
                                   value={editFormData.medication_cost}
                                   onChange={(e) => setEditFormData({...editFormData, medication_cost: parseFloat(e.target.value) || 0})}
-                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                 />
                               </td>
                               <td>
@@ -489,7 +489,7 @@ export default function OTCostManagement() {
                                   type="number" 
                                   value={editFormData.tray_cost}
                                   onChange={(e) => setEditFormData({...editFormData, tray_cost: parseFloat(e.target.value) || 0})}
-                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: '#fff' }}
+                                  style={{ width: '80px', padding: '4px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                 />
                               </td>
                               <td style={{ textAlign: 'right' }}>
@@ -569,7 +569,7 @@ export default function OTCostManagement() {
         <div className="modal-overlay" onClick={() => setIsAddingRecord(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '500px', maxWidth: '95%' }}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: '700' }}>
                 Add New Procedure Cost
               </h3>
               <button className="modal-close" onClick={() => setIsAddingRecord(false)}>×</button>

@@ -498,7 +498,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
           }}></div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-blue)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{surg.specialty}</span>
-            <h2 style={{ fontSize: '1.25rem', color: '#fff', fontWeight: '700', margin: '2px 0 4px 0' }}>{surg.name}</h2>
+            <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '700', margin: '2px 0 4px 0' }}>{surg.name}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="status-badge active" style={{ fontSize: '0.65rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-green)', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>{surg.status}</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>NPI: {surg.npi}</span>
@@ -510,7 +510,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', alignItems: 'center' }}>
           <div className="profile-mini-kpi" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Cases Done (MTD)</span>
-            <span style={{ fontSize: '1.4rem', fontWeight: '700', color: '#fff' }}>{surg.metrics.cases}</span>
+            <span style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--text-primary)' }}>{surg.metrics.cases}</span>
             <span style={{ fontSize: '0.65rem', color: 'var(--color-green)', fontWeight: '600' }}>#1 in caseload</span>
           </div>
 
@@ -564,7 +564,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                     <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
                     <YAxis yAxisId="left" stroke="var(--color-blue)" fontSize={10} tickLine={false} />
                     <YAxis yAxisId="right" orientation="right" stroke="var(--color-green)" fontSize={10} tickLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '11px', color: '#fff' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '11px', color: 'var(--text-primary)' }} />
                     <Legend />
                     <Line yAxisId="left" type="monotone" dataKey="cases" stroke="var(--color-blue)" strokeWidth={2.5} name="Cases Done" dot={{ r: 4 }} />
                     <Line yAxisId="right" type="monotone" dataKey="margin" stroke="var(--color-green)" strokeWidth={2.5} name="Net Margin ($)" dot={{ r: 4 }} />
@@ -628,7 +628,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
               </div>
 
               <div style={{ backgroundColor: 'rgba(59,130,246,0.04)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '12px', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 'auto' }}>
-                <span style={{ fontWeight: '700', color: '#fff' }}>Operational Summary:</span> Dr. {surg.name.split(' ').pop()} ranks in the **top 10%** for on-time starts. However, turnover overrides represent {surg.metrics.avgTurnover > 20 ? 'a secondary operational hazard' : 'optimal standards, beating facility averages by ' + (24 - surg.metrics.avgTurnover) + ' minutes'}.
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>Operational Summary:</span> Dr. {surg.name.split(' ').pop()} ranks in the **top 10%** for on-time starts. However, turnover overrides represent {surg.metrics.avgTurnover > 20 ? 'a secondary operational hazard' : 'optimal standards, beating facility averages by ' + (24 - surg.metrics.avgTurnover) + ' minutes'}.
               </div>
             </div>
 
@@ -649,7 +649,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.8rem', padding: '10px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Total Case Revenue</span>
-                  <span style={{ fontWeight: '600', color: '#fff' }}>${(surg.metrics.netMargin * 2.1).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>${(surg.metrics.netMargin * 2.1).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Surgical Supplies</span>
@@ -668,7 +668,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                   <span style={{ color: 'var(--color-red)' }}>-${(surg.metrics.cases * 950).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', fontSize: '0.9rem', fontWeight: '700' }}>
-                  <span style={{ color: '#fff' }}>Net Contribution Margin</span>
+                  <span style={{ color: 'var(--text-primary)' }}>Net Contribution Margin</span>
                   <span style={{ color: 'var(--color-green)' }}>+${surg.metrics.netMargin.toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -744,7 +744,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                   </PieChart>
                 </ResponsiveContainer>
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#fff' }}>{surg.metrics.cases}</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>{surg.metrics.cases}</div>
                   <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>Cases</div>
                 </div>
               </div>
@@ -814,7 +814,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Dr. {surg.name.split(' ').pop()}\'s Avg Spend:</span>
-                  <span style={{ fontWeight: '600', color: '#fff' }}>${Math.round(1200 * (1 + parseFloat(surg.metrics.supplyVariance) / 100))}</span>
+                  <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>${Math.round(1200 * (1 + parseFloat(surg.metrics.supplyVariance) / 100))}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Opportunity per case:</span>
@@ -917,7 +917,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
               </div>
 
               <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', border: '1px dashed var(--color-red)', borderRadius: '6px', padding: '12px', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 'auto' }}>
-                <span style={{ fontWeight: '700', color: '#fff' }}>Block Leakage Opportunity:</span> Releasing the last 2 hours of blocks on Wednesday afternoons (which are historically unused) could prevent $3,200 in staff allocation losses.
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>Block Leakage Opportunity:</span> Releasing the last 2 hours of blocks on Wednesday afternoons (which are historically unused) could prevent $3,200 in staff allocation losses.
               </div>
             </div>
 
@@ -980,7 +980,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                 <div style={{ fontSize: '1.5rem' }}>{insight.icon}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: '700', color: '#fff', fontSize: '0.9rem' }}>{insight.title}</span>
+                    <span style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.9rem' }}>{insight.title}</span>
                     <span style={{ fontSize: '0.6rem', padding: '1px 6px', borderRadius: '3px', fontWeight: '700', textTransform: 'uppercase', backgroundColor: insight.type === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)', color: insight.type === 'high' ? 'var(--color-red)' : 'var(--color-blue)' }}>{insight.type} priority</span>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0' }}>{insight.desc}</p>
@@ -2459,8 +2459,8 @@ export default function App() {
         alignItems: 'center',
         justifyContent: 'center',
         height: '100vh',
-        backgroundColor: '#050b18',
-        color: '#fff',
+        backgroundColor: 'var(--bg-main)',
+        color: 'var(--text-primary)',
         fontFamily: 'Outfit, sans-serif'
       }}>
         <div style={{
@@ -2903,7 +2903,7 @@ export default function App() {
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>$329.7k</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>$329.7k</div>
                             <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cost</div>
                           </div>
                         </div>
@@ -3173,7 +3173,7 @@ export default function App() {
                           <BarChart data={executiveOverviewMetrics.financialsTrend} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
                             <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
                             <YAxis stroke="#5e6c84" fontSize={10} tickLine={false} />
-                            <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '11px', color: '#fff' }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '11px', color: 'var(--text-primary)' }} />
                             <Legend />
                             <Bar dataKey="revenue" fill="var(--color-blue)" name="Gross Revenue" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="cost" fill="var(--color-grey)" name="Operating Costs" radius={[4, 4, 0, 0]} />
@@ -3208,7 +3208,7 @@ export default function App() {
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#fff' }}>{filteredSurgeries.length.toLocaleString()}</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)' }}>{filteredSurgeries.length.toLocaleString()}</div>
                             <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cases</div>
                           </div>
                         </div>
@@ -3250,7 +3250,7 @@ export default function App() {
                         <Sparkles />
                       </div>
                       <div>
-                        <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.9rem' }}>
+                        <h4 style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                           Executive Insights & Recommendations
                         </h4>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: '1.3' }}>
@@ -3394,7 +3394,7 @@ export default function App() {
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
+                              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
                                 data={MOCK_OR_ROOT_CAUSES_PIE}
                                 cx="50%"
@@ -3411,7 +3411,7 @@ export default function App() {
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>100%</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>100%</div>
                             <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Delays</div>
                           </div>
                         </div>
@@ -3441,7 +3441,7 @@ export default function App() {
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
+                              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
                                 data={MOCK_OR_BLOCK_ALLOC_PIE}
                                 cx="50%"
@@ -3458,7 +3458,7 @@ export default function App() {
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#fff' }}>14.2h</div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>14.2h</div>
                             <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Leakage</div>
                           </div>
                         </div>
@@ -3488,7 +3488,7 @@ export default function App() {
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Tooltip contentStyle={{ backgroundColor: '#0d1527', borderColor: '#16223f', fontSize: '10px', color: '#fff' }} />
+                              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
                                 data={MOCK_OR_TURNOVER_EFF_PIE}
                                 cx="50%"
@@ -3505,7 +3505,7 @@ export default function App() {
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>22m</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>22m</div>
                             <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Avg Time</div>
                           </div>
                         </div>
@@ -3662,7 +3662,7 @@ export default function App() {
                               <td style={{ fontWeight: '600', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
                                 #{patient.mrn}
                               </td>
-                              <td style={{ fontWeight: '600', color: '#fff' }}>
+                              <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                   <div style={{
                                     width: '28px',
@@ -3859,7 +3859,7 @@ export default function App() {
                               <td style={{ fontWeight: '600', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
                                 {surgeon.license_number}
                               </td>
-                              <td style={{ fontWeight: '600', color: '#fff' }}>
+                              <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                   <div style={{
                                     width: '28px',
@@ -4097,7 +4097,7 @@ export default function App() {
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '20px' }}>
                         <div>
-                          <h4 style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Standard Supply Item List</h4>
+                          <h4 style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Standard Supply Item List</h4>
                           <div className="custom-table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                             <table className="custom-table" style={{ fontSize: '0.8rem' }}>
                               <thead>
@@ -4121,7 +4121,7 @@ export default function App() {
                         </div>
 
                         <div>
-                          <h4 style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Surgeon Utilization Variance</h4>
+                          <h4 style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Surgeon Utilization Variance</h4>
                           <div className="custom-table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                             <table className="custom-table" style={{ fontSize: '0.8rem' }}>
                               <thead>
@@ -4223,7 +4223,7 @@ export default function App() {
                           {cancellationActive ? <AlertTriangle /> : <CheckCircle />}
                         </div>
                         <div>
-                          <h4 style={{ fontWeight: '700', color: '#fff', fontSize: '0.95rem' }}>
+                          <h4 style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.95rem' }}>
                             {cancellationActive ? 'Operational Cancellation Anomaly' : 'Vacancy Successfully Filled'}
                           </h4>
                           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
@@ -4520,7 +4520,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setSelectedCase(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: '700' }}>
                 Case Contribution Margin Analysis
               </h3>
               <button className="modal-close" onClick={() => setSelectedCase(null)}>×</button>
@@ -4528,7 +4528,7 @@ export default function App() {
 
             <div className="modal-body">
               <div style={{ marginBottom: '10px' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: '700', color: '#fff' }}>{selectedCase.label}</h4>
+                <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)' }}>{selectedCase.label}</h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
                   CPT Code: {selectedCase.code} | Surgeon: {selectedCase.doctor} | Room: {selectedCase.or}
                 </p>
@@ -4567,7 +4567,7 @@ export default function App() {
               </div>
 
               <div style={{ backgroundColor: 'rgba(59,130,246,0.05)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '10px', marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                <span style={{ fontWeight: '700', color: '#fff' }}>Decision Engine Insight:</span> This case contributes <strong>${Math.round(selectedCase.margin / ((selectedCase.endMin - selectedCase.startMin) / 60)).toLocaleString()} / OR Hour</strong>. Implants represent the highest cost driver at {Math.round((selectedCase.implants / selectedCase.revenue) * 100)}% of total revenue.
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>Decision Engine Insight:</span> This case contributes <strong>${Math.round(selectedCase.margin / ((selectedCase.endMin - selectedCase.startMin) / 60)).toLocaleString()} / OR Hour</strong>. Implants represent the highest cost driver at {Math.round((selectedCase.implants / selectedCase.revenue) * 100)}% of total revenue.
               </div>
             </div>
           </div>
@@ -4581,7 +4581,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setPatientModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '600px', maxWidth: '95%' }}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Users size={18} style={{ color: 'var(--color-blue)' }} />
                 {editingPatient ? 'Edit Patient Record' : 'Add New Patient Record'}
               </h3>
@@ -4937,7 +4937,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setSurgeonModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '750px', maxWidth: '95%' }}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <UserCheck size={18} style={{ color: 'var(--color-blue)' }} />
                 {editingSurgeon ? 'Edit Surgeon Profile' : 'Register New Surgeon'}
               </h3>

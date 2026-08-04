@@ -20,7 +20,7 @@
 .management-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin: 0;
@@ -47,7 +47,7 @@
 .card-header h3 {
     font-size: 0.95rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin: 0 0 4px 0;
