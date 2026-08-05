@@ -431,12 +431,12 @@ export default function CPTManagement({
                     <td style={{ fontWeight: '700', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
                       {cpt.code}
                     </td>
-                    <td style={{ fontWeight: '500', color: '#fff' }}>
+                    <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
                       {cpt.description}
                     </td>
                     <td>{cpt.category || 'N/A'}</td>
                     <td>{cpt.procedure_group || 'N/A'}</td>
-                    <td style={{ textAlign: 'center', fontWeight: '600', color: '#fff' }}>{cpt.procedure_indicator || 'N/A'}</td>
+                    <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-primary)' }}>{cpt.procedure_indicator || 'N/A'}</td>
                     <td>{cpt.body_part || 'N/A'}</td>
                     <td>{cpt.average_duration ? `${cpt.average_duration} mins` : 'N/A'}</td>
                     <td>{cpt.turnover_time ? `${cpt.turnover_time} mins` : 'N/A'}</td>
@@ -725,7 +725,7 @@ export default function CPTManagement({
                     checked={form.active_published}
                     onChange={(e) => setForm({ ...form, active_published: e.target.checked })}
                   />
-                  <label htmlFor="active_published" style={{ fontSize: '0.85rem', fontWeight: '600', color: '#fff', cursor: 'pointer', userSelect: 'none' }}>
+                  <label htmlFor="active_published" style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
                     Active / Published
                   </label>
                 </div>
