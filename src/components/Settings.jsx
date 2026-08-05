@@ -140,20 +140,20 @@ const Settings = ({ onUpdate }) => {
                 {/* Left Column: Preview Cards */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div className="setting-section-header" style={{ marginBottom: '1rem' }}>
-                        <h3 style={{ fontSize: '1.25rem', color: '#fff', fontWeight: '700' }}>HCFA Preview</h3>
+                        <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '700' }}>HCFA Preview</h3>
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Live preview of claim form box data</p>
                     </div>
 
                     <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#6366f1' }}></div>
                         <div style={{ fontSize: '0.75rem', color: '#6366f1', fontWeight: '700', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Box 25 - Federal Tax ID</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#fff', fontFamily: 'monospace' }}>{settings.tax_id || 'Not Set'}</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{settings.tax_id || 'Not Set'}</div>
                     </div>
 
                     <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#0ea5e9' }}></div>
                         <div style={{ fontSize: '0.75rem', color: '#0ea5e9', fontWeight: '700', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Box 32 - Service Facility</div>
-                        <div style={{ fontSize: '1.125rem', fontWeight: '700', color: '#fff', marginBottom: '0.25rem' }}>{settings.facility_name || 'Not Set'}</div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{settings.facility_name || 'Not Set'}</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                             {settings.facility_address && <div>{settings.facility_address}</div>}
                             {(settings.facility_city || settings.facility_state || settings.facility_zip) && (
@@ -165,7 +165,7 @@ const Settings = ({ onUpdate }) => {
                     <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#10b981' }}></div>
                         <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: '700', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Box 33 - Billing Provider</div>
-                        <div style={{ fontSize: '1.125rem', fontWeight: '700', color: '#fff', marginBottom: '0.25rem' }}>{settings.facility_name || 'Not Set'}</div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{settings.facility_name || 'Not Set'}</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span>📞</span> {settings.facility_phone || 'No phone'}
                         </div>
@@ -202,7 +202,7 @@ const Settings = ({ onUpdate }) => {
                             <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: '8px', color: '#2563eb' }}>
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7l8-4 8 4v14" /><path d="M17 21v-8H7v8" /></svg>
                             </div>
-                            <h3 style={{ fontSize: '1.125rem', color: '#fff', margin: 0 }}>Facility Details</h3>
+                            <h3 style={{ fontSize: '1.125rem', color: 'var(--text-primary)', margin: 0 }}>Facility Details</h3>
                         </div>
 
                         <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -299,7 +299,7 @@ const Settings = ({ onUpdate }) => {
                             <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '0.5rem', borderRadius: '8px', color: '#16a34a' }}>
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" /></svg>
                             </div>
-                            <h3 style={{ fontSize: '1.125rem', color: '#fff', margin: 0 }}>Billing Identifiers</h3>
+                            <h3 style={{ fontSize: '1.125rem', color: 'var(--text-primary)', margin: 0 }}>Billing Identifiers</h3>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
@@ -337,7 +337,7 @@ const Settings = ({ onUpdate }) => {
                             <div style={{ background: 'rgba(147, 51, 234, 0.1)', padding: '0.5rem', borderRadius: '8px', color: '#9333ea' }}>
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5" /></svg>
                             </div>
-                            <h3 style={{ fontSize: '1.125rem', color: '#fff', margin: 0 }}>AI Configuration</h3>
+                            <h3 style={{ fontSize: '1.125rem', color: 'var(--text-primary)', margin: 0 }}>AI Configuration</h3>
                         </div>
 
                         <div className="setting-form-group">
@@ -389,7 +389,7 @@ const Settings = ({ onUpdate }) => {
                             <div style={{ background: 'rgba(234, 88, 12, 0.1)', padding: '0.5rem', borderRadius: '8px', color: '#ea580c' }}>
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                             </div>
-                            <h3 style={{ fontSize: '1.125rem', color: '#fff', margin: 0 }}>Financial Configurations</h3>
+                            <h3 style={{ fontSize: '1.125rem', color: 'var(--text-primary)', margin: 0 }}>Financial Configurations</h3>
                         </div>
 
                         <label style={{ display: 'flex', gap: '1rem', cursor: 'pointer', padding: '1rem', borderRadius: '12px', transition: 'background 0.2s', background: settings.apply_medicare_mppr ? '#fffbeb' : 'transparent', border: settings.apply_medicare_mppr ? '1px solid #fcd34d' : '1px solid transparent' }}>
@@ -422,7 +422,7 @@ const Settings = ({ onUpdate }) => {
                                 }}></div>
                             </div>
                             <div>
-                                <strong style={{ fontSize: '1rem', color: '#fff', display: 'block', marginBottom: '0.25rem' }}>
+                                <strong style={{ fontSize: '1rem', color: 'var(--text-primary)', display: 'block', marginBottom: '0.25rem' }}>
                                     Apply Medicare MPPR Rule
                                 </strong>
                                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '0.75rem' }}>

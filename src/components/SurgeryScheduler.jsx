@@ -353,7 +353,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 text: 'Please select a patient, surgeon, and start time.',
                 icon: 'error',
                 background: 'var(--bg-card)',
-                color: '#fff'
+                color: 'var(--text-primary)'
             });
             return;
         }
@@ -447,7 +447,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                     timer: 1500,
                     showConfirmButton: false,
                     background: 'var(--bg-card)',
-                    color: '#fff'
+                    color: 'var(--text-primary)'
                 });
             } else {
                 await onSchedule(surgeryData);
@@ -458,7 +458,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                     timer: 1500,
                     showConfirmButton: false,
                     background: 'var(--bg-card)',
-                    color: '#fff'
+                    color: 'var(--text-primary)'
                 });
             }
             handleCancelEdit();
@@ -469,7 +469,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 text: `Failed to save surgery: ${err.message || err.toString()}`,
                 icon: 'error',
                 background: 'var(--bg-card)',
-                color: '#fff'
+                color: 'var(--text-primary)'
             });
         }
     };
@@ -485,7 +485,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             confirmButtonColor: '#ef4444',
             confirmButtonText: 'Yes, Cancel it',
             background: 'var(--bg-card)',
-            color: '#fff',
+            color: 'var(--text-primary)',
             inputValidator: (value) => {
                 if (!value) return 'You need to write a reason!';
             }
@@ -503,7 +503,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 timer: 1500,
                 showConfirmButton: false,
                 background: 'var(--bg-card)',
-                color: '#fff'
+                color: 'var(--text-primary)'
             });
         }
     };
@@ -517,7 +517,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             confirmButtonColor: 'var(--color-green)',
             confirmButtonText: 'Yes, complete it',
             background: 'var(--bg-card)',
-            color: '#fff'
+            color: 'var(--text-primary)'
         });
 
         if (confirm.isConfirmed) {
@@ -529,7 +529,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 timer: 1500,
                 showConfirmButton: false,
                 background: 'var(--bg-card)',
-                color: '#fff'
+                color: 'var(--text-primary)'
             });
         }
     };
@@ -543,7 +543,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             confirmButtonColor: '#ef4444',
             confirmButtonText: 'Yes, delete',
             background: 'var(--bg-card)',
-            color: '#fff'
+            color: 'var(--text-primary)'
         });
 
         if (confirm.isConfirmed) {
@@ -555,7 +555,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 timer: 1500,
                 showConfirmButton: false,
                 background: 'var(--bg-card)',
-                color: '#fff'
+                color: 'var(--text-primary)'
             });
         }
     };
@@ -1095,7 +1095,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
                             {/* Supplies, Implants, Tray Cost, Medications, Labour, OR Room */}
                             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px' }}>
-                                <h4 style={{ fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Material & Facility Expenses</h4>
+                                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Material & Facility Expenses</h4>
                                 {formData.selectedCptCodes.length === 0 ? (
                                     <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                                         <div className="form-group">
@@ -1284,7 +1284,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         {formData.selectedCptCodes.length > 1 && (
                                             <div style={{ padding: '8px 12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>Surgery Grand Total Expenses:</span>
-                                                <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: '#fff' }}>
+                                                <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-primary)' }}>
                                                     <span>Supplies: {formatCurrency(formData.suppliesCost)}</span>
                                                     <span>Implants: {formatCurrency(formData.implantsCost)}</span>
                                                     <span>Tray: {formatCurrency(formData.trayCost)}</span>
@@ -1300,7 +1300,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
                             {/* Actual Timing overrides */}
                             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px' }}>
-                                <h4 style={{ fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Actual Timing log (Post-Op)</h4>
+                                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Actual Timing log (Post-Op)</h4>
                                 <div className="form-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                                     <div className="form-group">
                                         <label>Actual Start Time</label>
@@ -1369,7 +1369,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                             onChange={(e) => setFormData({ ...formData, isProbono: e.target.checked })}
                                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                                         />
-                                        <label htmlFor="isProbono" style={{ fontSize: '0.85rem', color: '#fff', cursor: 'pointer', fontWeight: '600' }}>
+                                        <label htmlFor="isProbono" style={{ fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '600' }}>
                                             💗 Mark as Charity/Pro-Bono Case
                                         </label>
                                     </div>
@@ -1573,23 +1573,25 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                             onClick={() => toggleMonth(monthKey)}
                                             style={{
                                                 padding: '12px 16px',
-                                                background: 'rgba(59, 130, 246, 0.05)',
+                                                background: 'var(--bg-card)',
+                                                borderLeft: '4px solid var(--color-blue)',
                                                 cursor: 'pointer',
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
-                                                alignItems: 'center'
+                                                alignItems: 'center',
+                                                transition: 'all 0.2s ease'
                                             }}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                                <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#fff' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+                                                {isExpanded ? <ChevronUp size={18} style={{ color: 'var(--color-blue)' }} /> : <ChevronDown size={18} style={{ color: 'var(--text-secondary)' }} />}
+                                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                                                     {formatMonthDisplay(monthKey)}
                                                 </h4>
-                                                <span style={{ fontSize: '0.7rem', padding: '1px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', color: 'var(--text-secondary)' }}>
+                                                <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
                                                     {monthSurgeries.length} cases
                                                 </span>
                                             </div>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--color-green)' }}>
+                                            <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-green)' }}>
                                                 {formatCurrency(monthTotalPrice)}
                                             </span>
                                         </div>

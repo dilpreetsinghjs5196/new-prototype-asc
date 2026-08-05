@@ -72,7 +72,7 @@
 .setting-title {
     font-size: 2.25rem;
     font-weight: 800;
-    color: #fff;
+    color: var(--text-primary);
     
     
     
@@ -170,7 +170,7 @@
 .setting-data-table td {
     padding: 1.25rem 1.75rem;
     border-bottom: 1px solid var(--border-color);
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.95rem;
     font-weight: 500;
     transition: background 0.2s;
@@ -351,7 +351,7 @@
     margin: 0;
     font-size: 1.75rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     
     
     
@@ -373,8 +373,8 @@
 }
 
 .btn-close:hover {
-    background: #e2e8f0;
-    color: #fff;
+    background: var(--bg-card);
+    color: var(--text-primary);
     transform: rotate(90deg);
 }
 
@@ -548,7 +548,7 @@
     margin: 0;
     font-size: 1.75rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     
     
     
@@ -570,8 +570,8 @@
 }
 
 .btn-close:hover {
-    background: #e2e8f0;
-    color: #fff;
+    background: var(--bg-card);
+    color: var(--text-primary);
     transform: rotate(90deg);
 }
 
@@ -726,7 +726,7 @@
 .setting-card-header h3 {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     margin: 0 0 0.5rem 0;
     letter-spacing: -0.02em;
 }
@@ -787,7 +787,7 @@
 .header-info h3 {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     margin: 0 0 0.25rem 0;
 }
 
@@ -803,9 +803,9 @@
     padding: 0.875rem 1rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background-color: #f8fafc;
+    background-color: var(--bg-card);
     font-size: 0.95rem;
-    color: #fff;
+    color: var(--text-primary);
     transition: all 0.2s;
     cursor: pointer;
 }
@@ -877,7 +877,7 @@
 
 .btn-cancel-modern:hover {
     background: rgba(255, 255, 255, 0.02);
-    color: #fff;
+    color: var(--text-primary);
 }
 
 .btn-small-link {

@@ -314,7 +314,7 @@ export default function CPTManagement({
       <div className="dashboard-card" style={{ padding: '16px 20px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
           <div>
-            <h3 className="card-title" style={{ fontSize: '1.05rem', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 className="card-title" style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Stethoscope size={18} style={{ color: 'var(--color-blue)' }} />
               CPT Codes Registry
             </h3>
@@ -431,12 +431,12 @@ export default function CPTManagement({
                     <td style={{ fontWeight: '700', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
                       {cpt.code}
                     </td>
-                    <td style={{ fontWeight: '500', color: '#fff' }}>
+                    <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
                       {cpt.description}
                     </td>
                     <td>{cpt.category || 'N/A'}</td>
                     <td>{cpt.procedure_group || 'N/A'}</td>
-                    <td style={{ textAlign: 'center', fontWeight: '600', color: '#fff' }}>{cpt.procedure_indicator || 'N/A'}</td>
+                    <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-primary)' }}>{cpt.procedure_indicator || 'N/A'}</td>
                     <td>{cpt.body_part || 'N/A'}</td>
                     <td>{cpt.average_duration ? `${cpt.average_duration} mins` : 'N/A'}</td>
                     <td>{cpt.turnover_time ? `${cpt.turnover_time} mins` : 'N/A'}</td>
@@ -547,7 +547,7 @@ export default function CPTManagement({
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '800px', maxWidth: '95%', background: 'var(--bg-app)', border: '1px solid var(--border-light)' }}>
             <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)' }}>
               <div>
-                <h3 style={{ fontSize: '1.2rem', color: '#fff', fontWeight: '700', margin: 0 }}>
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: '700', margin: 0 }}>
                   {editingCpt ? 'Edit CPT Details' : 'Add New CPT'}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
@@ -725,7 +725,7 @@ export default function CPTManagement({
                     checked={form.active_published}
                     onChange={(e) => setForm({ ...form, active_published: e.target.checked })}
                   />
-                  <label htmlFor="active_published" style={{ fontSize: '0.85rem', fontWeight: '600', color: '#fff', cursor: 'pointer', userSelect: 'none' }}>
+                  <label htmlFor="active_published" style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
                     Active / Published
                   </label>
                 </div>

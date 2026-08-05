@@ -89,8 +89,8 @@
 }
 
 .styled-select option {
-    background-color: #0f172a; /* Dark background for dropdown menu */
-    color: #ffffff; /* Light text */
+    background-color: var(--bg-card);
+    color: var(--text-primary);
 }
 
 .styled-select:focus {
