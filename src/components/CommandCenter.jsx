@@ -131,7 +131,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
 
     return Object.values(perfMap)
       .sort((a, b) => b.netMargin - a.netMargin)
-      .slice(0, 10); // Top 10
+      .slice(0, 6); // Top 6 for optimal chart spacing without crowding
   }, [filteredSurgeries, includeAdvancedCosts]);
 
   // Case Profitability Distribution
@@ -214,7 +214,7 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     if (percent < 0.05) return null;
     return (
-      <text x={x} y={y} fill="white" fontSize={10} textAnchor="middle" dominantBaseline="central">
+      <text x={x} y={y} fill="var(--text-primary)" fontSize={11} fontWeight={700} textAnchor="middle" dominantBaseline="central">
         {`${(percent * 100).toFixed(0)}%`}
       </text>
     );
@@ -366,15 +366,15 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
           </div>
           <div style={{ width: '100%', height: '220px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={surgeonPerf} layout="vertical" margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <XAxis type="number" stroke="var(--text-muted)" fontSize={9} tickLine={false} />
-                <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={9} width={80} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', fontSize: '10px', color: 'var(--text-primary)', borderRadius: '8px', boxShadow: 'var(--shadow-card)' }} formatter={(value) => value >= 0 ? `$${Math.round(value).toLocaleString()}` : `-$${Math.abs(Math.round(value)).toLocaleString()}`} />
+              <BarChart data={surgeonPerf} layout="vertical" margin={{ top: 5, right: 15, left: 20, bottom: 5 }}>
+                <XAxis type="number" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={11} fontWeight={500} width={135} tickLine={false} tickFormatter={(str) => str.length > 18 ? `${str.substring(0, 16)}...` : str} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', fontSize: '11px', color: 'var(--text-primary)', borderRadius: '8px', boxShadow: 'var(--shadow-card)' }} formatter={(value) => value >= 0 ? `$${Math.round(value).toLocaleString()}` : `-$${Math.abs(Math.round(value)).toLocaleString()}`} labelFormatter={(label) => label} />
                 <Bar
                   dataKey="netMargin"
                   fill="var(--color-blue)"
                   radius={[0, 4, 4, 0]}
-                  barSize={12}
+                  barSize={14}
                   name="Net Margin"
                 />
               </BarChart>
@@ -394,8 +394,8 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
                   data={caseProfitability}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={70}
+                  innerRadius={45}
+                  outerRadius={75}
                   paddingAngle={5}
                   dataKey="value"
                   labelLine={false}

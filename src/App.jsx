@@ -566,7 +566,7 @@ function SurgeonProfilePage({ surgeonName, onBack, activeProfileTab, setActivePr
                     <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
                     <YAxis yAxisId="left" stroke="var(--color-blue)" fontSize={10} tickLine={false} />
                     <YAxis yAxisId="right" orientation="right" stroke="var(--color-green)" fontSize={10} tickLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '11px', color: 'var(--text-primary)' }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '11px', color: 'var(--text-primary)' }} />
                     <Legend />
                     <Line yAxisId="left" type="monotone" dataKey="cases" stroke="var(--color-blue)" strokeWidth={2.5} name="Cases Done" dot={{ r: 4 }} />
                     <Line yAxisId="right" type="monotone" dataKey="margin" stroke="var(--color-green)" strokeWidth={2.5} name="Net Margin ($)" dot={{ r: 4 }} />
@@ -1044,7 +1044,7 @@ const MOCK_OR_TURNOVER_EFF_PIE = [
   { name: 'Excessive (>30m)', value: 15, percentage: 15, color: 'var(--color-red)' }
 ];
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
-  <div onClick={onClick} ref={ref} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', outline: 'none', color: '#1e293b', cursor: 'pointer' }}>
+  <div onClick={onClick} ref={ref} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
     <span style={{ marginRight: '10px' }}>{value}</span>
     <CalendarDays size={16} />
   </div>
@@ -2790,7 +2790,7 @@ export default function App() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: theme === 'dark' ? '#1e293b' : 'var(--bg-toggle, #f1f5f9)',
+                background: theme === 'dark' ? '#1E3A5F' : 'var(--bg-toggle, #f1f5f9)',
                 border: '1px solid var(--border-color)',
                 color: 'var(--text-primary)',
                 padding: '7px 15px',
@@ -2993,7 +2993,7 @@ export default function App() {
                           ))}
                         </div>
                       </div>
-                      <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('supply'); }}>View Supply Chain Analytics →</a>
+                      <a className="card-link" href="#" style={{ fontSize: '0.8rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('supply'); }}>View Supply Chain Analytics →</a>
                     </div>
 
                     {/* AI Recommendations */}
@@ -3040,7 +3040,7 @@ export default function App() {
                           </div>
                         </div>
                       </div>
-                      <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('ai'); }}>View All Recommendations →</a>
+                      <a className="card-link" href="#" style={{ fontSize: '0.8rem', marginTop: '4px' }} onClick={(e) => { e.preventDefault(); setActiveTab('ai'); }}>View All Recommendations →</a>
                     </div>
 
                     {/* Cancellation Recovery Insights */}
@@ -3093,7 +3093,7 @@ export default function App() {
                           </div>
                         </div>
                       </div>
-                      <a className="card-link" href="#" style={{ fontSize: '0.7rem', marginTop: '6px' }} onClick={(e) => { e.preventDefault(); setActiveTab('cancellations'); }}>View Cancellation Analytics →</a>
+                      <a className="card-link" href="#" style={{ fontSize: '0.8rem', marginTop: '6px' }} onClick={(e) => { e.preventDefault(); setActiveTab('cancellations'); }}>View Cancellation Analytics →</a>
                     </div>
 
                   </div>
@@ -3244,7 +3244,7 @@ export default function App() {
                           <BarChart data={executiveOverviewMetrics.financialsTrend} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
                             <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
                             <YAxis stroke="#5e6c84" fontSize={10} tickLine={false} />
-                            <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '11px', color: 'var(--text-primary)' }} />
+                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '11px', color: 'var(--text-primary)' }} />
                             <Legend />
                             <Bar dataKey="revenue" fill="var(--color-blue)" name="Gross Revenue" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="cost" fill="var(--color-grey)" name="Operating Costs" radius={[4, 4, 0, 0]} />
@@ -3465,7 +3465,7 @@ export default function App() {
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
+                              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
                                 data={MOCK_OR_ROOT_CAUSES_PIE}
                                 cx="50%"
@@ -3512,7 +3512,7 @@ export default function App() {
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
+                              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
                                 data={MOCK_OR_BLOCK_ALLOC_PIE}
                                 cx="50%"
@@ -3559,7 +3559,7 @@ export default function App() {
                         <div style={{ position: 'relative', width: '100%', height: '130px' }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
+                              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
                                 data={MOCK_OR_TURNOVER_EFF_PIE}
                                 cx="50%"
