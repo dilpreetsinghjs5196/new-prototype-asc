@@ -388,15 +388,15 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
             <h3 className="card-title">Case Profitability Analysis</h3>
           </div>
           <div style={{ width: '100%', height: '220px', display: 'flex', alignItems: 'center' }}>
-            <ResponsiveContainer width="50%" height="100%">
+            <ResponsiveContainer width="44%" height="100%">
               <PieChart>
                 <Pie
                   data={caseProfitability}
                   cx="50%"
                   cy="50%"
-                  innerRadius={45}
-                  outerRadius={75}
-                  paddingAngle={5}
+                  innerRadius={36}
+                  outerRadius={58}
+                  paddingAngle={4}
                   dataKey="value"
                   labelLine={false}
                   label={renderCustomizedLabel}
@@ -408,12 +408,12 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
                 <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', fontSize: '11px', color: 'var(--text-primary)', borderRadius: '8px', boxShadow: 'var(--shadow-card)' }} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="custom-legend" style={{ width: '50%', fontSize: '11px', paddingLeft: '8px' }}>
+            <div className="custom-legend" style={{ width: '56%', fontSize: '10.5px', paddingLeft: '4px', paddingRight: '12px' }}>
               {caseProfitability.map((entry, index) => (
-                <div key={index} className="legend-item" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', backgroundColor: 'var(--bg-subtab)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
-                  <div className="legend-color" style={{ width: '8px', height: '8px', backgroundColor: COLORS[index], borderRadius: '50%', marginRight: '8px' }}></div>
-                  <div className="legend-text" style={{ color: 'var(--text-primary)', fontWeight: '600', flex: 1 }}>{entry.name}</div>
-                  <div className="legend-value" style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{entry.value}</div>
+                <div key={index} className="legend-item" style={{ display: 'flex', alignItems: 'center', marginBottom: '6px', backgroundColor: 'var(--bg-subtab)', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--border-light)', whiteSpace: 'nowrap' }}>
+                  <div className="legend-color" style={{ width: '8px', height: '8px', backgroundColor: COLORS[index], borderRadius: '50%', marginRight: '6px', flexShrink: 0 }}></div>
+                  <div className="legend-text" style={{ color: 'var(--text-primary)', fontWeight: '600', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '6px' }}>{entry.name}</div>
+                  <div className="legend-value" style={{ color: 'var(--text-primary)', fontWeight: '700', flexShrink: 0 }}>{entry.value}</div>
                 </div>
               ))}
             </div>

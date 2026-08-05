@@ -2824,19 +2824,29 @@ export default function App() {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  marginRight: '8px',
+                  gap: '6px',
+                  marginRight: '4px',
                   fontSize: '0.85rem',
-                  color: 'var(--text-secondary, #475569)',
-                  fontWeight: '500'
-                }}>
+                  color: 'var(--text-primary)',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap',
+                  background: theme === 'dark' ? '#1E3A5F' : 'var(--bg-toggle, #f1f5f9)',
+                  padding: '7px 14px',
+                  borderRadius: '20px',
+                  border: '1px solid var(--border-color)',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
+                  flexShrink: 0
+                }} onClick={() => setIncludeAdvancedCosts(!includeAdvancedCosts)}>
                   <input
                     type="checkbox"
                     id="includeAdvancedCosts"
                     checked={includeAdvancedCosts}
                     onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
-                    style={{ marginRight: '6px', cursor: 'pointer', accentColor: 'var(--color-blue)' }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ cursor: 'pointer', accentColor: 'var(--color-blue)', margin: 0 }}
                   />
-                  <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer' }}>Include Costs</label>
+                  <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer', margin: 0, whiteSpace: 'nowrap' }}>Include Costs</label>
                 </div>
 
                 {/* Toggle Group */}
