@@ -2646,7 +2646,6 @@ export default function App() {
           <div
             className={`menu-item ${activeTab === 'instruction' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('instruction'); setSelectedSurgeon(null); }}
-            style={activeTab === 'instruction' ? { backgroundColor: '#10b981', color: 'white' } : {}}
           >
             <div className="menu-item-icon"><Bot size={16} /></div>
             Instruction Panel
