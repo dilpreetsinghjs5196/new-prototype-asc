@@ -349,9 +349,9 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
           <div style={{ width: '100%', height: '220px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={orUtilTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                <XAxis dataKey="name" stroke="#334155" fontSize={10} tickLine={false} />
-                <YAxis stroke="#334155" fontSize={10} domain={[0, 100]} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: '11px', color: '#0f172a', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                <YAxis stroke="var(--text-muted)" fontSize={10} domain={[0, 100]} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', fontSize: '11px', color: 'var(--text-primary)', borderRadius: '8px', boxShadow: 'var(--shadow-card)' }} />
                 <Line type="monotone" dataKey="util" stroke="var(--color-blue)" strokeWidth={2.5} name="OR Utilization %" dot={{ r: 4 }} />
                 <Line type="monotone" dataKey="profUtil" stroke="var(--color-green)" strokeWidth={2} name="Profitable Utilization %" dot={{ r: 3 }} />
               </LineChart>
@@ -367,9 +367,9 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
           <div style={{ width: '100%', height: '220px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={surgeonPerf} layout="vertical" margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <XAxis type="number" stroke="#334155" fontSize={9} tickLine={false} />
-                <YAxis dataKey="name" type="category" stroke="#334155" fontSize={9} width={80} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: '10px', color: '#0f172a', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }} formatter={(value) => value >= 0 ? `$${Math.round(value).toLocaleString()}` : `-$${Math.abs(Math.round(value)).toLocaleString()}`} />
+                <XAxis type="number" stroke="var(--text-muted)" fontSize={9} tickLine={false} />
+                <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={9} width={80} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', fontSize: '10px', color: 'var(--text-primary)', borderRadius: '8px', boxShadow: 'var(--shadow-card)' }} formatter={(value) => value >= 0 ? `$${Math.round(value).toLocaleString()}` : `-$${Math.abs(Math.round(value)).toLocaleString()}`} />
                 <Bar
                   dataKey="netMargin"
                   fill="var(--color-blue)"
@@ -405,15 +405,15 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: '11px', color: '#0f172a', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', fontSize: '11px', color: 'var(--text-primary)', borderRadius: '8px', boxShadow: 'var(--shadow-card)' }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="custom-legend" style={{ width: '50%', fontSize: '11px', paddingLeft: '8px' }}>
               {caseProfitability.map((entry, index) => (
-                <div key={index} className="legend-item" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', backgroundColor: '#f1f5f9', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                <div key={index} className="legend-item" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', backgroundColor: 'var(--bg-subtab)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
                   <div className="legend-color" style={{ width: '8px', height: '8px', backgroundColor: COLORS[index], borderRadius: '50%', marginRight: '8px' }}></div>
-                  <div className="legend-text" style={{ color: '#0f172a', fontWeight: '600', flex: 1 }}>{entry.name}</div>
-                  <div className="legend-value" style={{ color: '#0f172a', fontWeight: '700' }}>{entry.value}</div>
+                  <div className="legend-text" style={{ color: 'var(--text-primary)', fontWeight: '600', flex: 1 }}>{entry.name}</div>
+                  <div className="legend-value" style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{entry.value}</div>
                 </div>
               ))}
             </div>

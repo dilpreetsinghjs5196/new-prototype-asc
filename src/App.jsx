@@ -62,7 +62,9 @@ import {
   Plus,
   CalendarDays,
   Bot,
-  Activity
+  Activity,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 // ==========================================
@@ -1055,6 +1057,12 @@ export default function App() {
   const [filterDate, setFilterDate] = useState(new Date('2026-02-23T12:00:00'));
   const [surgeries, setSurgeries] = useState(INITIAL_SURGERIES);
   const [includeAdvancedCosts, setIncludeAdvancedCosts] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('asc_theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('asc_theme', theme);
+  }, [theme]);
 
   const isDateInFilter = React.useCallback((surgDateStr, fDate, tFilter) => {
     if (tFilter === 'All') return true;
@@ -2674,6 +2682,35 @@ export default function App() {
             <div className="menu-item-icon"><HelpCircle size={16} /></div>
             Help & Support
           </div> */}
+
+          {/* Theme Switcher inside Sidebar */}
+          <div
+            onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+            style={{
+              margin: '10px 16px',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              transition: 'all 0.2s ease'
+            }}
+            title="Switch Design Scheme"
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {theme === 'dark' ? <Moon size={16} style={{ color: '#60a5fa' }} /> : <Sun size={16} style={{ color: '#fbbf24' }} />}
+              {theme === 'dark' ? 'Dark Theme' : 'Light Theme'}
+            </span>
+            <span style={{ fontSize: '0.75rem', padding: '2px 8px', backgroundColor: theme === 'dark' ? '#1e3a8a' : '#2563eb', borderRadius: '12px', color: '#fff' }}>
+              Switch
+            </span>
+          </div>
         </nav>
 
         <div className="sidebar-profile">
@@ -2746,16 +2783,51 @@ export default function App() {
             </span>
           </div>
 
-          <div className="header-actions">
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Light / Dark Mode Switcher */}
+            <button
+              onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: theme === 'dark' ? '#1e293b' : 'var(--bg-toggle, #f1f5f9)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                padding: '7px 15px',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                outline: 'none',
+                flexShrink: 0
+              }}
+              title="Toggle Light / Dark Mode"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Moon size={15} style={{ color: '#60a5fa' }} />
+                  <span>Dark Mode</span>
+                </>
+              ) : (
+                <>
+                  <Sun size={15} style={{ color: '#f59e0b' }} />
+                  <span>Light Mode</span>
+                </>
+              )}
+            </button>
+
             {!['settings', 'business_analysis', 'instruction', 'ai_ops_analyst', 'or_block_schedule', 'cancellations', 'ot_cost_manage', 'cpt_manage', 'surgeons_manage', 'patients', 'scheduler'].includes(activeTab) && (
               <>
                 {/* Toggle Advanced Costs Checkbox */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  marginRight: '15px',
+                  marginRight: '8px',
                   fontSize: '0.85rem',
-                  color: '#475569',
+                  color: 'var(--text-secondary, #475569)',
                   fontWeight: '500'
                 }}>
                   <input
@@ -2763,7 +2835,7 @@ export default function App() {
                     id="includeAdvancedCosts"
                     checked={includeAdvancedCosts}
                     onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
-                    style={{ marginRight: '6px', cursor: 'pointer' }}
+                    style={{ marginRight: '6px', cursor: 'pointer', accentColor: 'var(--color-blue)' }}
                   />
                   <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer' }}>Include Costs</label>
                 </div>
@@ -2771,11 +2843,11 @@ export default function App() {
                 {/* Toggle Group */}
                 <div style={{
                   display: 'flex',
-                  backgroundColor: '#f1f5f9',
+                  backgroundColor: 'var(--bg-toggle, #f1f5f9)',
                   borderRadius: '8px',
                   padding: '4px',
                   alignItems: 'center',
-                  marginRight: '10px'
+                  border: '1px solid var(--border-light)'
                 }}>
                   {['Day', 'Week', 'Month', 'Year', 'All'].map(filter => (
                     <button
@@ -2783,14 +2855,14 @@ export default function App() {
                       onClick={() => setTimeFilter(filter)}
                       style={{
                         border: 'none',
-                        background: timeFilter === filter ? '#fff' : 'transparent',
-                        color: timeFilter === filter ? '#3b82f6' : '#64748b',
-                        padding: '6px 16px',
+                        background: timeFilter === filter ? 'var(--bg-toggle-btn, #fff)' : 'transparent',
+                        color: timeFilter === filter ? (theme === 'dark' ? '#ffffff' : 'var(--color-blue, #3b82f6)') : 'var(--text-muted, #64748b)',
+                        padding: '6px 14px',
                         borderRadius: '6px',
-                        fontSize: '0.9rem',
-                        fontWeight: timeFilter === filter ? '600' : '500',
+                        fontSize: '0.85rem',
+                        fontWeight: timeFilter === filter ? '700' : '500',
                         cursor: 'pointer',
-                        boxShadow: timeFilter === filter ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        boxShadow: timeFilter === filter ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
                         transition: 'all 0.2s',
                         outline: 'none'
                       }}
@@ -2805,14 +2877,14 @@ export default function App() {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    backgroundColor: '#f1f5f9',
+                    backgroundColor: 'var(--bg-toggle, #f1f5f9)',
                     borderRadius: '8px',
                     padding: '6px 14px',
-                    gap: '10px',
-                    color: '#334155',
-                    fontSize: '0.9rem',
-                    fontWeight: '500',
-                    border: '1px solid #e2e8f0',
+                    gap: '8px',
+                    color: 'var(--text-primary, #334155)',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    border: '1px solid var(--border-color, #e2e8f0)',
                     cursor: 'pointer'
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>📅</span>
