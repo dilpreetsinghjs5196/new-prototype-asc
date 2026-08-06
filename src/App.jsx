@@ -3441,7 +3441,7 @@ export default function App() {
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={executiveOverviewMetrics.financialsTrend} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
                             <XAxis dataKey="name" stroke="#5e6c84" fontSize={10} tickLine={false} />
-                            <YAxis stroke="#5e6c84" fontSize={10} tickLine={false} />
+                            <YAxis domain={[0, (dataMax) => Math.ceil((Number(dataMax) || 10000) * 1.15 / 50000) * 50000]} allowDataOverflow={true} stroke="#5e6c84" fontSize={10} tickLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '11px', color: 'var(--text-primary)' }} />
                             <Legend />
                             <Bar dataKey="revenue" fill="var(--color-blue)" name="Gross Revenue" radius={[4, 4, 0, 0]} />
