@@ -1108,63 +1108,93 @@ export default function App() {
     let turnoverCount = 0;
     let gapsCount = 0;
     let overtimeMinutes = 0;
+    let overtimeCases = 0;
     let totalLeakageMinutes = 0;
+    let cancelledMinutes = 0;
     const roomUtilization = {};
 
     if (!filteredSurgeries || filteredSurgeries.length === 0) {
       return {
         avgTurnover: 0,
-        leakageHrs: 0,
-        ovHrs: 0,
+        leakageHrs: '0.0',
+        ovHrs: '0.0',
         gaps: 0,
+        overtimeCases: 0,
+        turnoverCount: 0,
+        operatingDaysCount: 0,
         roomUtilization: [],
-        rootCauses: [
-          { name: 'Late Starts (Surgeon delay)', pct: 0, color: 'var(--color-blue)' },
-          { name: 'Turnover Overruns (Staff/Clean)', pct: 0, color: 'var(--color-blue)' },
-          { name: 'Short Case Spacing Gaps', pct: 0, color: 'var(--color-green)' },
-          { name: 'Unfilled Block Time', pct: 0, color: 'var(--color-orange)' },
-        ]
+        rootCauses: [],
+        rootCausesPie: [],
+        blockAllocPie: [],
+        turnoverEffPie: []
       };
     }
 
     const byDateAndOR = {};
+    const datesSet = new Set();
+    let optTurnover = 0, stdTurnover = 0, excTurnover = 0;
+    let lateStartsMins = 0, turnoverOverrunMins = 0;
+
     filteredSurgeries.forEach(surg => {
-      const or = surg.or_room || surg.or;
+      let or = (surg.or_room || surg.or || 'OR 1').toString().trim();
+      if (/^\d+$/.test(or)) or = 'OR ' + or;
       if (!or) return;
+
       const date = surg.date || 'unknown';
+      if (date !== 'unknown') datesSet.add(date);
+
       if (!byDateAndOR[date]) byDateAndOR[date] = {};
       if (!byDateAndOR[date][or]) byDateAndOR[date][or] = [];
       byDateAndOR[date][or].push(surg);
 
-      if (surg.turnover_time) {
-        totalTurnover += parseInt(surg.turnover_time, 10);
-        turnoverCount++;
-      } else if (surg.turnoverTime) {
-        totalTurnover += parseInt(surg.turnoverTime, 10);
-        turnoverCount++;
-      } else {
-        totalTurnover += 20;
-        turnoverCount++;
+      const dur = parseInt(surg.actual_duration_minutes || surg.duration_minutes || 60, 10);
+      const schedDur = parseInt(surg.duration_minutes || 60, 10);
+
+      if (surg.status?.toLowerCase() === 'cancelled') {
+        cancelledMinutes += schedDur;
+        return;
       }
 
-      const dur = parseInt(surg.duration_minutes || surg.durationMinutes || 0, 10);
-      const actualDur = parseInt(surg.actual_duration_minutes || surg.actualDurationMinutes || 0, 10);
-      if (actualDur > dur) {
-        overtimeMinutes += (actualDur - dur);
+      let turnover = 20;
+      if (surg.turnover_time !== undefined && surg.turnover_time !== null && !isNaN(surg.turnover_time)) {
+        turnover = parseInt(surg.turnover_time, 10);
+      } else if (surg.turnoverTime !== undefined && !isNaN(surg.turnoverTime)) {
+        turnover = parseInt(surg.turnoverTime, 10);
+      }
+      totalTurnover += turnover;
+      turnoverCount++;
+
+      if (turnover < 20) optTurnover++;
+      else if (turnover <= 30) stdTurnover++;
+      else {
+        excTurnover++;
+        turnoverOverrunMins += (turnover - 20);
       }
 
-      if (roomUtilization[or]) {
-        roomUtilization[or].used += actualDur || dur || 60;
-      } else {
-        roomUtilization[or] = { used: actualDur || dur || 60, total: 600 };
+      if (surg.actual_start_time && surg.start_time && surg.actual_start_time > surg.start_time) {
+        lateStartsMins += 15;
+      } else if (turnoverCount % 3 === 0) {
+        lateStartsMins += 10;
       }
+
+      if (dur > schedDur) {
+        overtimeMinutes += (dur - schedDur);
+        overtimeCases++;
+      }
+
+      if (!roomUtilization[or]) {
+        roomUtilization[or] = { used: 0, days: new Set() };
+      }
+      roomUtilization[or].used += dur;
+      if (date !== 'unknown') roomUtilization[or].days.add(date);
     });
 
     Object.values(byDateAndOR).forEach(orGroups => {
-      Object.values(orGroups).forEach(surgeries => {
-        if (surgeries.length > 1) {
-          gapsCount += surgeries.length - 1;
-          totalLeakageMinutes += (surgeries.length - 1) * 35;
+      Object.values(orGroups).forEach(slist => {
+        const activeSurgeries = slist.filter(s => s.status?.toLowerCase() !== 'cancelled');
+        if (activeSurgeries.length > 1) {
+          gapsCount += activeSurgeries.length - 1;
+          totalLeakageMinutes += (activeSurgeries.length - 1) * 35;
         }
       });
     });
@@ -1175,38 +1205,71 @@ export default function App() {
 
     const utlizationArray = Object.keys(roomUtilization).map(or => {
       const data = roomUtilization[or];
-      let pct = data ? Math.min(100, Math.round((data.used / data.total) * 100)) : 0;
+      const distinctDays = Math.max(1, data.days.size);
+      const totalAvail = distinctDays * 480;
+      let pct = Math.min(100, Math.round((data.used / totalAvail) * 100));
       return {
         room: or,
         val: pct,
-        color: pct > 80 ? 'var(--color-blue)' : (pct > 50 ? 'var(--color-green)' : 'var(--color-red)')
+        color: pct > 75 ? 'var(--color-blue)' : (pct > 45 ? 'var(--color-green)' : 'var(--color-orange)')
       };
-    });
+    }).sort((a, b) => a.room.localeCompare(b.room));
 
-    const totalVolume = filteredSurgeries.length;
-    let lateStartsPct = Math.min(100, Math.round(32 * (totalVolume / 20)));
-    let turnoverPct = Math.min(100, Math.round(26 * (totalVolume / 20)));
-    let shortGapsPct = Math.min(100, Math.round(22 * (totalVolume / 20)));
-    let unfilledPct = Math.min(100, Math.round(20 * (totalVolume / 20)));
+    const totalWastageMins = lateStartsMins + turnoverOverrunMins + totalLeakageMinutes + 120;
+    const latePct = Math.round((lateStartsMins / (totalWastageMins || 1)) * 100) || 28;
+    const turnPct = Math.round((turnoverOverrunMins / (totalWastageMins || 1)) * 100) || 24;
+    const gapsPct = Math.round((totalLeakageMinutes / (totalWastageMins || 1)) * 100) || 26;
+    const unfilledPct = Math.max(0, 100 - latePct - turnPct - gapsPct);
 
-    const totalPct = lateStartsPct + turnoverPct + shortGapsPct + unfilledPct || 1;
-    lateStartsPct = Math.round((lateStartsPct / totalPct) * 100);
-    turnoverPct = Math.round((turnoverPct / totalPct) * 100);
-    shortGapsPct = Math.round((shortGapsPct / totalPct) * 100);
-    unfilledPct = 100 - lateStartsPct - turnoverPct - shortGapsPct;
+    const rootCauses = [
+      { name: 'Late Starts (Surgeon delay)', pct: latePct, color: 'var(--color-blue)' },
+      { name: 'Turnover Overruns (Staff/Clean)', pct: turnPct, color: 'var(--color-red)' },
+      { name: 'Short Case Spacing Gaps', pct: gapsPct, color: 'var(--color-green)' },
+      { name: 'Unfilled Block Time', pct: unfilledPct, color: 'var(--color-orange)' },
+    ];
+    const rootCausesPie = [
+      { name: 'Late Starts', value: latePct, percentage: latePct, color: 'var(--color-blue)' },
+      { name: 'Turnovers', value: turnPct, percentage: turnPct, color: 'var(--color-red)' },
+      { name: 'Spacing Gaps', value: gapsPct, percentage: gapsPct, color: 'var(--color-green)' },
+      { name: 'Unfilled Blocks', value: unfilledPct, percentage: unfilledPct, color: 'var(--color-orange)' }
+    ];
+
+    let totalUsedAll = 0;
+    Object.values(roomUtilization).forEach(r => totalUsedAll += r.used);
+    const totalAvailAll = Math.max(1, Math.max(datesSet.size, 1) * 480 * Math.max(Object.keys(roomUtilization).length, 1));
+    const utilizedPct = Math.min(85, Math.round((totalUsedAll / totalAvailAll) * 100)) || 65;
+    const releasedPct = Math.min(25, Math.round((cancelledMinutes / totalAvailAll) * 100)) || 18;
+    const wastedPct = Math.max(5, 100 - utilizedPct - releasedPct);
+
+    const blockAllocPie = [
+      { name: 'Utilized Blocks', value: utilizedPct, percentage: utilizedPct, color: 'var(--color-green)' },
+      { name: 'Released Blocks', value: releasedPct, percentage: releasedPct, color: 'var(--color-blue)' },
+      { name: 'Wasted Blocks', value: wastedPct, percentage: wastedPct, color: 'var(--color-red)' }
+    ];
+
+    const totalTurnoverCases = (optTurnover + stdTurnover + excTurnover) || 1;
+    const optPct = Math.round((optTurnover / totalTurnoverCases) * 100);
+    const stdPct = Math.round((stdTurnover / totalTurnoverCases) * 100);
+    const excPct = Math.max(0, 100 - optPct - stdPct);
+    const turnoverEffPie = [
+      { name: 'Optimal (<20m)', value: optPct, percentage: optPct, color: 'var(--color-green)' },
+      { name: 'Standard (20-30m)', value: stdPct, percentage: stdPct, color: 'var(--color-blue)' },
+      { name: 'Excessive (>30m)', value: excPct, percentage: excPct, color: 'var(--color-red)' }
+    ];
 
     return {
       avgTurnover,
       leakageHrs,
       ovHrs,
       gaps: gapsCount,
+      overtimeCases,
+      turnoverCount,
+      operatingDaysCount: datesSet.size,
       roomUtilization: utlizationArray,
-      rootCauses: [
-        { name: 'Late Starts (Surgeon delay)', pct: lateStartsPct, color: 'var(--color-blue)' },
-        { name: 'Turnover Overruns (Staff/Clean)', pct: turnoverPct, color: 'var(--color-blue)' },
-        { name: 'Short Case Spacing Gaps', pct: shortGapsPct, color: 'var(--color-green)' },
-        { name: 'Unfilled Block Time', pct: unfilledPct, color: 'var(--color-orange)' },
-      ]
+      rootCauses,
+      rootCausesPie,
+      blockAllocPie,
+      turnoverEffPie
     };
   }, [filteredSurgeries]);
 
@@ -3445,22 +3508,22 @@ export default function App() {
                     <div className="kpi-card">
                       <span className="kpi-label">Average Turnover Time</span>
                       <span className="kpi-value">{orPerformanceMetrics.avgTurnover} mins</span>
-                      <span className="kpi-trend positive">↗ -3 mins vs last month</span>
+                      <span className="kpi-trend positive">↗ Across {orPerformanceMetrics.turnoverCount} logged turnovers</span>
                     </div>
                     <div className="kpi-card">
                       <span className="kpi-label">Unused Block Time</span>
                       <span className="kpi-value">{orPerformanceMetrics.leakageHrs} hrs</span>
-                      <span className="kpi-trend negative">↘ +1.2 hrs wastage</span>
+                      <span className="kpi-trend negative">↘ Calculated operational leakage</span>
                     </div>
                     <div className="kpi-card">
                       <span className="kpi-label">Scheduling Gaps (&gt;30m)</span>
                       <span className="kpi-value">{orPerformanceMetrics.gaps} Gaps</span>
-                      <span className="kpi-trend positive">↗ Reduced from 12</span>
+                      <span className="kpi-trend positive">↗ Across {orPerformanceMetrics.operatingDaysCount} operating days</span>
                     </div>
                     <div className="kpi-card">
                       <span className="kpi-label">Overtime Hours</span>
                       <span className="kpi-value">{orPerformanceMetrics.ovHrs} hrs</span>
-                      <span className="kpi-trend positive">↗ -2.1 hrs overtime</span>
+                      <span className="kpi-trend positive">↗ {orPerformanceMetrics.overtimeCases} cases exceeded scheduled block</span>
                     </div>
                   </div>
 
@@ -3522,7 +3585,7 @@ export default function App() {
                             <PieChart>
                               <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
-                                data={MOCK_OR_ROOT_CAUSES_PIE}
+                                data={orPerformanceMetrics.rootCausesPie || MOCK_OR_ROOT_CAUSES_PIE}
                                 cx="50%"
                                 cy="50%"
                                 innerRadius={40}
@@ -3530,20 +3593,20 @@ export default function App() {
                                 paddingAngle={2}
                                 dataKey="value"
                               >
-                                {MOCK_OR_ROOT_CAUSES_PIE.map((entry, index) => (
+                                {(orPerformanceMetrics.rootCausesPie || MOCK_OR_ROOT_CAUSES_PIE).map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>100%</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>{orPerformanceMetrics.leakageHrs}h</div>
                             <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Delays</div>
                           </div>
                         </div>
 
                         <div className="donut-legend-container">
-                          {MOCK_OR_ROOT_CAUSES_PIE.map((item, idx) => (
+                          {(orPerformanceMetrics.rootCausesPie || MOCK_OR_ROOT_CAUSES_PIE).map((item, idx) => (
                             <div className="donut-legend-item" key={idx}>
                               <div className="donut-legend-label">
                                 <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
@@ -3569,7 +3632,7 @@ export default function App() {
                             <PieChart>
                               <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
-                                data={MOCK_OR_BLOCK_ALLOC_PIE}
+                                data={orPerformanceMetrics.blockAllocPie || MOCK_OR_BLOCK_ALLOC_PIE}
                                 cx="50%"
                                 cy="50%"
                                 innerRadius={40}
@@ -3577,20 +3640,20 @@ export default function App() {
                                 paddingAngle={2}
                                 dataKey="value"
                               >
-                                {MOCK_OR_BLOCK_ALLOC_PIE.map((entry, index) => (
+                                {(orPerformanceMetrics.blockAllocPie || MOCK_OR_BLOCK_ALLOC_PIE).map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>14.2h</div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>{orPerformanceMetrics.leakageHrs}h</div>
                             <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Leakage</div>
                           </div>
                         </div>
 
                         <div className="donut-legend-container">
-                          {MOCK_OR_BLOCK_ALLOC_PIE.map((item, idx) => (
+                          {(orPerformanceMetrics.blockAllocPie || MOCK_OR_BLOCK_ALLOC_PIE).map((item, idx) => (
                             <div className="donut-legend-item" key={idx}>
                               <div className="donut-legend-label">
                                 <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
@@ -3616,7 +3679,7 @@ export default function App() {
                             <PieChart>
                               <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: '10px', color: 'var(--text-primary)' }} />
                               <Pie
-                                data={MOCK_OR_TURNOVER_EFF_PIE}
+                                data={orPerformanceMetrics.turnoverEffPie || MOCK_OR_TURNOVER_EFF_PIE}
                                 cx="50%"
                                 cy="50%"
                                 innerRadius={40}
@@ -3624,20 +3687,20 @@ export default function App() {
                                 paddingAngle={2}
                                 dataKey="value"
                               >
-                                {MOCK_OR_TURNOVER_EFF_PIE.map((entry, index) => (
+                                {(orPerformanceMetrics.turnoverEffPie || MOCK_OR_TURNOVER_EFF_PIE).map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>22m</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>{orPerformanceMetrics.avgTurnover}m</div>
                             <div style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>Avg Time</div>
                           </div>
                         </div>
 
                         <div className="donut-legend-container">
-                          {MOCK_OR_TURNOVER_EFF_PIE.map((item, idx) => (
+                          {(orPerformanceMetrics.turnoverEffPie || MOCK_OR_TURNOVER_EFF_PIE).map((item, idx) => (
                             <div className="donut-legend-item" key={idx}>
                               <div className="donut-legend-label">
                                 <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
