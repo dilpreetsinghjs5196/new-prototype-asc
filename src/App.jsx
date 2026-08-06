@@ -1538,6 +1538,88 @@ export default function App() {
   // ASC Analyst Modal State
   const [showAscAnalyst, setShowAscAnalyst] = useState(false);
 
+  // Dynamic real-time calculation for Surgeon Performance tab
+  const dynamicSurgeonTableData = React.useMemo(() => {
+    const dataList = filteredSurgeries && filteredSurgeries.length > 0 ? filteredSurgeries : surgeries;
+    if (!dataList || dataList.length === 0) return surgeonTableData;
+
+    let globalCases = 0;
+    let globalSupplyCost = 0;
+    dataList.forEach(s => {
+      if (s.status?.toLowerCase() === 'cancelled') return;
+      globalCases++;
+      const directMed = Math.max(0, Number(s.supplies || s.supplies_cost || 0) + Number(s.implants || s.implants_cost || 0) + Number(s.medications_cost || 0) + Number(s.tray_cost || 0));
+      globalSupplyCost += directMed;
+    });
+    const avgSupplyGlobal = globalCases > 0 ? globalSupplyCost / globalCases : 1;
+
+    const surgeonMap = {};
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#6366f1'];
+    let colorIdx = 0;
+
+    dataList.forEach(s => {
+      if (s.status?.toLowerCase() === 'cancelled') return;
+      const doc = s.doctor || s.doctor_name || 'Unknown Surgeon';
+      if (!surgeonMap[doc]) {
+        const existingColor = surgeonTableData.find(st => st.name === doc)?.color;
+        surgeonMap[doc] = {
+          name: doc,
+          cases: 0,
+          totalDuration: 0,
+          totalTurnover: 0,
+          totalRev: 0,
+          totalSupply: 0,
+          totalCost: 0,
+          color: existingColor || colors[colorIdx % colors.length]
+        };
+        colorIdx++;
+      }
+      const sm = surgeonMap[doc];
+      sm.cases++;
+      const dur = Number(s.actual_duration_minutes || s.duration_minutes || 60);
+      let turnover = Number(s.turnover_time !== undefined && s.turnover_time !== null ? s.turnover_time : 20);
+      if (isNaN(turnover)) turnover = 20;
+
+      const rawRev = Number(s.revenue !== undefined ? s.revenue : (s.expected_reimbursement || 0));
+      const writeOff = Number(s.write_off || 0);
+      const rev = s.revenue !== undefined ? s.revenue : (s.is_probono ? 0 : Math.max(0, rawRev - writeOff));
+
+      const directMed = Math.max(0, Number(s.supplies || s.supplies_cost || 0) + Number(s.implants || s.implants_cost || 0) + Number(s.medications_cost || 0) + Number(s.tray_cost || 0));
+      const overhead = Math.max(0, Number(s.labor || s.actual_labor_cost || 0) + Number(s.roomCost || s.actual_room_cost || 0));
+      const cost = directMed + (includeAdvancedCosts ? overhead : 0);
+
+      sm.totalDuration += dur;
+      sm.totalTurnover += turnover;
+      sm.totalRev += rev;
+      sm.totalSupply += directMed;
+      sm.totalCost += cost;
+    });
+
+    const result = Object.values(surgeonMap).map(sm => {
+      const avgDur = sm.cases > 0 ? Math.round(sm.totalDuration / sm.cases) : 0;
+      const avgTurn = sm.cases > 0 ? Math.round(sm.totalTurnover / sm.cases) : 0;
+      const avgSupply = sm.cases > 0 ? sm.totalSupply / sm.cases : 0;
+      const variancePct = avgSupplyGlobal > 0 ? ((avgSupply - avgSupplyGlobal) / avgSupplyGlobal) * 100 : 0;
+      const margin = sm.totalRev - sm.totalCost;
+      const avgMargin = sm.cases > 0 ? Math.round(margin / sm.cases) : 0;
+
+      return {
+        name: sm.name,
+        cases: sm.cases,
+        proced: `${avgDur} mins`,
+        turn: `${avgTurn} mins`,
+        variance: (variancePct >= 0 ? '+' : '') + variancePct.toFixed(1) + '%',
+        rev: Math.round(sm.totalRev),
+        supply: Math.round(sm.totalSupply),
+        margin: Math.round(margin),
+        avg: Math.round(avgMargin),
+        color: sm.color
+      };
+    }).sort((a, b) => b.margin - a.margin);
+
+    return result.length > 0 ? result : surgeonTableData;
+  }, [filteredSurgeries, surgeries, includeAdvancedCosts, surgeonTableData]);
+
   // Fetch from Supabase on component mount
   useEffect(() => {
     async function loadDatabaseData() {
@@ -1639,7 +1721,7 @@ export default function App() {
             supplies_cost: supplies,
             implants_cost: implants,
             medications_cost: meds,
-            tray_cost: surg.tray_cost,
+            tray_cost: trayCost,
             actual_start_time: surg.actual_start_time,
             actual_end_time: surg.actual_end_time,
             actual_duration_minutes: surg.actual_duration_minutes,
@@ -1741,8 +1823,9 @@ export default function App() {
           sd.metrics.cases += 1;
           sd.metrics.avgDuration += surg.duration_minutes || 0;
           sd.metrics.netMargin += surg.margin;
-          sd.metrics.totalRevenue = (sd.metrics.totalRevenue || 0) + surg.revenue;
-          sd.metrics.totalSupplies = (sd.metrics.totalSupplies || 0) + surg.supplies;
+          const directMed = Math.max(0, Number(surg.supplies || 0) + Number(surg.implants || 0) + Number(surg.medications_cost || 0) + Number(surg.tray_cost || 0));
+          sd.metrics.totalRevenue = Math.round((sd.metrics.totalRevenue || 0) + surg.revenue);
+          sd.metrics.totalSupplies = Math.round((sd.metrics.totalSupplies || 0) + directMed);
           sd.metrics.totalTurnover = (sd.metrics.totalTurnover || 0) + surg.turnover_time;
 
           // update case history actual
@@ -1771,7 +1854,7 @@ export default function App() {
           cptItem.margin += surg.margin;
         });
 
-        const totalSuppliesGlobal = mappedSurgeries.reduce((sum, s) => sum + s.supplies, 0);
+        const totalSuppliesGlobal = mappedSurgeries.reduce((sum, s) => sum + Math.max(0, Number(s.supplies || 0) + Number(s.implants || 0) + Number(s.medications_cost || 0) + Number(s.tray_cost || 0)), 0);
         const avgSupplyGlobal = mappedSurgeries.length > 0 ? totalSuppliesGlobal / mappedSurgeries.length : 1;
 
         // Finish average metric calculations
@@ -3746,7 +3829,7 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {surgeonTableData.map(surg => (
+                          {dynamicSurgeonTableData.map(surg => (
                             <tr
                               key={surg.name}
                               onClick={() => { setSelectedSurgeon(surg.name); setProfileTab('overview'); }}
@@ -3765,10 +3848,10 @@ export default function App() {
                               <td style={{ color: surg.variance.startsWith('+') ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
                                 {surg.variance}
                               </td>
-                              <td>${surg.rev.toLocaleString()}</td>
-                              <td>${surg.supply.toLocaleString()}</td>
-                              <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${surg.margin.toLocaleString()}</td>
-                              <td style={{ fontWeight: '600' }}>${surg.avg.toLocaleString()}</td>
+                              <td>${Number(surg.rev || 0).toLocaleString('en-US')}</td>
+                              <td>${Number(surg.supply || 0).toLocaleString('en-US')}</td>
+                              <td style={{ color: 'var(--color-green)', fontWeight: '700' }}>${Number(surg.margin || 0).toLocaleString('en-US')}</td>
+                              <td style={{ fontWeight: '600' }}>${Number(surg.avg || 0).toLocaleString('en-US')}</td>
                             </tr>
                           ))}
                         </tbody>
