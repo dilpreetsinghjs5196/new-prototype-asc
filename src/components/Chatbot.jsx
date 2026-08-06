@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Mic, Lock, Volume2, VolumeX } from 'lucide-react';
+import { Sparkles, X, Send, Mic, MicOff, Lock, Volume2, VolumeX, MessageSquare, Radio, Play, Square } from 'lucide-react';
 import { db } from '../lib/supabase';
 import { sendMessageToGemini } from '../lib/gemini';
+import { GeminiLiveSession } from '../lib/geminiLive';
 import './Chatbot.css';
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('text'); // 'text' | 'live'
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: 'bot',
-      text: 'Hello! I am your ASC Manager AI Assistant. I can help with questions about surgery schedules, CPT codes, patient management, OR block schedules, and more. How can I assist you today?',
+      text: 'Hello! I am your ASC Manager AI Assistant with complete, real-time access to your surgical database. I can answer any question regarding surgeon directories, patient registries, case schedules, CPT profitability, OR block schedules, and recent hospital updates. How can I assist you today?',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -25,43 +27,76 @@ const Chatbot = () => {
   const [cptCodes, setCptCodes] = useState([]);
   const [surgeries, setSurgeries] = useState([]);
   const [orBlockSchedule, setOrBlockSchedule] = useState([]);
+  const [otExtraCosts, setOtExtraCosts] = useState([]);
+
+  // Live Voice Mode state
+  const [liveStatus, setLiveStatus] = useState('Disconnected');
+  const [liveVolume, setLiveVolume] = useState(0);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [isLiveMuted, setIsLiveMuted] = useState(false);
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const liveSessionRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
-  const [isSoundOn, setIsSoundOn] = useState(true); // Default to voice output on
+  const [isSoundOn, setIsSoundOn] = useState(true);
+
+  const refreshDatabaseContext = async () => {
+    try {
+      const [data, surgs, pats, cpts, surgies, orBlocks, extraCosts] = await Promise.all([
+        db.getSettings().catch(() => null),
+        db.getSurgeons().catch(() => []),
+        db.getPatients().catch(() => []),
+        db.getCPTCodes().catch(() => []),
+        db.getSurgeries().catch(() => []),
+        db.getORBlockSchedule().catch(() => []),
+        db.getOTExtraCosts().catch(() => [])
+      ]);
+      
+      const localAllowedEmail = localStorage.getItem('ai_allowed_email') || '';
+      setSettings({ ...data, ai_allowed_email: data?.ai_allowed_email || localAllowedEmail });
+      
+      setSurgeons(surgs);
+      setPatients(pats);
+      setCptCodes(cpts);
+      setSurgeries(surgies);
+      setOrBlockSchedule(orBlocks);
+      setOtExtraCosts(extraCosts);
+      
+      return { surgs, pats, cpts, surgies, orBlocks, extraCosts, settingsData: data };
+    } catch (err) {
+      console.error('Failed to load real-time data for Chatbot:', err);
+      return { surgs: surgeons, pats: patients, cpts: cptCodes, surgies: surgeries, orBlocks: orBlockSchedule, extraCosts: otExtraCosts, settingsData: settings };
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
-      const fetchData = async () => {
-        try {
-          const [data, surgs, pats, cpts, surgies, orBlocks] = await Promise.all([
-            db.getSettings(),
-            db.getSurgeons().catch(() => []),
-            db.getPatients().catch(() => []),
-            db.getCPTCodes().catch(() => []),
-            db.getSurgeries().catch(() => []),
-            db.getORBlockSchedule().catch(() => [])
-          ]);
-          
-          const localAllowedEmail = localStorage.getItem('ai_allowed_email') || '';
-          setSettings({ ...data, ai_allowed_email: data?.ai_allowed_email || localAllowedEmail });
-          
-          setSurgeons(surgs);
-          setPatients(pats);
-          setCptCodes(cpts);
-          setSurgeries(surgies);
-          setOrBlockSchedule(orBlocks);
-        } catch (err) {
-          console.error('Failed to load data for Chatbot:', err);
-        }
-      };
-
-      fetchData();
+      refreshDatabaseContext();
     }
   }, [isOpen]);
 
-  // Initialize Speech Recognition
+  // Initialize Gemini Live Voice Session
+  useEffect(() => {
+    liveSessionRef.current = new GeminiLiveSession({
+      model: "models/gemini-3.5-live-translate-preview",
+      onStatusChange: (status) => setLiveStatus(status),
+      onVolumeChange: (vol) => setLiveVolume(vol),
+      onAudioPlaybackStart: () => setIsAiSpeaking(true),
+      onAudioPlaybackEnd: () => setIsAiSpeaking(false),
+      onTextReceived: (text) => setLiveTranscript(prev => (prev + " " + text).trim()),
+      onError: (err) => setLiveStatus(`Error: ${err}`)
+    });
+
+    return () => {
+      if (liveSessionRef.current) {
+        liveSessionRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  // Initialize Speech Recognition for text input
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -76,13 +111,12 @@ const Chatbot = () => {
             finalTranscript += event.results[i][0].transcript;
           }
         }
-        // Fallback if isFinal is not behaving as expected
         if (!finalTranscript && event.results.length > 0) {
            finalTranscript = event.results[event.results.length - 1][0].transcript;
         }
 
         if (finalTranscript) {
-          setInput(finalTranscript); // Overwrite to prevent stutter accumulation
+          setInput(finalTranscript);
         }
         setIsListening(false);
       };
@@ -114,14 +148,180 @@ const Chatbot = () => {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isOpen]);
+    if (activeTab === 'text') {
+      scrollToBottom();
+    }
+  }, [messages, isOpen, activeTab]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const prepareContextData = (userPrompt = '', customData = null) => {
+    const sList = customData?.surgs || surgeons;
+    const pList = customData?.pats || patients;
+    const cList = customData?.cpts || cptCodes;
+    const surgList = customData?.surgies || surgeries;
+    const blockList = customData?.orBlocks || orBlockSchedule;
+    const extraList = customData?.extraCosts || otExtraCosts;
+
+    const getSurgeonName = (s) => {
+      if (!s) return 'Unknown';
+      if (s.name && s.name !== 'undefined') return s.name;
+      const full = `${s.firstname || ''} ${s.lastname || ''}`.trim();
+      if (full) return `Dr. ${full.replace(/^Dr\.?\s*/i, '')}`;
+      return s.doctor_name || s.surgeon_name || `Surgeon #${s.id || 'N/A'}`;
+    };
+
+    const getPatientName = (p) => {
+      if (!p) return 'Unknown';
+      if (p.name && p.name !== 'undefined') return p.name;
+      const full = `${p.firstname || ''} ${p.lastname || ''}`.trim();
+      return full || p.patient_name || `Patient #${p.id || 'N/A'}`;
+    };
+
+    const contextParts = [];
+    
+    // System Header and Instructions
+    contextParts.push(`=== ASC MANAGER REAL-TIME DATABASE CONTEXT ===\nCurrent Date & Time: ${new Date().toLocaleString()}\nYou have complete, unrestricted access to the entire ASC (Ambulatory Surgery Center) database below. Use this precise data to answer ANY question about surgeons, patients, surgery logs, CPT codes, operating room blocks, financial margins, and historical/recent additions with exact precision.`);
+    
+    // Surgeons Database (Always included in full)
+    if (sList && sList.length > 0) {
+      const surgeonText = sList.map((s, idx) => {
+        const name = getSurgeonName(s);
+        const npi = s.npi || s.license || s.license_number || 'N/A';
+        const spec = s.specialty || 'General Surgery';
+        const email = s.email || 'N/A';
+        const phone = s.phone || 'N/A';
+        const created = s.created_at ? new Date(s.created_at).toLocaleDateString() : 'N/A';
+        return `[Surgeon ID: ${s.id || idx + 1}] Name: ${name} | Specialty: ${spec} | NPI/License: ${npi} | Email: ${email} | Phone: ${phone} | Added On: ${created} | Status: ${s.status || 'Active'}`;
+      }).join('\n');
+      contextParts.push(`--- SURGEON DIRECTORY (Total: ${sList.length} Surgeons) ---\nNotice: To identify recently added surgeons, check for the highest ID numbers or most recent 'Added On' timestamps in this directory. To count total surgeons, look at the exact total of ${sList.length}.\n${surgeonText}`);
+    } else {
+      contextParts.push(`--- SURGEON DIRECTORY ---\nNo surgeons currently listed in the database.`);
+    }
+
+    // Patients Database (Always included in full)
+    if (pList && pList.length > 0) {
+      const patientText = pList.map((p, idx) => {
+        const name = getPatientName(p);
+        const mrn = p.mrn || p.medical_record_number || 'N/A';
+        const dob = p.dob || p.date_of_birth || 'N/A';
+        const phone = p.phone || p.contact || 'N/A';
+        const insurance = p.insurance || p.payer || 'Private / Self-Pay';
+        const created = p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A';
+        return `[Patient ID: ${p.id || idx + 1}] Name: ${name} | DOB: ${dob} | MRN: ${mrn} | Insurance: ${insurance} | Phone: ${phone} | Registered On: ${created}`;
+      }).join('\n');
+      contextParts.push(`--- PATIENT REGISTRY (Total: ${pList.length} Patients) ---\n${patientText}`);
+    } else {
+      contextParts.push(`--- PATIENT REGISTRY ---\nNo patient records found in database.`);
+    }
+
+    // Surgeries / Case Log (Always included in full)
+    if (surgList && surgList.length > 0) {
+      const surgeryText = surgList.map((s, idx) => {
+        const patientName = getPatientName(s.patients || s);
+        const surgeonName = getSurgeonName(s.surgeons || s);
+        const date = s.date || 'Unscheduled';
+        const time = s.time || s.start_time || 'TBD';
+        const room = s.operating_room || s.room || s.or_room || 'Assigned OR';
+        const proc = s.procedure_name || s.procedure || s.cpt_description || 'Surgical Procedure';
+        const cpt = s.cpt_code || s.cpt || 'N/A';
+        const status = s.status || 'Scheduled';
+        const cost = s.cost !== undefined ? `$${s.cost}` : '$0';
+        const reimb = s.reimbursement !== undefined ? `$${s.reimbursement}` : '$0';
+        const cancelReason = s.cancellation_reason ? ` (Reason: ${s.cancellation_reason})` : '';
+        return `[Case ID: ${s.id || idx + 1}] Date: ${date} at ${time} | OR: ${room} | Surgeon: ${surgeonName} | Patient: ${patientName} | Procedure: ${proc} (CPT: ${cpt}) | Status: ${status}${cancelReason} | Est. Cost: ${cost} | Expected Reimbursement: ${reimb}`;
+      }).join('\n');
+      contextParts.push(`--- SURGICAL CASE LOG & FINANCIALS (Total: ${surgList.length} Surgeries) ---\n${surgeryText}`);
+    } else {
+      contextParts.push(`--- SURGICAL CASE LOG ---\nNo surgical cases logged yet.`);
+    }
+
+    // OR Block Schedule
+    if (blockList && blockList.length > 0) {
+      const blockText = blockList.map((b, idx) => {
+        const room = b.room_name || b.room || b.or || 'OR';
+        const provider = b.provider_name || b.surgeon || getSurgeonName(b);
+        const day = b.day_of_week || b.date || 'Weekly';
+        const time = (b.start_time && b.end_time) ? `${b.start_time} - ${b.end_time}` : 'Full Day Block';
+        return `[Block ID: ${b.id || idx + 1}] Room: ${room} | Provider: ${provider} | Schedule: ${day} (${time})`;
+      }).join('\n');
+      contextParts.push(`--- OR BLOCK SCHEDULES (Total: ${blockList.length} Blocks) ---\n${blockText}`);
+    }
+
+    // Smart Token-Optimized CPT Codes & Supply Context
+    // To prevent exceeding AI token quotas on questions about surgeons or patient rosters,
+    // we only include the complete CPT & extra cost catalogs when relevant billing/procedure terms are present in the query.
+    const promptLower = userPrompt.toLowerCase();
+    const isBillingOrProcedureQuery = 
+      promptLower.includes('cpt') || promptLower.includes('code') || promptLower.includes('cost') ||
+      promptLower.includes('price') || promptLower.includes('reimbursement') || promptLower.includes('margin') ||
+      promptLower.includes('procedure') || promptLower.includes('supply') || promptLower.includes('duration') ||
+      promptLower.includes('turnover') || promptLower.includes('charge') || promptLower.includes('fee');
+
+    if (cList && cList.length > 0) {
+      const formatCPT = (c) => `CPT ${c.code || 'Unknown'}: ${c.description || 'No description'} [Category: ${c.category || 'General'} | Avg Cost: $${c.cost || 0} | Expected Reimbursement: $${c.reimbursement || 0} | Avg Duration: ${c.average_duration || 0} mins]`;
+      
+      if (cList.length <= 50 || isBillingOrProcedureQuery) {
+        // Provide top 200 relevant procedures if billing query
+        const displayList = isBillingOrProcedureQuery && cList.length > 200 ? cList.slice(0, 200) : cList;
+        contextParts.push(`--- COMPASS CPT CODES DATABASE (Showing ${displayList.length} of Total: ${cList.length} CPT Codes) ---\n${displayList.map(formatCPT).join('\n')}`);
+      } else {
+        // Token-conserving summary when user is asking general staff/hospital questions
+        contextParts.push(`--- COMPASS CPT CODES DATABASE (Total Catalog Size: ${cList.length} CPT Codes) ---\nNote: Complete CPT procedure database of ${cList.length} billing codes is actively linked in the background and will be fully expanded when asked about specific CPT codes, procedures, costs, or turnover times. Sample procedures:\n${cList.slice(0, 20).map(formatCPT).join('\n')}`);
+      }
+    }
+
+    if (extraList && extraList.length > 0) {
+      if (extraList.length <= 30 || isBillingOrProcedureQuery) {
+        const extraText = extraList.map((e, idx) => `[Cost ID: ${e.id || idx + 1}] Related CPT: ${e.cpt_codes || e.code || 'All'} | Item: ${e.item_name || e.name || e.description || 'Extra Supply'} | Additional Cost: $${e.cost || e.amount || 0}`).join('\n');
+        contextParts.push(`--- OPERATING THEATER (OT) EXTRA COSTS & SUPPLIES (Total: ${extraList.length} Items) ---\n${extraText}`);
+      } else {
+        contextParts.push(`--- OPERATING THEATER (OT) EXTRA COSTS (Total Items: ${extraList.length}) ---\nNote: Expanded when pricing or supply costs are requested.`);
+      }
+    }
+
+    return contextParts.join('\n\n');
+  };
+
+  const startLiveVoice = async () => {
+    setLiveTranscript('');
+    const latestData = await refreshDatabaseContext();
+    const systemPrompt = `You are a real-time conversational voice AI assistant for an Ambulatory Surgery Center (ASC) called ASC Manager. Speak naturally, concisely, and professionally to surgical facility staff using the exact real-time hospital database below.\n\n[ASC System & Operational Context Data]:\n${prepareContextData('general overview of surgeons and surgeries', latestData)}`;
+    if (liveSessionRef.current) {
+      liveSessionRef.current.connect(systemPrompt);
+    }
+  };
+
+  const stopLiveVoice = () => {
+    if (liveSessionRef.current) {
+      liveSessionRef.current.disconnect();
+    }
+    setLiveStatus('Disconnected');
+    setIsAiSpeaking(false);
+    setLiveVolume(0);
+  };
+
+  const toggleLiveMute = () => {
+    if (liveSessionRef.current) {
+      const nextMute = !isLiveMuted;
+      liveSessionRef.current.setMuted(nextMute);
+      setIsLiveMuted(nextMute);
+    }
+  };
+
+  const handleTabChange = (tab) => {
+    if (tab === 'text' && liveStatus !== 'Disconnected') {
+      stopLiveVoice();
+    }
+    setActiveTab(tab);
+  };
+
   const toggleChat = () => {
+    if (isOpen && liveStatus !== 'Disconnected') {
+      stopLiveVoice();
+    }
     setIsOpen(!isOpen);
   };
 
@@ -142,8 +342,10 @@ const Chatbot = () => {
     setIsLoading(true);
     setError('');
 
-    // Check if API key is configured
-    if (!settings || !settings.gemini_api_key) {
+    // Dynamically refresh live database before generating answer
+    const latestData = await refreshDatabaseContext();
+
+    if (!latestData?.settingsData && !settings?.gemini_api_key && !import.meta.env.VITE_GEMINI_API_KEY) {
       setTimeout(() => {
         setMessages((prev) => [...prev, {
           id: Date.now() + 1,
@@ -157,45 +359,14 @@ const Chatbot = () => {
     }
 
     try {
-      // Call Gemini API using the service from the old project
-      // Filter out the initial welcome message (id: 1) because Gemini API requires the first message in history to be from 'user'
       const history = messages
         .filter(m => m.id !== 1 && (m.type === 'user' || m.type === 'bot'))
         .map(m => ({ role: m.type === 'bot' ? 'model' : 'user', text: m.text }));
 
-      const prepareContextData = () => {
-        const contextParts = [];
-        contextParts.push(`Current System Date: ${new Date().toISOString().split('T')[0]}`);
-        
-        if (surgeons.length > 0) {
-            contextParts.push(`Available Surgeons (Total: ${surgeons.length}):\n${surgeons.map(s => `- ${s.name} (${s.specialty})`).join('\n')}`);
-        }
-        
-        if (patients.length > 0) {
-            contextParts.push(`Patient Directory (Total: ${patients.length}):\n${patients.map(p => `- [ID: ${p.id}] ***REDACTED_NAME*** (DOB: ***REDACTED***, MRN: ***REDACTED***)`).join('\n')}`);
-        }
-        
-        if (orBlockSchedule.length > 0) {
-            contextParts.push(`OR Block Schedule (Total: ${orBlockSchedule.length}):\n${orBlockSchedule.map(block => `- ${block.room_name} (${block.day_of_week}): ${block.provider_name} [${block.start_time}-${block.end_time}]`).join('\n')}`);
-        }
-        
-        if (cptCodes.length > 0) {
-            contextParts.push(`CPT Codes Database (Total: ${cptCodes.length}, Sample of 50):\n${cptCodes.slice(0, 50).map(c => `- ${c.code}: ${c.description} (Avg Cost: $${c.cost})`).join('\n')}`);
-        }
-        
-        if (surgeries.length > 0) {
-            contextParts.push(`Surgeries (Total: ${surgeries.length}):\n${surgeries.map(s => `- Date: ${s.date}, Surgeon: ${s.doctor_name || s.surgeons?.name || 'Unknown'}, Status: ${s.status}`).join('\n')}`);
-        }
-        
-        return contextParts.join('\n\n');
-      };
-
-      const contextData = prepareContextData();
+      const contextData = prepareContextData(userMessage.text, latestData);
       const botReply = await sendMessageToGemini(userMessage.text, history, contextData);
 
-      // Speak the response if sound is on
       if (isSoundOn && 'speechSynthesis' in window) {
-        // Remove markdown characters for better speech
         const cleanText = botReply.replace(/[*_#]/g, '');
         const utterance = new SpeechSynthesisUtterance(cleanText);
         window.speechSynthesis.speak(utterance);
@@ -238,82 +409,163 @@ const Chatbot = () => {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                className="chatbot-close-btn" 
-                onClick={() => {
-                  if (window.speechSynthesis) window.speechSynthesis.cancel();
-                  setIsSoundOn(!isSoundOn);
-                }} 
-                aria-label="Toggle Sound"
-                title={isSoundOn ? "Mute Voice" : "Enable Voice"}
-              >
-                {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-              </button>
+              {activeTab === 'text' && (
+                <button 
+                  className="chatbot-close-btn" 
+                  onClick={() => {
+                    if (window.speechSynthesis) window.speechSynthesis.cancel();
+                    setIsSoundOn(!isSoundOn);
+                  }} 
+                  aria-label="Toggle Sound"
+                  title={isSoundOn ? "Mute Voice" : "Enable Voice"}
+                >
+                  {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                </button>
+              )}
               <button className="chatbot-close-btn" onClick={toggleChat} aria-label="Close Chat">
                 <X size={18} />
               </button>
             </div>
           </div>
 
-          {/* Messages Area */}
-          <div className="chatbot-messages">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`chat-message ${msg.type}`}>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
-                <span className="chat-time">{msg.time}</span>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="chat-message bot" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="typing-indicator" style={{ display: 'flex', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both' }}></span>
-                  <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.2s' }}></span>
-                  <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.4s' }}></span>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+          {/* Mode Navigation Bar */}
+          <div className="chatbot-mode-bar">
+            <button
+              type="button"
+              className={`chatbot-mode-tab ${activeTab === 'text' ? 'active' : ''}`}
+              onClick={() => handleTabChange('text')}
+            >
+              <MessageSquare size={14} />
+              <span>Text Chat</span>
+            </button>
+            <button
+              type="button"
+              className={`chatbot-mode-tab ${activeTab === 'live' ? 'active' : ''}`}
+              onClick={() => handleTabChange('live')}
+            >
+              <Radio size={14} />
+              <span>Live AI Voice</span>
+            </button>
           </div>
 
-          {/* Input Area */}
-          <form className="chatbot-input-area" onSubmit={handleSend}>
-            <div className="chatbot-input-wrapper">
-              <button 
-                type="button"
-                className={`chatbot-mic-btn ${isListening ? 'listening' : ''}`}
-                onClick={toggleVoiceInput}
-                aria-label={isListening ? "Stop listening" : "Start voice input"}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  cursor: 'pointer',
-                  color: isListening ? '#ef4444' : 'inherit',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '4px'
-                }}
-              >
-                <Mic size={18} className="chatbot-mic-icon" />
-              </button>
-              <input
-                type="text"
-                className="chatbot-input"
-                placeholder="Ask a question..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={isLoading}
-              />
+          {/* Tab Content */}
+          {activeTab === 'live' ? (
+            <div className="live-voice-container">
+              <div className="live-voice-status">
+                <span className={`status-dot ${
+                  liveStatus.includes('Connected') ? (isAiSpeaking ? 'speaking' : 'connected') :
+                  liveStatus.includes('Connecting') ? 'connecting' : 'disconnected'
+                }`}></span>
+                <span>{liveStatus}</span>
+              </div>
+
+              <div className="live-orb-wrapper">
+                <div 
+                  className={`live-orb ${isAiSpeaking ? 'speaking' : ''}`}
+                  style={{
+                    transform: `scale(${1 + liveVolume * 0.35})`,
+                  }}
+                  onClick={() => {
+                    if (liveStatus === 'Disconnected' || liveStatus.includes('Error')) {
+                      startLiveVoice();
+                    }
+                  }}
+                >
+                  <Radio size={48} className="live-orb-icon" />
+                </div>
+
+                <div className="live-transcript-box">
+                  {liveTranscript ? liveTranscript : isAiSpeaking ? "Gemini AI is talking..." : liveStatus.includes('Connected') ? "Listening... Speak naturally to ask about surgeries, CPT codes, or staff schedules." : "Click Start Conversation below to begin a real-time voice session with Gemini Live AI."}
+                </div>
+              </div>
+
+              <div className="live-controls-row">
+                {!liveStatus.includes('Connected') && !liveStatus.includes('Connecting') ? (
+                  <button type="button" className="live-action-btn start" onClick={startLiveVoice}>
+                    <Play size={18} />
+                    <span>Start Conversation</span>
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      type="button" 
+                      className={`live-mute-btn ${isLiveMuted ? 'muted' : ''}`} 
+                      onClick={toggleLiveMute}
+                      title={isLiveMuted ? "Unmute Microphone" : "Mute Microphone"}
+                    >
+                      {isLiveMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                    </button>
+                    <button type="button" className="live-action-btn stop" onClick={stopLiveVoice}>
+                      <Square size={16} />
+                      <span>End Conversation</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <button 
-              type="submit" 
-              className="chatbot-send-btn" 
-              disabled={!input.trim() || isLoading}
-              aria-label="Send Message"
-            >
-              <Send size={16} />
-            </button>
-          </form>
+          ) : (
+            <>
+              {/* Messages Area */}
+              <div className="chatbot-messages">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`chat-message ${msg.type}`}>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                    <span className="chat-time">{msg.time}</span>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="chat-message bot" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="typing-indicator" style={{ display: 'flex', gap: '4px' }}>
+                      <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both' }}></span>
+                      <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.2s' }}></span>
+                      <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.4s' }}></span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input Area */}
+              <form className="chatbot-input-area" onSubmit={handleSend}>
+                <div className="chatbot-input-wrapper">
+                  <button 
+                    type="button"
+                    className={`chatbot-mic-btn ${isListening ? 'listening' : ''}`}
+                    onClick={toggleVoiceInput}
+                    aria-label={isListening ? "Stop listening" : "Start voice input"}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      color: isListening ? '#ef4444' : 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '4px'
+                    }}
+                  >
+                    <Mic size={18} className="chatbot-mic-icon" />
+                  </button>
+                  <input
+                    type="text"
+                    className="chatbot-input"
+                    placeholder="Ask a question..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+                <button 
+                  type="submit" 
+                  className="chatbot-send-btn" 
+                  disabled={!input.trim() || isLoading}
+                  aria-label="Send Message"
+                >
+                  <Send size={16} />
+                </button>
+              </form>
+            </>
+          )}
         </div>
       )}
 
@@ -328,7 +580,7 @@ const Chatbot = () => {
         </button>
       )}
       
-      {/* Inline style for the typing indicator animation since it's small */}
+      {/* Inline style for the typing indicator animation */}
       <style>{`
         @keyframes bounce {
           0%, 80%, 100% { transform: scale(0); }
