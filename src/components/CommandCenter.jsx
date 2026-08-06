@@ -32,6 +32,26 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     });
   }, [surgeries, timeframe]);
 
+  // Helper to accurately derive total costs per case from real-time surgery log data
+  const getCaseCost = (s, includeOverhead) => {
+    const directMedical = (parseFloat(s.supplies_cost) || 0) + 
+                          (parseFloat(s.implants_cost) || 0) + 
+                          (parseFloat(s.medications_cost) || 0) + 
+                          (parseFloat(s.tray_cost) || 0);
+    const overhead = (parseFloat(s.actual_room_cost) || 0) + 
+                     (parseFloat(s.actual_labor_cost) || 0);
+    return directMedical + (includeOverhead ? overhead : 0);
+  };
+
+  // Helper to accurately derive Net Revenue (Gross Billed Charges minus Insurance Write-Offs & Charity adjustments)
+  const getCaseRevenue = (s) => {
+    if (s.is_probono) return 0;
+    if (s.revenue !== undefined && !isNaN(s.revenue)) return parseFloat(s.revenue);
+    const raw = parseFloat(s.expected_reimbursement) || 0;
+    const writeOff = parseFloat(s.write_off) || 0;
+    return Math.max(0, raw - writeOff);
+  };
+
   // Calculate KPIs
   const kpis = useMemo(() => {
     let totalRevenue = 0;
@@ -50,15 +70,8 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     else totalAvailableMins = 2 * 8 * 250 * 60;
 
     filteredSurgeries.forEach(s => {
-      const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const roomCost = parseFloat(s.actual_room_cost) || 0;
-      const laborCost = parseFloat(s.actual_labor_cost) || 0;
-      const suppliesCost = parseFloat(s.supplies_cost) || 0;
-      const implantsCost = parseFloat(s.implants_cost) || 0;
-      const medsCost = parseFloat(s.medications_cost) || 0;
-      const trayCost = parseFloat(s.tray_cost) || 0;
-
-      const totalSurgCost = includeAdvancedCosts ? (roomCost + laborCost + suppliesCost + implantsCost + medsCost + trayCost) : 0;
+      const revenue = getCaseRevenue(s);
+      const totalSurgCost = getCaseCost(s, includeAdvancedCosts);
 
       totalRevenue += revenue;
       totalCosts += totalSurgCost;
@@ -80,20 +93,13 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     // Profitable Utilization (simplified for prototype: % of time spent on profitable cases)
     let profitableMins = 0;
     filteredSurgeries.forEach(s => {
-      const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
-        (parseFloat(s.actual_labor_cost) || 0) +
-        (parseFloat(s.supplies_cost) || 0) +
-        (parseFloat(s.implants_cost) || 0) +
-        (parseFloat(s.medications_cost) || 0) +
-        (parseFloat(s.tray_cost) || 0)
-      ) : 0;
+      const revenue = getCaseRevenue(s);
+      const totalSurgCost = getCaseCost(s, includeAdvancedCosts);
       if (revenue > totalSurgCost) {
         const duration = parseFloat(s.actual_duration_minutes) || parseFloat(s.duration_minutes) || 60;
         profitableMins += duration;
       }
     });
-    const profitableUtil = totalAvailableMins > 0 ? (profitableMins / totalAvailableMins) * 100 : 0;
 
     const totalHours = totalDurationMins / 60;
     const revPerHour = totalHours > 0 ? totalRevenue / totalHours : 0;
@@ -101,9 +107,11 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     const avgTurnover = turnoverCount > 0 ? Math.round(totalTurnoverMins / turnoverCount) : 0;
 
     return {
+      totalRevenue,
+      ebitda,
       ebitdaPercent: ebitdaPercent.toFixed(1),
-      orUtil: orUtil.toFixed(1),
-      profitableUtil: profitableUtil.toFixed(1),
+      orUtil: Math.round(orUtil),
+      profitableUtil: Math.round(totalAvailableMins > 0 ? (profitableMins / totalAvailableMins) * 100 : 0),
       revPerHour: Math.round(revPerHour),
       marginPerHour: Math.round(marginPerHour),
       avgTurnover
@@ -117,14 +125,8 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       const doc = s.doctor_name || 'Unknown Surgeon';
       if (!perfMap[doc]) perfMap[doc] = { name: doc, netMargin: 0 };
 
-      const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
-        (parseFloat(s.actual_labor_cost) || 0) +
-        (parseFloat(s.supplies_cost) || 0) +
-        (parseFloat(s.implants_cost) || 0) +
-        (parseFloat(s.medications_cost) || 0) +
-        (parseFloat(s.tray_cost) || 0)
-      ) : 0;
+      const revenue = getCaseRevenue(s);
+      const totalSurgCost = getCaseCost(s, includeAdvancedCosts);
 
       perfMap[doc].netMargin += (revenue - totalSurgCost);
     });
@@ -142,14 +144,8 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
     let unprofitable = 0;
 
     filteredSurgeries.forEach(s => {
-      const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
-        (parseFloat(s.actual_labor_cost) || 0) +
-        (parseFloat(s.supplies_cost) || 0) +
-        (parseFloat(s.implants_cost) || 0) +
-        (parseFloat(s.medications_cost) || 0) +
-        (parseFloat(s.tray_cost) || 0)
-      ) : 0;
+      const revenue = getCaseRevenue(s);
+      const totalSurgCost = getCaseCost(s, includeAdvancedCosts);
 
       const margin = revenue > 0 ? ((revenue - totalSurgCost) / revenue) * 100 : -100;
 
@@ -182,14 +178,8 @@ export default function CommandCenter({ surgeries = [], onTabChange, timeframe =
       const duration = parseFloat(s.actual_duration_minutes) || parseFloat(s.duration_minutes) || 60;
       trendMap[monthYear].totalMins += duration;
 
-      const revenue = parseFloat(s.expected_reimbursement) || 0;
-      const totalSurgCost = includeAdvancedCosts ? ((parseFloat(s.actual_room_cost) || 0) +
-        (parseFloat(s.actual_labor_cost) || 0) +
-        (parseFloat(s.supplies_cost) || 0) +
-        (parseFloat(s.implants_cost) || 0) +
-        (parseFloat(s.medications_cost) || 0) +
-        (parseFloat(s.tray_cost) || 0)
-      ) : 0;
+      const revenue = getCaseRevenue(s);
+      const totalSurgCost = getCaseCost(s, includeAdvancedCosts);
 
       if (revenue > totalSurgCost) {
         trendMap[monthYear].profMins += duration;

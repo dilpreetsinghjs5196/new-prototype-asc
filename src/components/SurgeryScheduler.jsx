@@ -676,7 +676,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
     // ----- Financials Calculator helper -----
     const calculateSurgeryFinancials = (surgery) => {
-        const revenue = parseFloat(surgery.expected_reimbursement || 0);
+        const grossRevenue = parseFloat(surgery.expected_reimbursement || 0);
         const supplies = parseFloat(surgery.supplies_cost || 0);
         const implants = parseFloat(surgery.implants_cost || 0);
         const meds = parseFloat(surgery.medications_cost || 0);
@@ -693,21 +693,23 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         }
 
         const cost = supplies + implants + meds + labor + room + trayCost;
-        let displayProfit = revenue - cost;
-
         const writeOff = parseFloat(surgery.write_off || 0);
-        let fullTotal = includeLaborSupplies ? (revenue - writeOff + cost) : (revenue - writeOff);
+        const netRev = surgery.is_probono ? 0 : Math.max(0, grossRevenue - writeOff);
+
+        let displayProfit = netRev - cost;
+        let fullTotal = includeLaborSupplies ? (netRev - cost) : netRev;
 
         if (surgery.is_probono) {
             displayProfit = 0; // Charity loss
             fullTotal = 0;
         } else if (!includeLaborSupplies) {
             // Include only billing margin (omit internal room overhead, labor, and supplies)
-            displayProfit = revenue - writeOff;
+            displayProfit = netRev;
         }
 
         return {
-            revenue,
+            revenue: netRev,
+            grossRevenue,
             supplies,
             implants,
             meds,

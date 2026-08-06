@@ -1056,7 +1056,7 @@ export default function App() {
   const [timeFilter, setTimeFilter] = useState('All');
   const [filterDate, setFilterDate] = useState(new Date('2026-02-23T12:00:00'));
   const [surgeries, setSurgeries] = useState(INITIAL_SURGERIES);
-  const [includeAdvancedCosts, setIncludeAdvancedCosts] = useState(false);
+  const [includeAdvancedCosts, setIncludeAdvancedCosts] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('asc_theme') || 'light');
 
   useEffect(() => {
@@ -1239,8 +1239,12 @@ export default function App() {
 
     filteredSurgeries.forEach((surg, idx) => {
       // Basic aggregations
-      const rev = Number(surg.revenue || surg.expected_reimbursement || 0);
-      const cost = includeAdvancedCosts ? (Number(surg.supplies || 0) + Number(surg.implants || 0) + Number(surg.labor || 0) + Number(surg.roomCost || 0) + Number(surg.medications_cost || 0) + Number(surg.tray_cost || 0)) : 0;
+      const rawRev = Number(surg.revenue !== undefined ? surg.revenue : (surg.expected_reimbursement || 0));
+      const writeOff = Number(surg.write_off || 0);
+      const rev = surg.revenue !== undefined ? surg.revenue : (surg.is_probono ? 0 : Math.max(0, rawRev - writeOff));
+      const directCost = Number(surg.supplies || surg.supplies_cost || 0) + Number(surg.implants || surg.implants_cost || 0) + Number(surg.medications_cost || 0) + Number(surg.tray_cost || 0);
+      const overheadCost = Number(surg.labor || surg.actual_labor_cost || 0) + Number(surg.roomCost || surg.actual_room_cost || 0);
+      const cost = directCost + (includeAdvancedCosts ? overheadCost : 0);
       const marg = rev - cost;
       const isCancelled = surg.status?.toLowerCase() === 'cancelled';
 
@@ -1314,11 +1318,48 @@ export default function App() {
       };
     });
 
+    const topSpecialty = specialtyDistArray.length > 0 ? specialtyDistArray[0] : null;
+    const topFacility = facilityCompArray.length > 0 ? facilityCompArray[0] : null;
+    const costRatioPct = netRevenue > 0 ? ((totalDirectCost / netRevenue) * 100).toFixed(1) : 0;
+    const profitableCases = filteredSurgeries.filter(s => {
+      const rawR = Number(s.revenue !== undefined ? s.revenue : (s.expected_reimbursement || 0));
+      const r = s.revenue !== undefined ? s.revenue : (s.is_probono ? 0 : Math.max(0, rawR - Number(s.write_off || 0)));
+      const dc = Number(s.supplies || s.supplies_cost || 0) + Number(s.implants || s.implants_cost || 0) + Number(s.medications_cost || 0) + Number(s.tray_cost || 0);
+      const oc = Number(s.labor || s.actual_labor_cost || 0) + Number(s.roomCost || s.actual_room_cost || 0);
+      return (r - (dc + (includeAdvancedCosts ? oc : 0))) > 0;
+    }).length;
+
+    let totalImplants = 0, totalSupplies = 0, totalMeds = 0, totalTrays = 0, totalOverhead = 0;
+    filteredSurgeries.forEach(s => {
+      totalImplants += Number(s.implants || s.implants_cost || 0);
+      totalSupplies += Number(s.supplies || s.supplies_cost || 0);
+      totalMeds += Number(s.medications_cost || 0);
+      totalTrays += Number(s.tray_cost || 0);
+      if (includeAdvancedCosts) {
+        totalOverhead += Number(s.labor || s.actual_labor_cost || 0) + Number(s.roomCost || s.actual_room_cost || 0);
+      }
+    });
+    const totalCalcCost = totalImplants + totalSupplies + totalMeds + totalTrays + totalOverhead;
+    const dynamicSupplyBreakdown = [
+      { name: 'Implants', value: Math.round(totalImplants), percentage: totalCalcCost > 0 ? Math.round((totalImplants / totalCalcCost) * 100) : 0, color: 'var(--color-blue)' },
+      { name: 'Medical Supplies', value: Math.round(totalSupplies), percentage: totalCalcCost > 0 ? Math.round((totalSupplies / totalCalcCost) * 100) : 0, color: 'var(--color-green)' },
+      { name: 'Pharmaceuticals', value: Math.round(totalMeds), percentage: totalCalcCost > 0 ? Math.round((totalMeds / totalCalcCost) * 100) : 0, color: 'var(--color-purple)' },
+      { name: 'Surgical Trays', value: Math.round(totalTrays), percentage: totalCalcCost > 0 ? Math.round((totalTrays / totalCalcCost) * 100) : 0, color: 'var(--color-pink)' },
+      ...(includeAdvancedCosts && totalOverhead > 0 ? [{ name: 'Labor & Room Overhead', value: Math.round(totalOverhead), percentage: totalCalcCost > 0 ? Math.round((totalOverhead / totalCalcCost) * 100) : 0, color: 'var(--color-orange)' }] : [])
+    ].filter(item => item.value > 0 || item.name === 'Medical Supplies');
+
     return {
       netRevenue,
       operatingMargin,
+      totalDirectCost: totalCalcCost > 0 ? totalCalcCost : totalDirectCost,
       avgContribution,
       ebitdaPct,
+      costRatioPct,
+      profitableCases,
+      totalCases: filteredSurgeries.length,
+      topSpecialty,
+      topFacility,
+      dynamicSupplyBreakdown: dynamicSupplyBreakdown.length > 0 ? dynamicSupplyBreakdown : MOCK_SUPPLY_BREAKDOWN,
       financialsTrend: weeksAgg,
       specialtyDist: specialtyDistArray,
       facilityComparative: facilityCompArray
@@ -1468,7 +1509,9 @@ export default function App() {
         // 1. Process surgeries list
         const mappedSurgeries = loadedSurgeries.map(surg => {
           const doctorName = formatDoctorName(surg.surgeons) || surg.doctor_name || 'Unknown Surgeon';
-          const revenue = Number(surg.expected_reimbursement || 0);
+          const rawReimb = Number(surg.expected_reimbursement || 0);
+          const writeOff = Number(surg.write_off || 0);
+          const revenue = surg.is_probono ? 0 : Math.max(0, rawReimb - writeOff);
           const supplies = Number(surg.supplies_cost || 0);
           const implants = Number(surg.implants_cost || 0);
           const labor = Number(surg.actual_labor_cost || 0);
@@ -2846,7 +2889,7 @@ export default function App() {
                     onClick={(e) => e.stopPropagation()}
                     style={{ cursor: 'pointer', accentColor: 'var(--color-blue)', margin: 0 }}
                   />
-                  <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer', margin: 0, whiteSpace: 'nowrap' }}>Include Costs</label>
+                  <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer', margin: 0, whiteSpace: 'nowrap' }}>Include Labor/Overhead in Margins</label>
                 </div>
 
                 {/* Toggle Group */}
@@ -2969,7 +3012,7 @@ export default function App() {
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
-                                data={supplyBreakdown}
+                                data={executiveOverviewMetrics.dynamicSupplyBreakdown || supplyBreakdown}
                                 cx="50%"
                                 cy="50%"
                                 innerRadius={40}
@@ -2977,20 +3020,22 @@ export default function App() {
                                 paddingAngle={2}
                                 dataKey="value"
                               >
-                                {supplyBreakdown.map((entry, index) => (
+                                {(executiveOverviewMetrics.dynamicSupplyBreakdown || supplyBreakdown).map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
                             </PieChart>
                           </ResponsiveContainer>
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>$329.7k</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                              {executiveOverviewMetrics.totalDirectCost > 1000 ? '$' + (executiveOverviewMetrics.totalDirectCost / 1000).toFixed(1) + 'k' : '$' + executiveOverviewMetrics.totalDirectCost.toLocaleString()}
+                            </div>
                             <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Total Cost</div>
                           </div>
                         </div>
 
                         <div className="donut-legend-container">
-                          {supplyBreakdown.map((item, idx) => (
+                          {(executiveOverviewMetrics.dynamicSupplyBreakdown || supplyBreakdown).map((item, idx) => (
                             <div className="donut-legend-item" key={idx}>
                               <div className="donut-legend-label">
                                 <div className="donut-legend-color" style={{ backgroundColor: item.color }} />
@@ -3183,7 +3228,7 @@ export default function App() {
                       </div>
                       <span className="kpi-value">{executiveOverviewMetrics.netRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
                       <div className="kpi-trend positive">
-                        vs Target <span className="kpi-trend-change">+4.2%</span>
+                        Real-time <span className="kpi-trend-change">{executiveOverviewMetrics.totalCases} cases logged</span>
                       </div>
                       <div className="sparkline-container">
                         <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
@@ -3214,12 +3259,12 @@ export default function App() {
                         <div className="kpi-icon-container blue"><Stethoscope size={12} /></div>
                       </div>
                       <span className="kpi-value">{executiveOverviewMetrics.avgContribution.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-                      <div className="kpi-trend negative">
-                        vs Last Month <span className="kpi-trend-change">-1.2%</span>
+                      <div className="kpi-trend positive">
+                        Profitable Rate <span className="kpi-trend-change">{executiveOverviewMetrics.totalCases > 0 ? Math.round((executiveOverviewMetrics.profitableCases / executiveOverviewMetrics.totalCases) * 100) : 0}% ({executiveOverviewMetrics.profitableCases} cases)</span>
                       </div>
                       <div className="sparkline-container">
                         <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
-                          <path d="M0,10 L35,15 L70,25 L100,28" fill="none" stroke="var(--color-red)" strokeWidth="2" />
+                          <path d="M0,28 L35,20 L70,10 L100,5" fill="none" stroke="var(--color-green)" strokeWidth="2" />
                         </svg>
                       </div>
                     </div>
@@ -3231,7 +3276,7 @@ export default function App() {
                       </div>
                       <span className="kpi-value">{executiveOverviewMetrics.ebitdaPct}%</span>
                       <div className="kpi-trend positive">
-                        vs Target <span className="kpi-trend-change">+1.5%</span>
+                        Operating Cost Ratio <span className="kpi-trend-change">{executiveOverviewMetrics.costRatioPct}%</span>
                       </div>
                       <div className="sparkline-container">
                         <svg viewBox="0 0 100 30" width="100%" height="100%" preserveAspectRatio="none">
@@ -3334,10 +3379,10 @@ export default function App() {
                         <h4 style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                           Executive Insights & Recommendations
                         </h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: '1.3' }}>
-                          1. Orthopedic implant card consolidation shows <strong>$45,000 savings opportunity</strong>.<br />
-                          2. West ASC has turnover times averaging 24m (facility target is 20m). Corrective staffing is requested.<br />
-                          3. Pre-authorization backlog indicates high cancellation hazard for next week.
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: '1.4' }}>
+                          1. <strong>Top Specialty Performance:</strong> {executiveOverviewMetrics.topSpecialty ? `${executiveOverviewMetrics.topSpecialty.name} leads volume with ${executiveOverviewMetrics.topSpecialty.value} completed cases generating ${executiveOverviewMetrics.topSpecialty.revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} in gross billing.` : 'No specialty data available.'}<br />
+                          2. <strong>Facility Scorecard Highlight:</strong> {executiveOverviewMetrics.topFacility ? `${executiveOverviewMetrics.topFacility.name} is operating at ${executiveOverviewMetrics.topFacility.util}% capacity with a net financial margin contribution of ${executiveOverviewMetrics.topFacility.netMargin.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}.` : 'No facility data available.'}<br />
+                          3. <strong>Operational Cost Efficiency:</strong> Total recorded case expenditure across all logs stands at {executiveOverviewMetrics.totalDirectCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} ({executiveOverviewMetrics.costRatioPct}% of gross revenue), with an average per-case net contribution of {executiveOverviewMetrics.avgContribution.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}.
                         </p>
                       </div>
                     </div>
