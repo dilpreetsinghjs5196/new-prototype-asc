@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-:root, [data-theme="light"] {
+:root,
+[data-theme="light"] {
   /* Colors - Modern Light Theme (like Image 1) */
   --bg-main: #f8fafc;
   --bg-sidebar: #112238;
@@ -12,12 +13,12 @@
   --border-color: #cbd5e1;
   --border-light: #e2e8f0;
   --border-card: #e2e8f0;
-  
+
   --text-primary: #0f172a;
   --text-secondary: #334155;
   --text-muted: #64748b;
   --text-color: #0f172a;
-  
+
   --color-blue: #2563eb;
   --color-green: #10b981;
   --color-orange: #f59e0b;
@@ -25,16 +26,16 @@
   --color-purple: #8b5cf6;
   --color-grey: #475569;
   --color-pink: #ec4899;
-  
+
   --success-color: #10b981;
   --danger-color: #ef4444;
   --warning-color: #f59e0b;
   --info-color: #2563eb;
-  
+
   --sidebar-width: 260px;
   --header-height: 70px;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  
+
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
@@ -54,12 +55,12 @@
   --border-color: #2D5382;
   --border-light: #24446B;
   --border-card: #2D5382;
-  
+
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #8e9bb2;
   --text-color: #f8fafc;
-  
+
   --color-blue: #3b82f6;
   --color-green: #00ff88;
   --color-orange: #fbbf24;
@@ -67,12 +68,12 @@
   --color-purple: #a78bfa;
   --color-grey: #94a3b8;
   --color-pink: #f472b6;
-  
+
   --success-color: #00ff88;
   --danger-color: #f87171;
   --warning-color: #fbbf24;
   --info-color: #3b82f6;
-  
+
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.6), 0 4px 10px -2px rgba(0, 0, 0, 0.4);
@@ -80,7 +81,15 @@
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
-body, .app-container, .sidebar, .main-header, .main-content, .page-body, .kpi-card, .dashboard-card, .menu-item {
+body,
+.app-container,
+.sidebar,
+.main-header,
+.main-content,
+.page-body,
+.kpi-card,
+.dashboard-card,
+.menu-item {
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -341,7 +350,8 @@ body {
 /* Page Body Styling */
 .page-body {
   flex: 1;
-  padding: 20px 20px 90px 20px; /* Added extra bottom padding to prevent overlap with floating chat icon */
+  padding: 20px 20px 90px 20px;
+  /* Added extra bottom padding to prevent overlap with floating chat icon */
   overflow-y: auto;
   background-color: var(--bg-main);
 }
@@ -426,9 +436,20 @@ body {
   font-size: 0.8rem;
 }
 
-.kpi-icon-container.blue { background-color: rgba(59, 130, 246, 0.12); color: var(--color-blue); }
-.kpi-icon-container.green { background-color: rgba(16, 185, 129, 0.12); color: var(--color-green); }
-.kpi-icon-container.orange { background-color: rgba(245, 158, 11, 0.12); color: var(--color-orange); }
+.kpi-icon-container.blue {
+  background-color: rgba(59, 130, 246, 0.12);
+  color: var(--color-blue);
+}
+
+.kpi-icon-container.green {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: var(--color-green);
+}
+
+.kpi-icon-container.orange {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: var(--color-orange);
+}
 
 .kpi-value {
   font-size: 1.5rem;
@@ -449,8 +470,14 @@ body {
 .kpi-trend-change {
   font-weight: 600;
 }
-.kpi-trend.positive .kpi-trend-change { color: var(--color-green); }
-.kpi-trend.negative .kpi-trend-change { color: var(--color-red); }
+
+.kpi-trend.positive .kpi-trend-change {
+  color: var(--color-green);
+}
+
+.kpi-trend.negative .kpi-trend-change {
+  color: var(--color-red);
+}
 
 .sparkline-container {
   position: absolute;
@@ -702,8 +729,16 @@ body {
   text-transform: uppercase;
   font-weight: 700;
 }
-.ai-rec-impact.high { background-color: rgba(16, 185, 129, 0.15); color: var(--color-green); }
-.ai-rec-impact.med { background-color: rgba(245, 158, 11, 0.15); color: var(--color-orange); }
+
+.ai-rec-impact.high {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--color-green);
+}
+
+.ai-rec-impact.med {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--color-orange);
+}
 
 .ai-rec-desc {
   font-size: 0.7rem;
@@ -840,10 +875,24 @@ body {
   color: #fff;
 }
 
-.rank-badge.rank-1 { background-color: #d4af37; color: #000; }
-.rank-badge.rank-2 { background-color: #c0c0c0; color: #000; }
-.rank-badge.rank-3 { background-color: #cd7f32; color: #000; }
-.rank-badge.rank-other { background-color: var(--border-color); }
+.rank-badge.rank-1 {
+  background-color: #d4af37;
+  color: #000;
+}
+
+.rank-badge.rank-2 {
+  background-color: #c0c0c0;
+  color: #000;
+}
+
+.rank-badge.rank-3 {
+  background-color: #cd7f32;
+  color: #000;
+}
+
+.rank-badge.rank-other {
+  background-color: var(--border-color);
+}
 
 .doctor-avatar-row {
   display: flex;
@@ -917,12 +966,15 @@ body {
 .surgery-block.high {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.9));
 }
+
 .surgery-block.med {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.8), rgba(5, 150, 105, 0.9));
 }
+
 .surgery-block.low {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.8), rgba(217, 119, 6, 0.9));
 }
+
 .surgery-block.blocked {
   background-color: var(--border-color);
   color: var(--text-secondary);
@@ -1032,6 +1084,7 @@ body {
 .clickable-row {
   transition: background-color 0.15s ease;
 }
+
 tr.clickable-row:hover {
   background-color: rgba(59, 130, 246, 0.08) !important;
 }
@@ -1041,8 +1094,15 @@ tr.clickable-row:hover {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(3px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .surgeon-profile-header-card {

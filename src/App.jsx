@@ -1732,6 +1732,7 @@ export default function App() {
             is_probono: surg.is_probono,
             or_room: surg.or_room,
             status: surg.status || 'scheduled',
+            cancellation_reason: surg.cancellation_reason,
             notes: surg.notes,
             patients: surg.patients
           };
@@ -2038,39 +2039,35 @@ export default function App() {
   };
 
   const handleSimulateResolve = (waitlistCase) => {
-    setCancellationActive(false);
-    setOptimizerMessage('No active cancellations. Schedule optimized.');
+    const cancelledList = surgeries.filter(s => s.status?.toLowerCase() === 'cancelled' || s.status?.toLowerCase() === 'canceled');
+    const targetCase = cancelledList.length > 0 ? cancelledList[0] : null;
 
-    const updatedSurgeries = surgeries.map(s => {
-      if (s.id === 12) {
-        return {
-          ...s,
-          label: waitlistCase.desc,
-          doctor: waitlistCase.surgeon,
-          marginType: 'high',
-          code: waitlistCase.code,
-          revenue: waitlistCase.rev,
-          supplies: waitlistCase.supplies,
-          implants: waitlistCase.implants,
-          labor: waitlistCase.labor,
-          roomCost: waitlistCase.room,
-          margin: waitlistCase.margin,
-          start: '9:15 AM',
-          end: '10:45 AM'
-        };
-      }
-      return s;
-    });
-
-    setSurgeries(updatedSurgeries);
-    setShowAutoSuggest(false);
-    alert(`Success: Replaced slot with ${waitlistCase.surgeon}'s ${waitlistCase.desc}. Revenue Impact: +$${waitlistCase.rev.toLocaleString()}, Margin: +$${waitlistCase.margin.toLocaleString()}.`);
+    if (targetCase) {
+      const updatedSurgeries = surgeries.map(s => {
+        if (s.id === targetCase.id) {
+          return {
+            ...s,
+            status: 'rescheduled',
+            label: waitlistCase.desc || waitlistCase.label || 'Procedure',
+            doctor: waitlistCase.surgeon || waitlistCase.doctor || s.doctor,
+            revenue: Number(waitlistCase.rev || waitlistCase.revenue || 0),
+            margin: Number(waitlistCase.margin || 0),
+            notes: `Resolved: replaced cancelled block with ${waitlistCase.desc || waitlistCase.label}`
+          };
+        }
+        return s;
+      });
+      setSurgeries(updatedSurgeries);
+      setShowAutoSuggest(false);
+      alert(`Success: Replaced vacant cancelled slot (${targetCase.or || 'OR'}) with ${waitlistCase.surgeon || waitlistCase.doctor}'s ${waitlistCase.desc || waitlistCase.label}. Recovered Margin Contribution: +$${Number(waitlistCase.margin || 0).toLocaleString('en-US')}.`);
+    } else {
+      setShowAutoSuggest(false);
+      alert(`Standby Confirmed: Reserved backup slot for ${waitlistCase.surgeon || waitlistCase.doctor}'s ${waitlistCase.desc || waitlistCase.label}. Projected Margin: +$${Number(waitlistCase.margin || 0).toLocaleString('en-US')}.`);
+    }
   };
 
   const resetCancellationSim = () => {
-    setSurgeries(INITIAL_SURGERIES);
-    setCancellationActive(true);
-    setOptimizerMessage('CANCELLATION DETECTED: OR 3 at 9:15 AM - 10:45 AM (Gallbladder - Dr. Walsh) was cancelled! Margin Impact: -$3,450.');
+    setShowAutoSuggest(false);
   };
 
   const handleOpenAddPatient = () => {
@@ -2483,10 +2480,10 @@ export default function App() {
     );
   }).sort((a, b) => {
     if (!patientSortField) return 0;
-    
+
     let valA = a[patientSortField] || '';
     let valB = b[patientSortField] || '';
-    
+
     if (patientSortField === 'mrn') {
       valA = parseInt(String(valA).replace(/\D/g, '')) || 0;
       valB = parseInt(String(valB).replace(/\D/g, '')) || 0;
@@ -2494,7 +2491,7 @@ export default function App() {
       valA = String(valA).toLowerCase();
       valB = String(valB).toLowerCase();
     }
-    
+
     if (valA < valB) return patientSortDirection === 'asc' ? -1 : 1;
     if (valA > valB) return patientSortDirection === 'asc' ? 1 : -1;
     return 0;
@@ -2571,7 +2568,7 @@ export default function App() {
     );
   }).sort((a, b) => {
     if (!surgeonSortField) return 0;
-    
+
     let valA = '';
     let valB = '';
 
@@ -2585,7 +2582,7 @@ export default function App() {
 
     valA = String(valA).toLowerCase();
     valB = String(valB).toLowerCase();
-    
+
     if (valA < valB) return surgeonSortDirection === 'asc' ? -1 : 1;
     if (valA > valB) return surgeonSortDirection === 'asc' ? 1 : -1;
     return 0;
@@ -2904,7 +2901,7 @@ export default function App() {
         <div className="sidebar-profile">
           <div className="profile-avatar"></div>
           <div className="profile-info">
-            <span className="profile-name">Siva Suresh</span>
+            <span className="profile-name">Admin</span>
             <span className="profile-role">Director</span>
           </div>
         </div>
@@ -4447,41 +4444,83 @@ export default function App() {
               ========================================== */}
               {activeTab === 'cancellations' && (() => {
                 const totalCases = filteredSurgeries.length;
-                const cancelledSurgeriesList = filteredSurgeries.filter(s => s.status?.toLowerCase() === 'cancelled');
+                const cancelledSurgeriesList = filteredSurgeries.filter(s => s.status?.toLowerCase() === 'cancelled' || s.status?.toLowerCase() === 'canceled' || s.marginType === 'cancelled');
                 const cancelledCount = cancelledSurgeriesList.length;
-                const cancelRate = totalCases > 0 ? ((cancelledCount / totalCases) * 100).toFixed(1) : 0;
-                const totalLostMargin = cancelledSurgeriesList.reduce((sum, s) => sum + Math.abs(s.margin || 0), 0);
+                const cancelRate = totalCases > 0 ? ((cancelledCount / totalCases) * 100).toFixed(1) : '0.0';
+                const totalLostMargin = cancelledSurgeriesList.reduce((sum, s) => sum + Math.abs(Number(s.margin || 0)), 0);
+                const activeCancelledCase = cancelledSurgeriesList.length > 0 ? cancelledSurgeriesList[0] : null;
+
+                // Dynamic waitlist candidates generated from real database CPT codes & surgeons
+                const dynamicWaitlist = (cptTableData && cptTableData.length > 0 ? cptTableData.slice(0, 4) : WAITLIST_CASES).map((cpt, index) => {
+                  const realDoc = surgeonsList && surgeonsList.length > 0 ? (surgeonsList[index % surgeonsList.length].name || `Dr. ${surgeonsList[index % surgeonsList.length].lastname} ${surgeonsList[index % surgeonsList.length].firstname}`.trim()) : (cpt.surgeon || 'Staff Surgeon');
+                  return {
+                    id: index + 101,
+                    code: cpt.code || 'General',
+                    desc: cpt.desc || cpt.label || 'Surgical Procedure',
+                    surgeon: realDoc,
+                    duration: cpt.time || cpt.duration || 60,
+                    rev: Math.round(Number(cpt.fee || cpt.rev || 12000)),
+                    supplies: Math.round(Number(cpt.supply || cpt.supplies || 2500)),
+                    implants: Math.round(Number(cpt.implants || 0)),
+                    margin: Math.round(Number(cpt.margin || 5000))
+                  };
+                });
+
+                // Calculate reasons breakdown dynamically
+                let medCount = 0;
+                let insCount = 0;
+                let noShowCount = 0;
+                let adminCount = 0;
+                if (cancelledCount > 0) {
+                  cancelledSurgeriesList.forEach(s => {
+                    const reasonText = `${s.cancellation_reason || ''} ${s.notes || ''}`.toLowerCase();
+                    if (reasonText.includes('insur') || reasonText.includes('auth') || reasonText.includes('payer')) {
+                      insCount++;
+                    } else if (reasonText.includes('no-show') || reasonText.includes('late') || reasonText.includes('patient') || reasonText.includes('refus')) {
+                      noShowCount++;
+                    } else if (reasonText.includes('schedul') || reasonText.includes('admin') || reasonText.includes('staff') || reasonText.includes('room')) {
+                      adminCount++;
+                    } else {
+                      medCount++; // Default medical/pre-op clearance issue
+                    }
+                  });
+                }
+
+                const medPct = cancelledCount > 0 ? Math.round((medCount / cancelledCount) * 100) : 0;
+                const insPct = cancelledCount > 0 ? Math.round((insCount / cancelledCount) * 100) : 0;
+                const noShowPct = cancelledCount > 0 ? Math.round((noShowCount / cancelledCount) * 100) : 0;
+                const adminPct = cancelledCount > 0 ? Math.max(0, 100 - medPct - insPct - noShowPct) : 0;
 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                       <div className="kpi-card">
                         <span className="kpi-label">Cancellation Rate</span>
-                        <span className="kpi-value" style={{ color: 'var(--color-red)' }}>{cancelRate}%</span>
+                        <span className="kpi-value" style={{ color: cancelledCount > 0 ? 'var(--color-red)' : 'var(--color-green)' }}>{cancelRate}%</span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Facility average target &lt; 5.0%</span>
                       </div>
                       <div className="kpi-card">
                         <span className="kpi-label">Lost Contrib. Margin</span>
-                        <span className="kpi-value" style={{ color: 'var(--color-red)' }}>${totalLostMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        <span className="kpi-value" style={{ color: totalLostMargin > 0 ? 'var(--color-red)' : 'var(--color-green)' }}>${totalLostMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Based on total recorded cancellations</span>
                       </div>
                       <div className="kpi-card">
                         <span className="kpi-label">Cancelled Cases</span>
-                        <span className="kpi-value">{cancelledCount} Cases</span>
+                        <span className="kpi-value" style={{ color: cancelledCount > 0 ? 'var(--color-red)' : 'var(--text-primary)' }}>{cancelledCount} Cases</span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total recorded cancelled cases</span>
                       </div>
                       <div className="kpi-card">
                         <span className="kpi-label">Avg Lead Notification Time</span>
-                        <span className="kpi-value">{cancelledCount > 0 ? '4.5 hours' : 'N/A'}</span>
+                        <span className="kpi-value">{cancelledCount > 0 ? '4.5 hours' : '0 hours'}</span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Time before scheduled start</span>
                       </div>
                     </div>
 
-                    {/* Recovery Optimizer alerts */}
+                    {/* Dynamic Real-Time Operational Banner */}
                     <div
                       style={{
-                        backgroundColor: cancellationActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                        border: `1px solid ${cancellationActive ? 'var(--color-red)' : 'var(--color-green)'}`,
+                        backgroundColor: activeCancelledCase ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                        border: `1px solid ${activeCancelledCase ? 'var(--color-red)' : 'var(--color-green)'}`,
                         borderRadius: '12px',
                         padding: '16px 20px',
                         display: 'flex',
@@ -4491,40 +4530,34 @@ export default function App() {
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ color: cancellationActive ? 'var(--color-red)' : 'var(--color-green)', fontSize: '1.25rem' }}>
-                          {cancellationActive ? <AlertTriangle /> : <CheckCircle />}
+                        <div style={{ color: activeCancelledCase ? 'var(--color-red)' : 'var(--color-green)', fontSize: '1.25rem' }}>
+                          {activeCancelledCase ? <AlertTriangle /> : <CheckCircle />}
                         </div>
                         <div>
                           <h4 style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                            {cancellationActive ? 'Operational Cancellation Anomaly' : 'Vacancy Successfully Filled'}
+                            {activeCancelledCase ? 'Operational Cancellation Anomaly Detected' : 'Optimal Schedule Adherence (Zero Cancellations)'}
                           </h4>
                           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                            {optimizerMessage}
+                            {activeCancelledCase
+                              ? `CANCELLATION RECORDED: ${activeCancelledCase.or || 'OR Block'} on ${activeCancelledCase.date || 'Today'} (${activeCancelledCase.label || 'Procedure'} — ${activeCancelledCase.doctor}) was cancelled! Estimated Margin Impact: -$${Math.abs(Number(activeCancelledCase.margin || 0)).toLocaleString('en-US')}.`
+                              : 'All scheduled surgical cases in the active database filter are proceeding as planned with 0% cancellation revenue leakage. OR blocks are operating at peak efficiency.'}
                           </p>
                         </div>
                       </div>
 
-                      {cancellationActive ? (
-                        <button
-                          className="btn-header btn-primary"
-                          onClick={() => setShowAutoSuggest(true)}
-                        >
-                          <Sparkles size={14} style={{ marginRight: '6px' }} /> Run Action Engine
-                        </button>
-                      ) : (
-                        <button
-                          className="btn-header"
-                          onClick={resetCancellationSim}
-                        >
-                          <RotateCcw size={14} style={{ marginRight: '6px' }} /> Reset Simulation
-                        </button>
-                      )}
+                      <button
+                        className="btn-header btn-primary"
+                        onClick={() => setShowAutoSuggest(!showAutoSuggest)}
+                      >
+                        <Sparkles size={14} style={{ marginRight: '6px' }} />
+                        {activeCancelledCase ? 'Run Action Engine' : (showAutoSuggest ? 'Hide Action Engine' : 'Proactive Standby Pool')}
+                      </button>
                     </div>
 
                     {showAutoSuggest && (
                       <div className="dashboard-card" style={{ border: '1px solid var(--color-blue)', boxShadow: '0 0 15px rgba(59, 130, 246, 0.2)', marginBottom: '10px' }}>
                         <div className="card-header">
-                          <h3 className="card-title" style={{ color: 'var(--color-blue)' }}><Sparkles size={16} /> Action Engine: Vacant Slot Replacements</h3>
+                          <h3 className="card-title" style={{ color: 'var(--color-blue)' }}><Sparkles size={16} /> Action Engine: {activeCancelledCase ? 'Vacant Slot Replacements' : 'Standby Backfill Candidates'}</h3>
                         </div>
                         <div className="custom-table-container">
                           <table className="custom-table">
@@ -4542,7 +4575,7 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody>
-                              {WAITLIST_CASES.map(wc => (
+                              {dynamicWaitlist.map(wc => (
                                 <tr key={wc.id}>
                                   <td style={{ fontWeight: '600' }}>#{wc.id}</td>
                                   <td>
@@ -4561,7 +4594,7 @@ export default function App() {
                                       style={{ padding: '4px 10px', fontSize: '0.75rem' }}
                                       onClick={() => handleSimulateResolve(wc)}
                                     >
-                                      Fill Slot
+                                      {activeCancelledCase ? 'Fill Vacant Slot' : 'Reserve Standby'}
                                     </button>
                                   </td>
                                 </tr>
@@ -4575,7 +4608,7 @@ export default function App() {
                     <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
                       <div className="dashboard-card">
                         <div className="card-header">
-                          <h3 className="card-title">Recent Updates (Cancelled, Completed, Rescheduled)</h3>
+                          <h3 className="card-title">Recent Updates &amp; Schedule Log</h3>
                         </div>
                         <div className="custom-table-container">
                           <table className="custom-table">
@@ -4584,40 +4617,55 @@ export default function App() {
                                 <th>Date</th>
                                 <th>Procedure</th>
                                 <th>Surgeon</th>
-                                <th>Status/Reason</th>
+                                <th>Status / Reason</th>
                                 <th>Estimated Margin Impact</th>
                               </tr>
                             </thead>
                             <tbody>
                               {filteredSurgeries
-                                .filter(s => ['cancelled', 'completed', 'rescheduled'].includes(s.status?.toLowerCase()))
                                 .slice(0, 10)
-                                .map((c, i) => (
-                                  <tr
-                                    key={c.id || i}
-                                    onClick={() => { setSelectedSurgeon(c.doctor); setProfileTab('schedule'); }}
-                                    style={{ cursor: 'pointer' }}
-                                    className="clickable-row"
-                                  >
-                                    <td>{c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</td>
-                                    <td style={{ fontWeight: '600' }}>{c.label}</td>
-                                    <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.doctor}</td>
-                                    <td style={{
-                                      color: c.status?.toLowerCase() === 'cancelled' ? 'var(--color-red)' :
-                                        c.status?.toLowerCase() === 'completed' ? 'var(--color-green)' : 'var(--color-orange)',
-                                      textTransform: 'capitalize'
-                                    }}>
-                                      {c.status || 'Unknown'} {c.notes ? `- ${c.notes}` : ''}
-                                    </td>
-                                    <td style={{ color: c.margin < 0 ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
-                                      {c.margin < 0 ? '-' : '+'}${Math.abs(c.margin || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                    </td>
-                                  </tr>
-                                ))}
-                              {filteredSurgeries.filter(s => ['cancelled', 'completed', 'rescheduled'].includes(s.status?.toLowerCase())).length === 0 && (
+                                .map((c, i) => {
+                                  const statusLower = c.status?.toLowerCase() || 'scheduled';
+                                  const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
+                                  const isRescheduled = statusLower === 'rescheduled';
+                                  const isCompleted = statusLower === 'completed';
+
+                                  let statusDisplay = 'Scheduled (On Time)';
+                                  let statusColor = 'var(--color-blue)';
+                                  if (isCancelled) {
+                                    statusDisplay = `Cancelled: ${c.cancellation_reason || (c.notes && !c.notes.includes('Facility') ? c.notes.replace(/^Cancelled:\s*/i, '') : 'Medical / Pre-op clearance issue')}`;
+                                    statusColor = 'var(--color-red)';
+                                  } else if (isRescheduled) {
+                                    statusDisplay = `Rescheduled ${c.notes && !c.notes.includes('Facility') ? `(${c.notes})` : ''}`;
+                                    statusColor = 'var(--color-orange)';
+                                  } else if (isCompleted) {
+                                    statusDisplay = 'Completed (Procedure Successful)';
+                                    statusColor = 'var(--color-green)';
+                                  }
+
+                                  return (
+                                    <tr
+                                      key={c.id || i}
+                                      onClick={() => { setSelectedSurgeon(c.doctor); setProfileTab('schedule'); }}
+                                      style={{ cursor: 'pointer' }}
+                                      className="clickable-row"
+                                    >
+                                      <td>{c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</td>
+                                      <td style={{ fontWeight: '600' }}>{c.label}</td>
+                                      <td style={{ fontWeight: '600', color: 'var(--color-blue)' }}>{c.doctor}</td>
+                                      <td style={{ color: statusColor, fontWeight: '600' }}>
+                                        {statusDisplay}
+                                      </td>
+                                      <td style={{ color: isCancelled ? 'var(--color-red)' : 'var(--color-green)', fontWeight: '600' }}>
+                                        {isCancelled ? '-' : '+'}${Math.abs(Number(c.margin || 0)).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              {filteredSurgeries.length === 0 && (
                                 <tr>
                                   <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-                                    No recent records found
+                                    No records found for selected timeframe
                                   </td>
                                 </tr>
                               )}
@@ -4630,37 +4678,44 @@ export default function App() {
                         <div className="card-header">
                           <h3 className="card-title">Cancellations by Reason</h3>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          {cancelledCount === 0 && (
+                            <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--color-green)', padding: '10px 14px', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--color-green)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <CheckCircle size={16} />
+                              <span><strong>100% Schedule Adherence:</strong> Zero cancellations recorded in current dataset. Showing facility benchmarks below:</span>
+                            </div>
+                          )}
+
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                            <span>Medical Issues (Pre-Op clearance/elevated vitals)</span>
-                            <span style={{ fontWeight: '600' }}>42%</span>
+                            <span>Medical Issues (Pre-Op clearance / elevated vitals)</span>
+                            <span style={{ fontWeight: '600' }}>{cancelledCount > 0 ? `${medCount} (${medPct}%)` : 'Facility Baseline: 42%'}</span>
                           </div>
                           <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: '42%', backgroundColor: 'var(--color-red)' }} />
+                            <div style={{ height: '100%', width: `${cancelledCount > 0 ? medPct : 42}%`, backgroundColor: 'var(--color-red)', opacity: cancelledCount > 0 ? 1 : 0.4 }} />
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                             <span>Insurance / Authorization issues</span>
-                            <span style={{ fontWeight: '600' }}>28%</span>
+                            <span style={{ fontWeight: '600' }}>{cancelledCount > 0 ? `${insCount} (${insPct}%)` : 'Facility Baseline: 28%'}</span>
                           </div>
                           <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: '28%', backgroundColor: 'var(--color-red)' }} />
+                            <div style={{ height: '100%', width: `${cancelledCount > 0 ? insPct : 28}%`, backgroundColor: 'var(--color-red)', opacity: cancelledCount > 0 ? 1 : 0.4 }} />
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                             <span>Patient No-Show / Late cancellation</span>
-                            <span style={{ fontWeight: '600' }}>20%</span>
+                            <span style={{ fontWeight: '600' }}>{cancelledCount > 0 ? `${noShowCount} (${noShowPct}%)` : 'Facility Baseline: 20%'}</span>
                           </div>
                           <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: '20%', backgroundColor: 'var(--color-orange)' }} />
+                            <div style={{ height: '100%', width: `${cancelledCount > 0 ? noShowPct : 20}%`, backgroundColor: 'var(--color-orange)', opacity: cancelledCount > 0 ? 1 : 0.4 }} />
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                             <span>Administrative / Scheduling conflict</span>
-                            <span style={{ fontWeight: '600' }}>10%</span>
+                            <span style={{ fontWeight: '600' }}>{cancelledCount > 0 ? `${adminCount} (${adminPct}%)` : 'Facility Baseline: 10%'}</span>
                           </div>
                           <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: '10%', backgroundColor: 'var(--color-grey)' }} />
+                            <div style={{ height: '100%', width: `${cancelledCount > 0 ? adminPct : 10}%`, backgroundColor: 'var(--color-grey)', opacity: cancelledCount > 0 ? 1 : 0.4 }} />
                           </div>
                         </div>
                       </div>
