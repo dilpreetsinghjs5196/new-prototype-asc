@@ -1,5 +1,17 @@
 import { getSettingsAndKey } from './gemini';
 
+// Verified Google AI Studio Multimodal Live streaming endpoints on v1beta (Free Tier compatible)
+const LIVE_CONFIGS = [
+  { apiVersion: "v1beta", model: "models/gemini-2.0-flash-exp" },
+  { apiVersion: "v1beta", model: "models/gemini-2.0-flash" },
+  { apiVersion: "v1beta", model: "models/gemini-2.0-flash-001" },
+  { apiVersion: "v1alpha", model: "models/gemini-2.0-flash-exp" },
+  { apiVersion: "v1beta", model: "models/gemini-2.5-flash" },
+  { apiVersion: "v1beta", model: "models/gemini-3.5-live-translate-preview" }
+];
+
+let currentConfigIndex = 0;
+
 // Helper functions for PCM converting and Base64 encoding/decoding
 function floatTo16BitPCM(float32Array) {
   const buffer = new ArrayBuffer(float32Array.length * 2);
@@ -72,7 +84,7 @@ registerProcessor('pcm-processor', PCMProcessor);
 
 export class GeminiLiveSession {
   constructor({
-    model = "models/gemini-3.5-live-translate-preview", // Also compatible with models/gemini-2.0-flash-exp
+    model = null,
     onStatusChange,
     onVolumeChange,
     onAudioPlaybackStart,
@@ -80,7 +92,7 @@ export class GeminiLiveSession {
     onTextReceived,
     onError
   } = {}) {
-    this.model = model;
+    this.initialModel = model;
     this.onStatusChange = onStatusChange || (() => {});
     this.onVolumeChange = onVolumeChange || (() => {});
     this.onAudioPlaybackStart = onAudioPlaybackStart || (() => {});
@@ -96,88 +108,101 @@ export class GeminiLiveSession {
     this.scriptProcessor = null;
     this.isMuted = false;
     this.isConnected = false;
+    this.isSetupComplete = false;
     this.nextPlayTime = 0;
     this.activeSources = [];
     this.workletUrl = null;
+    this.retryCount = 0;
+    this.fullDatabaseContext = "";
+    this.connectionLogs = [];
   }
 
-  async connect(systemInstruction = "You are a helpful and professional real-time AI Assistant for an Ambulatory Surgery Center (ASC) called ASC Manager.") {
+  async connect(systemInstructionOrContext = "", retryAttempt = false) {
     try {
-      this.onStatusChange('Connecting...');
+      if (!retryAttempt) {
+        this.fullDatabaseContext = systemInstructionOrContext;
+        this.retryCount = 0;
+        this.connectionLogs = [];
+        this.onStatusChange('Connecting to Live Voice AI...');
+      }
 
       const { apiKey } = await getSettingsAndKey();
       if (!apiKey) {
         throw new Error("Gemini API Key is missing. Please add it in Settings -> AI Configuration.");
       }
 
+      const currentConfig = LIVE_CONFIGS[currentConfigIndex % LIVE_CONFIGS.length];
+      const activeModel = currentConfig.model;
+      const apiVer = currentConfig.apiVersion;
+
+      console.info(`[Gemini Live] Connecting via ${apiVer} with model: ${activeModel}`);
+      this.onStatusChange(`Connecting to ${activeModel.replace('models/', '')}...`);
+
       // 1. Request microphone permission
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
+      if (!this.mediaStream) {
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+      }
 
       // 2. Setup Playback Audio Context
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      this.playbackAudioContext = new AudioContextClass({ sampleRate: 24000 });
-      this.nextPlayTime = this.playbackAudioContext.currentTime;
+      if (!this.playbackAudioContext || this.playbackAudioContext.state === 'closed') {
+        this.playbackAudioContext = new AudioContextClass({ sampleRate: 24000 });
+        this.nextPlayTime = this.playbackAudioContext.currentTime;
+      }
 
       // 3. Setup Input Audio Context & Microphone Processing
-      this.inputAudioContext = new AudioContextClass({ sampleRate: 16000 });
-      const source = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
+      if (!this.inputAudioContext || this.inputAudioContext.state === 'closed') {
+        this.inputAudioContext = new AudioContextClass({ sampleRate: 16000 });
+        const source = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
 
-      // Attempt to load inline AudioWorklet, fallback to ScriptProcessor if needed
-      try {
-        const blob = new Blob([workletCode], { type: 'application/javascript' });
-        this.workletUrl = URL.createObjectURL(blob);
-        await this.inputAudioContext.audioWorklet.addModule(this.workletUrl);
+        try {
+          const blob = new Blob([workletCode], { type: 'application/javascript' });
+          this.workletUrl = URL.createObjectURL(blob);
+          await this.inputAudioContext.audioWorklet.addModule(this.workletUrl);
 
-        this.workletNode = new AudioWorkletNode(this.inputAudioContext, 'pcm-processor');
-        this.workletNode.port.onmessage = (event) => {
-          this.handleAudioInput(event.data);
-        };
-        source.connect(this.workletNode);
-        this.workletNode.connect(this.inputAudioContext.destination);
-      } catch (e) {
-        console.warn("AudioWorklet fallback to ScriptProcessor:", e);
-        this.scriptProcessor = this.inputAudioContext.createScriptProcessor(2048, 1, 1);
-        this.scriptProcessor.onaudioprocess = (event) => {
-          const inputBuffer = event.inputBuffer.getChannelData(0);
-          this.handleAudioInput(new Float32Array(inputBuffer));
-        };
-        source.connect(this.scriptProcessor);
-        this.scriptProcessor.connect(this.inputAudioContext.destination);
+          this.workletNode = new AudioWorkletNode(this.inputAudioContext, 'pcm-processor');
+          this.workletNode.port.onmessage = (event) => {
+            this.handleAudioInput(event.data);
+          };
+          source.connect(this.workletNode);
+          this.workletNode.connect(this.inputAudioContext.destination);
+        } catch (e) {
+          console.warn("AudioWorklet fallback to ScriptProcessor:", e);
+          this.scriptProcessor = this.inputAudioContext.createScriptProcessor(2048, 1, 1);
+          this.scriptProcessor.onaudioprocess = (event) => {
+            const inputBuffer = event.inputBuffer.getChannelData(0);
+            this.handleAudioInput(new Float32Array(inputBuffer));
+          };
+          source.connect(this.scriptProcessor);
+          this.scriptProcessor.connect(this.inputAudioContext.destination);
+        }
       }
 
       // 4. Connect WebSocket to Gemini Live Multimodal API
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.${apiVer}.GenerativeService.BidiGenerateContent?key=${apiKey}`;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log("Gemini Live WebSocket connected.");
+        console.log(`[Gemini Live] WebSocket open (${apiVer}). Sending setup for ${activeModel}...`);
         this.isConnected = true;
-        this.onStatusChange('Connected - Listening...');
+        this.isSetupComplete = false;
 
-        // Send setup payload
         const setupPayload = {
           setup: {
-            model: this.model,
+            model: activeModel,
             generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: {
-                    voiceName: "Puck" // Clear medical professional voice profile
-                  }
-                }
-              }
+              responseModalities: ["AUDIO"]
             },
             systemInstruction: {
-              parts: [{ text: systemInstruction }]
+              parts: [{ text: "You are an intelligent real-time conversational voice assistant for an Ambulatory Surgery Center (ASC Manager). Speak accurately, concisely, and professionally." }]
             }
           }
         };
@@ -194,7 +219,24 @@ export class GeminiLiveSession {
 
           // Handle Setup Completion
           if (data.setupComplete) {
-            console.log("Gemini Live Session Setup Complete.");
+            console.info(`[Gemini Live] Setup confirmed by server for ${activeModel} (${apiVer}). Ready!`);
+            this.isSetupComplete = true;
+            this.onStatusChange('Connected - Listening...');
+
+            if (this.fullDatabaseContext && this.fullDatabaseContext.trim()) {
+              const contextPayload = {
+                clientContent: {
+                  turns: [
+                    {
+                      role: "user",
+                      parts: [{ text: `[SYSTEM HOSPITAL DATABASE CONTEXT FOR VOICE SESSION]:\n${this.fullDatabaseContext}\n\nAcknowledge briefly that you are ready and have loaded the hospital database.` }]
+                    }
+                  ],
+                  turnComplete: true
+                }
+              };
+              this.ws.send(JSON.stringify(contextPayload));
+            }
             return;
           }
 
@@ -208,7 +250,6 @@ export class GeminiLiveSession {
             if (modelTurn && modelTurn.parts) {
               for (const part of modelTurn.parts) {
                 if (part.inlineData && part.inlineData.data) {
-                  // Decode PCM audio and queue for smooth playback
                   this.playAudioChunk(part.inlineData.data);
                 }
                 if (part.text) {
@@ -218,18 +259,44 @@ export class GeminiLiveSession {
             }
           }
         } catch (err) {
-          console.error("Error handling WebSocket message:", err);
+          console.error("Error parsing Live WebSocket message:", err);
         }
       };
 
       this.ws.onerror = (error) => {
-        console.error("WebSocket Error:", error);
-        this.onError("Connection error occurred while communicating with Gemini Live API.");
+        console.warn(`[Gemini Live] WebSocket error on ${activeModel} (${apiVer}).`);
       };
 
       this.ws.onclose = (event) => {
-        console.log("WebSocket Closed:", event.code, event.reason);
+        const reasonStr = event.reason ? ` (Reason: ${event.reason})` : '';
+        const logMsg = `${activeModel} (${apiVer}): Code ${event.code}${reasonStr}`;
+        console.warn(`[Gemini Live] WebSocket closed: ${logMsg}. setupComplete: ${this.isSetupComplete}`);
+        this.connectionLogs.push(logMsg);
         this.isConnected = false;
+
+        // Rate limit protection: Wait 2.5 seconds before attempting backup endpoint to prevent Google Free Tier 429 TooManyRequests
+        if (!this.isSetupComplete && this.retryCount < LIVE_CONFIGS.length - 1) {
+          this.retryCount += 1;
+          currentConfigIndex = (currentConfigIndex + 1) % LIVE_CONFIGS.length;
+          const nextCfg = LIVE_CONFIGS[currentConfigIndex];
+          console.info(`[Gemini Live Fallback] Waiting 2.5s cooldown before retrying with ${nextCfg.model} (${nextCfg.apiVersion}) to avoid rate limits...`);
+          this.onStatusChange(`Switching endpoint (${this.retryCount}/${LIVE_CONFIGS.length}) in 2s...`);
+          
+          if (this.ws) {
+            try { this.ws.close(); } catch (e) {}
+            this.ws = null;
+          }
+          
+          setTimeout(() => {
+            this.connect(this.fullDatabaseContext, true);
+          }, 2500);
+          return;
+        }
+
+        if (!this.isSetupComplete && this.retryCount >= LIVE_CONFIGS.length - 1) {
+          this.onError(`Unable to connect after checking all endpoints.\nDiagnostics:\n${this.connectionLogs.join('\n')}\n\nNote: If you experienced 429 TooManyRequests on Free Tier, please wait 1 minute before retrying.`);
+        }
+
         this.onStatusChange('Disconnected');
         this.stopMedia();
       };
@@ -242,23 +309,20 @@ export class GeminiLiveSession {
   }
 
   handleAudioInput(float32Array) {
-    if (!this.isConnected || this.isMuted || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.isConnected || !this.isSetupComplete || this.isMuted || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    // Calculate volume RMS for visualizations
     let sum = 0;
     for (let i = 0; i < float32Array.length; i++) {
       sum += float32Array[i] * float32Array[i];
     }
     const rms = Math.sqrt(sum / float32Array.length);
-    this.onVolumeChange(Math.min(1, rms * 5)); // Boost multiplier for UI visualization
+    this.onVolumeChange(Math.min(1, rms * 5));
 
-    // Convert to 16-bit PCM buffer
     const pcmBuffer = floatTo16BitPCM(float32Array);
     const base64Data = arrayBufferToBase64(pcmBuffer);
 
-    // Send Realtime Audio Chunk over WebSocket
     const audioPayload = {
       realtimeInput: {
         mediaChunks: [
@@ -377,10 +441,12 @@ export class GeminiLiveSession {
       this.workletUrl = null;
     }
     this.stopAllPlayback();
+    this.isSetupComplete = false;
   }
 
   disconnect() {
     this.isConnected = false;
+    this.isSetupComplete = false;
     this.stopMedia();
     if (this.ws) {
       try { this.ws.close(); } catch (e) {}

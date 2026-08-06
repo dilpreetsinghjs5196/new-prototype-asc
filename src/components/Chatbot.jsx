@@ -2,17 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, X, Send, Mic, MicOff, Lock, Volume2, VolumeX, MessageSquare, Radio, Play, Square } from 'lucide-react';
 import { db } from '../lib/supabase';
 import { sendMessageToGemini } from '../lib/gemini';
-import { GeminiLiveSession } from '../lib/geminiLive';
 import './Chatbot.css';
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'pa-IN', name: 'Punjabi (ਪੰਜਾਬੀ / Panjabi)' },
+  { code: 'hi-IN', name: 'Hindi / Hinglish (हिंदी)' },
+  { code: 'en-IN', name: 'English (India/Global)' },
+  { code: 'es-ES', name: 'Spanish (Español)' },
+  { code: 'fr-FR', name: 'French (Français)' },
+  { code: 'de-DE', name: 'German (Deutsch)' }
+];
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('text'); // 'text' | 'live'
+  const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem('asc_ai_lang') || 'en-IN');
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: 'bot',
-      text: 'Hello! I am your ASC Manager AI Assistant with complete, real-time access to your surgical database. I can answer any question regarding surgeon directories, patient registries, case schedules, CPT profitability, OR block schedules, and recent hospital updates. How can I assist you today?',
+      text: 'Hello! I am your Multilingual ASC Manager AI Assistant. You can speak or write to me in Punjabi, Hindi, English, or any selected language. I have real-time access to your surgical database, surgeon directories, patient rosters, and financial margins. How can I assist you today?',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -29,16 +38,16 @@ const Chatbot = () => {
   const [orBlockSchedule, setOrBlockSchedule] = useState([]);
   const [otExtraCosts, setOtExtraCosts] = useState([]);
 
-  // Live Voice Mode state
+  // Live Voice Mode state (Reliable HTTP-based Continuous Voice Loop)
   const [liveStatus, setLiveStatus] = useState('Disconnected');
-  const [liveVolume, setLiveVolume] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [isLiveMuted, setIsLiveMuted] = useState(false);
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
-  const liveSessionRef = useRef(null);
+  const liveRecognitionRef = useRef(null);
+  const liveLoopActiveRef = useRef(false);
   const [isListening, setIsListening] = useState(false);
   const [isSoundOn, setIsSoundOn] = useState(true);
 
@@ -77,26 +86,90 @@ const Chatbot = () => {
     }
   }, [isOpen]);
 
-  // Initialize Gemini Live Voice Session
+  // Preload TTS voices & Clean up on unmounting
   useEffect(() => {
-    liveSessionRef.current = new GeminiLiveSession({
-      model: "models/gemini-3.5-live-translate-preview",
-      onStatusChange: (status) => setLiveStatus(status),
-      onVolumeChange: (vol) => setLiveVolume(vol),
-      onAudioPlaybackStart: () => setIsAiSpeaking(true),
-      onAudioPlaybackEnd: () => setIsAiSpeaking(false),
-      onTextReceived: (text) => setLiveTranscript(prev => (prev + " " + text).trim()),
-      onError: (err) => setLiveStatus(`Error: ${err}`)
-    });
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.getVoices();
+        };
+      }
+    }
 
     return () => {
-      if (liveSessionRef.current) {
-        liveSessionRef.current.disconnect();
+      liveLoopActiveRef.current = false;
+      if (liveRecognitionRef.current) {
+        try { liveRecognitionRef.current.stop(); } catch (e) {}
+      }
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
       }
     };
   }, []);
 
-  // Initialize Speech Recognition for text input
+  // Robust Text-to-Speech Engine with Smart Fallbacks for Regional Languages (Punjabi / Hindi / Hinglish)
+  const speakMessage = (text, targetLang, onEnd) => {
+    if (!('speechSynthesis' in window) || !isSoundOn) {
+      if (onEnd) setTimeout(onEnd, 3000);
+      return;
+    }
+    
+    window.speechSynthesis.cancel(); // Reset audio queue
+    
+    const cleanText = text.replace(/[*_#~]/g, '').trim();
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const voices = window.speechSynthesis.getVoices();
+    const langPrefix = targetLang.split('-')[0].toLowerCase();
+
+    // 1. Check for exact language or language prefix voice (e.g. Punjabi pa-IN)
+    let selectedVoice = voices.find(v => v.lang.toLowerCase().includes(targetLang.toLowerCase())) ||
+                        voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+
+    // 2. SMART INDIAN DIALECT FALLBACK: On many Windows PCs, Punjabi ('pa-IN') voices are not installed. Fallback to Hindi ('hi-IN') or Indian English ('en-IN') so it reads Romanized Punjabi & Hinglish fluently!
+    if (!selectedVoice && (targetLang === 'pa-IN' || targetLang === 'hi-IN' || targetLang === 'en-IN')) {
+      selectedVoice = voices.find(v => v.lang.toLowerCase().includes('hi-in')) ||
+                      voices.find(v => v.lang.toLowerCase().includes('en-in')) ||
+                      voices.find(v => v.lang.toLowerCase().includes('hi')) ||
+                      voices.find(v => v.lang.toLowerCase().includes('en'));
+    }
+
+    // 3. Global fallback so it NEVER stays silent
+    if (!selectedVoice && voices.length > 0) {
+      selectedVoice = voices.find(v => v.default) || voices[0];
+    }
+
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      // CRITICAL: Must sync utterance.lang with voice.lang, otherwise Chrome silences audio!
+      utterance.lang = selectedVoice.lang;
+    } else {
+      utterance.lang = targetLang;
+    }
+
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    if (onEnd) {
+      utterance.onend = () => onEnd();
+      utterance.onerror = (e) => {
+        console.warn("Speech synthesis notice:", e);
+        onEnd();
+      };
+    }
+
+    // Workaround for Chrome garbage collector bug interrupting audio playback
+    window.currentUtterance = utterance;
+
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.error("Speech playback error:", err);
+      if (onEnd) onEnd();
+    }
+  };
+
+  // Initialize Speech Recognition for Text Chat input
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -122,7 +195,7 @@ const Chatbot = () => {
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
+        console.error('Speech recognition error in Text Chat', event.error);
         setIsListening(false);
       };
 
@@ -142,6 +215,7 @@ const Chatbot = () => {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
+      recognitionRef.current.lang = selectedLang;
       recognitionRef.current.start();
       setIsListening(true);
     }
@@ -155,6 +229,15 @@ const Chatbot = () => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleLanguageChange = (e) => {
+    const newLang = e.target.value;
+    setSelectedLang(newLang);
+    localStorage.setItem('asc_ai_lang', newLang);
+    if (liveStatus !== 'Disconnected') {
+      stopLiveVoice();
+    }
   };
 
   const prepareContextData = (userPrompt = '', customData = null) => {
@@ -180,12 +263,13 @@ const Chatbot = () => {
       return full || p.patient_name || `Patient #${p.id || 'N/A'}`;
     };
 
+    const selectedLangObj = SUPPORTED_LANGUAGES.find(l => l.code === selectedLang) || SUPPORTED_LANGUAGES[0];
     const contextParts = [];
     
-    // System Header and Instructions
-    contextParts.push(`=== ASC MANAGER REAL-TIME DATABASE CONTEXT ===\nCurrent Date & Time: ${new Date().toLocaleString()}\nYou have complete, unrestricted access to the entire ASC (Ambulatory Surgery Center) database below. Use this precise data to answer ANY question about surgeons, patients, surgery logs, CPT codes, operating room blocks, financial margins, and historical/recent additions with exact precision.`);
+    // System Header with Strict Multilingual Guidance & Pronounceable Script Rules
+    contextParts.push(`=== ASC MANAGER REAL-TIME DATABASE CONTEXT ===\nCurrent Date & Time: ${new Date().toLocaleString()}\nYou have complete, unrestricted access to the entire ASC (Ambulatory Surgery Center) database below.\n\nCRITICAL MULTILINGUAL INSTRUCTION FOR SPEECH & TEXT:\n1. The user's interface is set to: "${selectedLangObj.name}" (${selectedLang}).\n2. Detect the exact language/dialect of the user's input (Punjabi, Hindi, Hinglish, English, etc.) and answer directly in THAT EXACT SAME LANGUAGE!\n3. SPEECH PRONUNCIATION REQUIREMENT: When replying in Punjabi or Hindi, ALWAYS provide clear conversational Romanized script (e.g. Romanized Punjabi / Pinglish like 'Hanjii, ajh diyan 5 surgeries scheduled ne...' or Hinglish / simple style) so standard voice audio synthesizers can speak your answer aloud naturally without failing on unreadable characters!\n4. Provide exact answers using only the verified ASC operational database below. Keep answers conversational, natural, and highly professional.`);
     
-    // Surgeons Database (Always included in full)
+    // Surgeons Database
     if (sList && sList.length > 0) {
       const surgeonText = sList.map((s, idx) => {
         const name = getSurgeonName(s);
@@ -201,7 +285,7 @@ const Chatbot = () => {
       contextParts.push(`--- SURGEON DIRECTORY ---\nNo surgeons currently listed in the database.`);
     }
 
-    // Patients Database (Always included in full)
+    // Patients Database
     if (pList && pList.length > 0) {
       const patientText = pList.map((p, idx) => {
         const name = getPatientName(p);
@@ -217,7 +301,7 @@ const Chatbot = () => {
       contextParts.push(`--- PATIENT REGISTRY ---\nNo patient records found in database.`);
     }
 
-    // Surgeries / Case Log (Always included in full)
+    // Surgeries / Case Log
     if (surgList && surgList.length > 0) {
       const surgeryText = surgList.map((s, idx) => {
         const patientName = getPatientName(s.patients || s);
@@ -250,9 +334,7 @@ const Chatbot = () => {
       contextParts.push(`--- OR BLOCK SCHEDULES (Total: ${blockList.length} Blocks) ---\n${blockText}`);
     }
 
-    // Smart Token-Optimized CPT Codes & Supply Context
-    // To prevent exceeding AI token quotas on questions about surgeons or patient rosters,
-    // we only include the complete CPT & extra cost catalogs when relevant billing/procedure terms are present in the query.
+    // Token-Optimized CPT Codes & Supply Context
     const promptLower = userPrompt.toLowerCase();
     const isBillingOrProcedureQuery = 
       promptLower.includes('cpt') || promptLower.includes('code') || promptLower.includes('cost') ||
@@ -264,11 +346,9 @@ const Chatbot = () => {
       const formatCPT = (c) => `CPT ${c.code || 'Unknown'}: ${c.description || 'No description'} [Category: ${c.category || 'General'} | Avg Cost: $${c.cost || 0} | Expected Reimbursement: $${c.reimbursement || 0} | Avg Duration: ${c.average_duration || 0} mins]`;
       
       if (cList.length <= 50 || isBillingOrProcedureQuery) {
-        // Provide top 200 relevant procedures if billing query
         const displayList = isBillingOrProcedureQuery && cList.length > 200 ? cList.slice(0, 200) : cList;
         contextParts.push(`--- COMPASS CPT CODES DATABASE (Showing ${displayList.length} of Total: ${cList.length} CPT Codes) ---\n${displayList.map(formatCPT).join('\n')}`);
       } else {
-        // Token-conserving summary when user is asking general staff/hospital questions
         contextParts.push(`--- COMPASS CPT CODES DATABASE (Total Catalog Size: ${cList.length} CPT Codes) ---\nNote: Complete CPT procedure database of ${cList.length} billing codes is actively linked in the background and will be fully expanded when asked about specific CPT codes, procedures, costs, or turnover times. Sample procedures:\n${cList.slice(0, 20).map(formatCPT).join('\n')}`);
       }
     }
@@ -285,29 +365,164 @@ const Chatbot = () => {
     return contextParts.join('\n\n');
   };
 
+  // ==========================================
+  // Reliable HTTP-Based Continuous Live Voice Loop
+  // ==========================================
   const startLiveVoice = async () => {
-    setLiveTranscript('');
-    const latestData = await refreshDatabaseContext();
-    const systemPrompt = `You are a real-time conversational voice AI assistant for an Ambulatory Surgery Center (ASC) called ASC Manager. Speak naturally, concisely, and professionally to surgical facility staff using the exact real-time hospital database below.\n\n[ASC System & Operational Context Data]:\n${prepareContextData('general overview of surgeons and surgeries', latestData)}`;
-    if (liveSessionRef.current) {
-      liveSessionRef.current.connect(systemPrompt);
+    liveLoopActiveRef.current = true;
+    setLiveStatus('Starting Live Voice...');
+    setLiveTranscript('Syncing with real-time ASC hospital database...');
+    await refreshDatabaseContext();
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      startLiveListeningLoop();
+    } else {
+      setLiveStatus('Error: Voice Recognition Unsupported');
+      setLiveTranscript('Your browser does not support Speech Recognition. Please use Chrome or Edge.');
+    }
+  };
+
+  const startLiveListeningLoop = () => {
+    if (!liveLoopActiveRef.current) return;
+    if (isLiveMuted) {
+      setLiveStatus('Paused (Muted)');
+      return;
+    }
+
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    setIsAiSpeaking(false);
+    
+    const shortCode = selectedLang.split('-')[0].toUpperCase();
+    setLiveStatus(`🟢 Listening (${shortCode})... Speak naturally!`);
+    setLiveTranscript('Listening... ask any question about surgeries, surgeons, or hospital schedules in your selected language.');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    liveRecognitionRef.current = recognition;
+    recognition.lang = selectedLang;
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    let finalTxt = '';
+
+    recognition.onresult = (event) => {
+      let interimTxt = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTxt += event.results[i][0].transcript;
+        } else {
+          interimTxt += event.results[i][0].transcript;
+        }
+      }
+      if (finalTxt || interimTxt) {
+        setLiveTranscript(finalTxt || interimTxt);
+      }
+    };
+
+    recognition.onend = async () => {
+      if (!liveLoopActiveRef.current) return;
+
+      if (!finalTxt.trim()) {
+        // If user stayed silent, briefly wait and re-listen automatically
+        if (liveLoopActiveRef.current && !isLiveMuted) {
+          setTimeout(() => startLiveListeningLoop(), 1000);
+        }
+        return;
+      }
+
+      // Query captured! Submit to Gemini with fallback protection
+      setLiveStatus('⚡ Thinking & Checking ASC Database...');
+      setLiveTranscript(`You asked: "${finalTxt}"\n\nConsulting real-time surgical records...`);
+
+      const userMsg = {
+        id: Date.now(),
+        type: 'user',
+        text: finalTxt,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages((prev) => [...prev, userMsg]);
+
+      try {
+        const latestData = await refreshDatabaseContext();
+        const history = messages
+          .filter(m => m.id !== 1 && (m.type === 'user' || m.type === 'bot'))
+          .map(m => ({ role: m.type === 'bot' ? 'model' : 'user', text: m.text }));
+        const contextData = prepareContextData(finalTxt, latestData);
+        
+        const botReply = await sendMessageToGemini(finalTxt, history, contextData);
+
+        const botMsg = {
+          id: Date.now() + 1,
+          type: 'bot',
+          text: botReply,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages((prev) => [...prev, botMsg]);
+
+        setLiveTranscript(botReply);
+        setLiveStatus('🔊 Speaking Reply...');
+        setIsAiSpeaking(true);
+
+        // Read out response using robust TTS synthesizer
+        speakMessage(botReply, selectedLang, () => {
+          setIsAiSpeaking(false);
+          if (liveLoopActiveRef.current && !isLiveMuted) {
+            setTimeout(() => startLiveListeningLoop(), 1000);
+          }
+        });
+
+      } catch (err) {
+        console.error("Live voice interaction error:", err);
+        setLiveStatus("Error processing reply");
+        setLiveTranscript(`Error: ${err.message}. Retrying in 3s...`);
+        setTimeout(() => {
+          if (liveLoopActiveRef.current && !isLiveMuted) startLiveListeningLoop();
+        }, 3000);
+      }
+    };
+
+    recognition.onerror = (e) => {
+      console.warn("Speech recognition notice:", e.error);
+      if (liveLoopActiveRef.current && e.error !== 'not-allowed' && e.error !== 'service-not-allowed') {
+        setTimeout(() => startLiveListeningLoop(), 1500);
+      } else if (e.error === 'not-allowed') {
+        setLiveStatus('Microphone Access Denied');
+        setLiveTranscript('Please enable microphone permissions in browser settings.');
+        liveLoopActiveRef.current = false;
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Failed to begin speech capture:", e);
     }
   };
 
   const stopLiveVoice = () => {
-    if (liveSessionRef.current) {
-      liveSessionRef.current.disconnect();
+    liveLoopActiveRef.current = false;
+    if (liveRecognitionRef.current) {
+      try { liveRecognitionRef.current.stop(); } catch (e) {}
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
     }
     setLiveStatus('Disconnected');
     setIsAiSpeaking(false);
-    setLiveVolume(0);
   };
 
   const toggleLiveMute = () => {
-    if (liveSessionRef.current) {
-      const nextMute = !isLiveMuted;
-      liveSessionRef.current.setMuted(nextMute);
-      setIsLiveMuted(nextMute);
+    const nextMute = !isLiveMuted;
+    setIsLiveMuted(nextMute);
+    if (nextMute) {
+      if (liveRecognitionRef.current) {
+        try { liveRecognitionRef.current.stop(); } catch (e) {}
+      }
+      setLiveStatus('Paused (Muted)');
+    } else {
+      if (liveLoopActiveRef.current) {
+        startLiveListeningLoop();
+      }
     }
   };
 
@@ -327,7 +542,6 @@ const Chatbot = () => {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    
     if (!input.trim()) return;
 
     const userMessage = {
@@ -342,7 +556,6 @@ const Chatbot = () => {
     setIsLoading(true);
     setError('');
 
-    // Dynamically refresh live database before generating answer
     const latestData = await refreshDatabaseContext();
 
     if (!latestData?.settingsData && !settings?.gemini_api_key && !import.meta.env.VITE_GEMINI_API_KEY) {
@@ -350,7 +563,7 @@ const Chatbot = () => {
         setMessages((prev) => [...prev, {
           id: Date.now() + 1,
           type: 'bot',
-          text: 'Error: Gemini API Key is not configured. Please add it in the Settings page under AI Configuration.',
+          text: 'Error: Gemini API Key is not configured. Please add it in Settings under AI Configuration.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
         setIsLoading(false);
@@ -366,10 +579,8 @@ const Chatbot = () => {
       const contextData = prepareContextData(userMessage.text, latestData);
       const botReply = await sendMessageToGemini(userMessage.text, history, contextData);
 
-      if (isSoundOn && 'speechSynthesis' in window) {
-        const cleanText = botReply.replace(/[*_#]/g, '');
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        window.speechSynthesis.speak(utterance);
+      if (isSoundOn) {
+        speakMessage(botReply, selectedLang);
       }
 
       const botMessage = {
@@ -409,19 +620,17 @@ const Chatbot = () => {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              {activeTab === 'text' && (
-                <button 
-                  className="chatbot-close-btn" 
-                  onClick={() => {
-                    if (window.speechSynthesis) window.speechSynthesis.cancel();
-                    setIsSoundOn(!isSoundOn);
-                  }} 
-                  aria-label="Toggle Sound"
-                  title={isSoundOn ? "Mute Voice" : "Enable Voice"}
-                >
-                  {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-                </button>
-              )}
+              <button 
+                className="chatbot-close-btn" 
+                onClick={() => {
+                  if (window.speechSynthesis) window.speechSynthesis.cancel();
+                  setIsSoundOn(!isSoundOn);
+                }} 
+                aria-label="Toggle Sound"
+                title={isSoundOn ? "Mute Spoken Replies" : "Enable Spoken Replies"}
+              >
+                {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              </button>
               <button className="chatbot-close-btn" onClick={toggleChat} aria-label="Close Chat">
                 <X size={18} />
               </button>
@@ -448,13 +657,29 @@ const Chatbot = () => {
             </button>
           </div>
 
+          {/* Spoken & Reply Language Selector Bar */}
+          <div className="chatbot-lang-bar">
+            <span>🗣️ Assistant Language:</span>
+            <select 
+              className="chatbot-lang-select"
+              value={selectedLang}
+              onChange={handleLanguageChange}
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Tab Content */}
           {activeTab === 'live' ? (
             <div className="live-voice-container">
               <div className="live-voice-status">
                 <span className={`status-dot ${
-                  liveStatus.includes('Connected') ? (isAiSpeaking ? 'speaking' : 'connected') :
-                  liveStatus.includes('Connecting') ? 'connecting' : 'disconnected'
+                  liveStatus.includes('Listening') || liveStatus.includes('Speaking') ? (isAiSpeaking ? 'speaking' : 'connected') :
+                  liveStatus.includes('Checking') || liveStatus.includes('Starting') ? 'connecting' : 'disconnected'
                 }`}></span>
                 <span>{liveStatus}</span>
               </div>
@@ -463,10 +688,11 @@ const Chatbot = () => {
                 <div 
                   className={`live-orb ${isAiSpeaking ? 'speaking' : ''}`}
                   style={{
-                    transform: `scale(${1 + liveVolume * 0.35})`,
+                    transform: `scale(${isAiSpeaking ? 1.25 : 1})`,
+                    cursor: liveStatus === 'Disconnected' || liveStatus.includes('Error') || liveStatus.includes('Denied') ? 'pointer' : 'default'
                   }}
                   onClick={() => {
-                    if (liveStatus === 'Disconnected' || liveStatus.includes('Error')) {
+                    if (liveStatus === 'Disconnected' || liveStatus.includes('Error') || liveStatus.includes('Denied')) {
                       startLiveVoice();
                     }
                   }}
@@ -475,15 +701,15 @@ const Chatbot = () => {
                 </div>
 
                 <div className="live-transcript-box">
-                  {liveTranscript ? liveTranscript : isAiSpeaking ? "Gemini AI is talking..." : liveStatus.includes('Connected') ? "Listening... Speak naturally to ask about surgeries, CPT codes, or staff schedules." : "Click Start Conversation below to begin a real-time voice session with Gemini Live AI."}
+                  {liveTranscript || "Click Start Conversation below to speak in Punjabi, Hindi, English, or any selected language!"}
                 </div>
               </div>
 
               <div className="live-controls-row">
-                {!liveStatus.includes('Connected') && !liveStatus.includes('Connecting') ? (
+                {liveStatus === 'Disconnected' || liveStatus.includes('Error') || liveStatus.includes('Denied') ? (
                   <button type="button" className="live-action-btn start" onClick={startLiveVoice}>
                     <Play size={18} />
-                    <span>Start Conversation</span>
+                    <span>Start Live Voice</span>
                   </button>
                 ) : (
                   <>
@@ -549,7 +775,7 @@ const Chatbot = () => {
                   <input
                     type="text"
                     className="chatbot-input"
-                    placeholder="Ask a question..."
+                    placeholder={`Ask in ${SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.name.split(' ')[0]}...`}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     disabled={isLoading}
@@ -580,7 +806,7 @@ const Chatbot = () => {
         </button>
       )}
       
-      {/* Inline style for the typing indicator animation */}
+      {/* Inline style for typing animation */}
       <style>{`
         @keyframes bounce {
           0%, 80%, 100% { transform: scale(0); }
