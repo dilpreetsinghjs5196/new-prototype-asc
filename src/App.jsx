@@ -2693,6 +2693,9 @@ export default function App() {
         </div>
 
         <nav className="sidebar-menu">
+          <div className="sidebar-section-header" style={{ paddingTop: '4px' }}>
+            🏠 Dashboard
+          </div>
           <div
             className={`menu-item ${activeTab === 'dashboard' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('dashboard'); setSelectedSurgeon(null); }}
@@ -2700,7 +2703,6 @@ export default function App() {
             <div className="menu-item-icon"><LayoutDashboard size={16} /></div>
             Executive Dashboard
           </div>
-
           <div
             className={`menu-item ${activeTab === 'overview' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('overview'); setSelectedSurgeon(null); }}
@@ -2709,14 +2711,11 @@ export default function App() {
             Executive Summary
           </div>
 
-          <div
-            className={`menu-item ${activeTab === 'or' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('or'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Clock size={16} /></div>
-            Operating Room Performance
-          </div>
+          <div className="sidebar-section-divider"></div>
 
+          <div className="sidebar-section-header">
+            📅 Scheduling
+          </div>
           <div
             className={`menu-item ${activeTab === 'scheduler' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('scheduler'); setSelectedSurgeon(null); }}
@@ -2724,80 +2723,13 @@ export default function App() {
             <div className="menu-item-icon"><CalendarDays size={16} /></div>
             Surgical Case Log
           </div>
-
           <div
-            className={`menu-item ${(activeTab === 'surgeons' || selectedSurgeon) ? 'active' : ''}`}
-            onClick={() => { setActiveTab('surgeons'); setSelectedSurgeon(null); }}
+            className={`menu-item ${activeTab === 'or_block_schedule' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('or_block_schedule'); setSelectedSurgeon(null); }}
           >
-            <div className="menu-item-icon"><UserCheck size={16} /></div>
-            Surgeon Performance
+            <div className="menu-item-icon"><CalendarDays size={16} /></div>
+            Operation Room Scheduling
           </div>
-
-          <div
-            className={`menu-item ${activeTab === 'patients' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('patients'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Users size={16} /></div>
-            Patient Registry
-          </div>
-
-          <div
-            className={`menu-item ${activeTab === 'surgeons_manage' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('surgeons_manage'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><UserCheck size={16} /></div>
-            Surgeon Management
-          </div>
-
-
-          {/* <div
-            className={`menu-item ${activeTab === 'financial' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('financial'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><BarChart3 size={16} /></div>
-            Financial Performance
-          </div> */}
-
-          {/* <div
-            className={`menu-item ${activeTab === 'cpt' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('cpt'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Stethoscope size={16} /></div>
-            Case Profitability
-          </div> */}
-
-          <div
-            className={`menu-item ${activeTab === 'cpt_manage' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('cpt_manage'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Sliders size={16} /></div>
-            CPT Codes Management
-          </div>
-
-          <div
-            className={`menu-item ${activeTab === 'ot_cost_manage' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('ot_cost_manage'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><DollarSign size={16} /></div>
-            Operating Room Costs
-          </div>
-
-          {/* <div
-            className={`menu-item ${activeTab === 'payer' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('payer'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><ShieldCheck size={16} /></div>
-            Payer Intelligence
-          </div> */}
-
-          {/* <div
-            className={`menu-item ${activeTab === 'supply' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('supply'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Package size={16} /></div>
-            Supply Chain
-          </div> */}
-
           <div
             className={`menu-item ${activeTab === 'cancellations' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('cancellations'); setSelectedSurgeon(null); }}
@@ -2806,22 +2738,90 @@ export default function App() {
             Case Cancellations
           </div>
 
+          <div className="sidebar-section-divider"></div>
+
+          <div className="sidebar-section-header">
+            👥 Patients
+          </div>
           <div
-            className={`menu-item ${activeTab === 'or_block_schedule' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('or_block_schedule'); setSelectedSurgeon(null); }}
+            className={`menu-item ${activeTab === 'patients' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('patients'); setSelectedSurgeon(null); }}
           >
-            <div className="menu-item-icon"><CalendarDays size={16} /></div>
-            Operation Room Scheduling
+            <div className="menu-item-icon"><Users size={16} /></div>
+            Patient Registry
           </div>
 
-          {/* <div
-            className={`menu-item ${activeTab === 'reports' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('reports'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><BookOpen size={16} /></div>
-            Reports & Analytics
-          </div> */}
+          <div className="sidebar-section-divider"></div>
 
+          <div className="sidebar-section-header">
+            🏢 Operating Rooms
+          </div>
+          <div
+            className={`menu-item ${activeTab === 'or' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('or'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Clock size={16} /></div>
+            Operating Room Performance
+          </div>
+          <div
+            className={`menu-item ${activeTab === 'ot_cost_manage' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('ot_cost_manage'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><DollarSign size={16} /></div>
+            Operating Room Costs
+          </div>
+
+          <div className="sidebar-section-divider"></div>
+
+          <div className="sidebar-section-header">
+            👨‍⚕️ Providers
+          </div>
+          <div
+            className={`menu-item ${activeTab === 'surgeons_manage' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('surgeons_manage'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><UserCheck size={16} /></div>
+            Surgeon Management
+          </div>
+          <div
+            className={`menu-item ${(activeTab === 'surgeons' || selectedSurgeon) ? 'active' : ''}`}
+            onClick={() => { setActiveTab('surgeons'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><UserCheck size={16} /></div>
+            Surgeon Performance
+          </div>
+
+          <div className="sidebar-section-divider"></div>
+
+          <div className="sidebar-section-header">
+            🏥 Clinical
+          </div>
+          <div
+            className={`menu-item ${activeTab === 'cpt_manage' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('cpt_manage'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Sliders size={16} /></div>
+            CPT Codes Management
+          </div>
+
+          <div className="sidebar-section-divider"></div>
+
+          <div className="sidebar-section-header">
+            📊 Analytics
+          </div>
+          <div
+            className={`menu-item ${activeTab === 'business_analysis' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('business_analysis'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Activity size={16} /></div>
+            Full Business Analysis
+          </div>
+
+          <div className="sidebar-section-divider"></div>
+
+          <div className="sidebar-section-header">
+            🤖 AI Center
+          </div>
           <div
             className={`menu-item ${activeTab === 'ai_ops_analyst' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('ai_ops_analyst'); setSelectedSurgeon(null); }}
@@ -2836,22 +2836,12 @@ export default function App() {
             <div className="menu-item-icon"><Bot size={16} /></div>
             Instruction Panel
           </div>
-          <div
-            className={`menu-item ${activeTab === 'business_analysis' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('business_analysis'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Activity size={16} /></div>
-            Full Business Analysis
+
+          <div className="sidebar-section-divider"></div>
+
+          <div className="sidebar-section-header">
+            ⚙️ Administration
           </div>
-
-          {/* <div
-            className={`menu-item ${activeTab === 'data' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('data'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><Database size={16} /></div>
-            Data Explorer
-          </div> */}
-
           <div
             className={`menu-item ${activeTab === 'settings' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('settings'); setSelectedSurgeon(null); }}
@@ -2860,19 +2850,13 @@ export default function App() {
             System Settings
           </div>
 
-          {/* <div
-            className={`menu-item ${activeTab === 'help' && !selectedSurgeon ? 'active' : ''}`}
-            onClick={() => { setActiveTab('help'); setSelectedSurgeon(null); }}
-          >
-            <div className="menu-item-icon"><HelpCircle size={16} /></div>
-            Help & Support
-          </div> */}
+          <div className="sidebar-section-divider" style={{ marginTop: '16px', marginBottom: '8px' }}></div>
 
           {/* Theme Switcher inside Sidebar */}
           <div
             onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
             style={{
-              margin: '10px 16px',
+              margin: '6px 16px 16px 16px',
               padding: '10px 14px',
               borderRadius: '8px',
               backgroundColor: 'rgba(255, 255, 255, 0.06)',
