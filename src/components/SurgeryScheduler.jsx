@@ -58,7 +58,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     const [cptSearchQuery, setCptSearchQuery] = useState('');
     const [selectedBodyPart, setSelectedBodyPart] = useState('');
     const [includeLaborSupplies, setIncludeLaborSupplies] = useState(false);
-    const [tableIncludeLaborSupplies, setTableIncludeLaborSupplies] = useState(false);
+    const [monthSearchQueries, setMonthSearchQueries] = useState({});
+    const [monthSurgeriesPerPage, setMonthSurgeriesPerPage] = useState({});
     const [otExtraCosts, setOtExtraCosts] = useState([]);
     const [orBlocks, setOrBlocks] = useState([]);
 
@@ -139,8 +140,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         });
     }, [formData?.date, surgeons, orBlocks]);
 
-    // Pagination
-    const surgeriesPerPage = 10;
+    // Pagination state used above
 
     useEffect(() => {
         if (formData.durationMinutes > 0) {
@@ -704,15 +704,12 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         const writeOff = parseFloat(surgery.write_off || 0);
         const netRev = surgery.is_probono ? 0 : Math.max(0, grossRevenue - writeOff);
 
-        let displayProfit = netRev - cost;
-        let fullTotal = tableIncludeLaborSupplies ? (netRev - cost) : netRev;
+        let displayProfit = netRev;
+        let fullTotal = netRev;
 
         if (surgery.is_probono) {
             displayProfit = 0; // Charity loss
             fullTotal = 0;
-        } else if (!tableIncludeLaborSupplies) {
-            // Include only billing margin (omit internal room overhead, labor, and supplies)
-            displayProfit = netRev;
         }
 
         return {
@@ -730,7 +727,6 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         };
     };
 
-    // ----- Group Surgeries by Month -----
     const surgeriesByMonth = useMemo(() => {
         const groups = {};
         surgeries.forEach(surg => {
@@ -1588,18 +1584,6 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 <h3>Monthly Case Logs</h3>
                                 <p className="card-subtitle">Review MTD case list sorted by calendar month with itemized financials.</p>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <input
-                                    type="checkbox"
-                                    id="toggle-labor-costs"
-                                    checked={tableIncludeLaborSupplies}
-                                    onChange={(e) => setTableIncludeLaborSupplies(e.target.checked)}
-                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                />
-                                <label htmlFor="toggle-labor-costs" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: '600' }}>
-                                    Include Labor/Overhead in Margins
-                                </label>
-                            </div>
                         </div>
 
                         {availableMonths.length === 0 ? (
@@ -1612,18 +1596,28 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 const monthSurgeries = surgeriesByMonth[monthKey] || [];
                                 const isExpanded = expandedMonths.has(monthKey);
 
+                                // Apply month-specific search
+                                const searchQuery = (monthSearchQueries[monthKey] || '').toLowerCase().trim();
+                                const filteredMonthSurgeries = searchQuery ? monthSurgeries.filter(surg => {
+                                    const patientObj = patients.find(p => String(p.id) === String(surg.patient_id));
+                                    const patientMrn = patientObj ? patientObj.mrn : (surg.patients ? surg.patients.mrn : '');
+                                    const searchable = `${patientMrn} ${surg.doctor_name || ''} ${surg.cpt_codes || ''} ${surg.status || ''}`.toLowerCase();
+                                    return searchable.includes(searchQuery);
+                                }) : monthSurgeries;
+
                                 // Month total price
-                                const monthTotalPrice = monthSurgeries.reduce((sum, s) => {
+                                const monthTotalPrice = filteredMonthSurgeries.reduce((sum, s) => {
                                     const { fullTotal } = calculateSurgeryFinancials(s);
                                     return sum + fullTotal;
                                 }, 0);
 
                                 // Pagination calculation
                                 const currentPage = monthPages[monthKey] || 1;
-                                const totalPages = Math.ceil(monthSurgeries.length / surgeriesPerPage);
-                                const currentSurgeries = monthSurgeries.slice(
-                                    (currentPage - 1) * surgeriesPerPage,
-                                    currentPage * surgeriesPerPage
+                                const perPage = monthSurgeriesPerPage[monthKey] || 10;
+                                const totalPages = Math.ceil(filteredMonthSurgeries.length / perPage);
+                                const currentSurgeries = filteredMonthSurgeries.slice(
+                                    (currentPage - 1) * perPage,
+                                    currentPage * perPage
                                 );
 
                                 return (
@@ -1648,12 +1642,41 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                     {formatMonthDisplay(monthKey)}
                                                 </h4>
                                                 <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
-                                                    {monthSurgeries.length} cases
+                                                    {filteredMonthSurgeries.length} cases
                                                 </span>
                                             </div>
-                                            <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-green)' }}>
-                                                {formatCurrency(monthTotalPrice)}
-                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                                {/* Month Search Bar */}
+                                                <div 
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '4px 10px' }}
+                                                >
+                                                    <Search size={14} color="var(--text-secondary)" style={{ marginRight: '6px' }} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search MRN, Surgeon..."
+                                                        value={monthSearchQueries[monthKey] || ''}
+                                                        onChange={(e) => setMonthSearchQueries(prev => ({ ...prev, [monthKey]: e.target.value }))}
+                                                        style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', color: 'var(--text-primary)', width: '180px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Show:</label>
+                                                    <select
+                                                        value={monthSurgeriesPerPage[monthKey] || 10}
+                                                        onChange={(e) => setMonthSurgeriesPerPage(prev => ({ ...prev, [monthKey]: Number(e.target.value) }))}
+                                                        style={{ padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none' }}
+                                                    >
+                                                        <option value={5}>5</option>
+                                                        <option value={10}>10</option>
+                                                        <option value={20}>20</option>
+                                                        <option value={50}>50</option>
+                                                    </select>
+                                                </div>
+                                                <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-green)' }}>
+                                                    {formatCurrency(monthTotalPrice)}
+                                                </span>
+                                            </div>
                                         </div>
 
                                         {isExpanded && (
