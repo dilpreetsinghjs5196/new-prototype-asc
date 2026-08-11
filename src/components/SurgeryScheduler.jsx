@@ -1402,67 +1402,65 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                             </h3>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                            {!formData.applyFixedCosmeticFee && (
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={includeLaborSupplies}
-                                                        onChange={(e) => {
-                                                            const isChecked = e.target.checked;
-                                                            setIncludeLaborSupplies(isChecked);
-                                                            setFormData(prev => {
-                                                                const newCptExpenses = { ...prev.cptExpenses };
-                                                                let totalSupplies = 0, totalImplants = 0, totalMeds = 0, totalTray = 0, totalLabour = 0, totalOrRoom = 0;
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={includeLaborSupplies}
+                                                    onChange={(e) => {
+                                                        const isChecked = e.target.checked;
+                                                        setIncludeLaborSupplies(isChecked);
+                                                        setFormData(prev => {
+                                                            const newCptExpenses = { ...prev.cptExpenses };
+                                                            let totalSupplies = 0, totalImplants = 0, totalMeds = 0, totalTray = 0, totalLabour = 0, totalOrRoom = 0;
 
-                                                                if (!isChecked) {
-                                                                    Object.keys(newCptExpenses).forEach(code => {
-                                                                        newCptExpenses[code] = {
-                                                                            ...newCptExpenses[code],
-                                                                            suppliesCost: 0, implantsCost: 0, medicationsCost: 0, trayCost: 0, labourCost: 0, orRoomCost: 0
-                                                                        };
-                                                                    });
-                                                                } else {
-                                                                    prev.selectedCptCodes.forEach(code => {
-                                                                        const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
-                                                                        const currentExp = newCptExpenses[code] || {};
-                                                                        newCptExpenses[code] = {
-                                                                            ...currentExp,
-                                                                            suppliesCost: currentExp.suppliesCost || parseFloat(extraCostData?.supply_cost || 0),
-                                                                            implantsCost: currentExp.implantsCost || parseFloat(extraCostData?.implant_cost || 0),
-                                                                            medicationsCost: currentExp.medicationsCost || parseFloat(extraCostData?.medication_cost || 0),
-                                                                            trayCost: currentExp.trayCost || parseFloat(extraCostData?.tray_cost || 0),
-                                                                            labourCost: currentExp.labourCost || parseFloat(extraCostData?.labour_cost || 0),
-                                                                            orRoomCost: currentExp.orRoomCost || parseFloat(extraCostData?.or_room_cost || 0)
-                                                                        };
-                                                                    });
-                                                                }
-
+                                                            if (!isChecked) {
                                                                 Object.keys(newCptExpenses).forEach(code => {
-                                                                    totalSupplies += newCptExpenses[code].suppliesCost;
-                                                                    totalImplants += newCptExpenses[code].implantsCost;
-                                                                    totalMeds += newCptExpenses[code].medicationsCost;
-                                                                    totalTray += newCptExpenses[code].trayCost;
-                                                                    totalLabour += newCptExpenses[code].labourCost;
-                                                                    totalOrRoom += newCptExpenses[code].orRoomCost;
+                                                                    newCptExpenses[code] = {
+                                                                        ...newCptExpenses[code],
+                                                                        suppliesCost: 0, implantsCost: 0, medicationsCost: 0, trayCost: 0, labourCost: 0, orRoomCost: 0
+                                                                    };
                                                                 });
+                                                            } else {
+                                                                prev.selectedCptCodes.forEach(code => {
+                                                                    const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
+                                                                    const currentExp = newCptExpenses[code] || {};
+                                                                    newCptExpenses[code] = {
+                                                                        ...currentExp,
+                                                                        suppliesCost: currentExp.suppliesCost || parseFloat(extraCostData?.supply_cost || 0),
+                                                                        implantsCost: currentExp.implantsCost || parseFloat(extraCostData?.implant_cost || 0),
+                                                                        medicationsCost: currentExp.medicationsCost || parseFloat(extraCostData?.medication_cost || 0),
+                                                                        trayCost: currentExp.trayCost || parseFloat(extraCostData?.tray_cost || 0),
+                                                                        labourCost: currentExp.labourCost || parseFloat(extraCostData?.labour_cost || 0),
+                                                                        orRoomCost: currentExp.orRoomCost || parseFloat(extraCostData?.or_room_cost || 0)
+                                                                    };
+                                                                });
+                                                            }
 
-                                                                return {
-                                                                    ...prev,
-                                                                    cptExpenses: newCptExpenses,
-                                                                    suppliesCost: totalSupplies,
-                                                                    implantsCost: totalImplants,
-                                                                    medicationsCost: totalMeds,
-                                                                    trayCost: totalTray,
-                                                                    labourCost: totalLabour,
-                                                                    orRoomCost: totalOrRoom
-                                                                };
+                                                            Object.keys(newCptExpenses).forEach(code => {
+                                                                totalSupplies += newCptExpenses[code].suppliesCost;
+                                                                totalImplants += newCptExpenses[code].implantsCost;
+                                                                totalMeds += newCptExpenses[code].medicationsCost;
+                                                                totalTray += newCptExpenses[code].trayCost;
+                                                                totalLabour += newCptExpenses[code].labourCost;
+                                                                totalOrRoom += newCptExpenses[code].orRoomCost;
                                                             });
-                                                        }}
-                                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                                    />
-                                                    Include Labor/Supplies
-                                                </label>
-                                            )}
+
+                                                            return {
+                                                                ...prev,
+                                                                cptExpenses: newCptExpenses,
+                                                                suppliesCost: totalSupplies,
+                                                                implantsCost: totalImplants,
+                                                                medicationsCost: totalMeds,
+                                                                trayCost: totalTray,
+                                                                labourCost: totalLabour,
+                                                                orRoomCost: totalOrRoom
+                                                            };
+                                                        });
+                                                    }}
+                                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                                />
+                                                Include Labor/Supplies
+                                            </label>
                                         </div>
                                     </div>
 
