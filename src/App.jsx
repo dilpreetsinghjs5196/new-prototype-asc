@@ -1060,8 +1060,26 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('asc_theme') || 'light');
 
   useEffect(() => {
+    const applyThemeColors = () => {
+      const isDark = theme === 'dark';
+      const sidebarColor = localStorage.getItem(isDark ? 'dark_sidebar_color' : 'light_sidebar_color');
+      const bgColor = localStorage.getItem(isDark ? 'dark_bg_color' : 'light_bg_color');
+
+      if (sidebarColor) document.documentElement.style.setProperty('--bg-sidebar', sidebarColor);
+      else document.documentElement.style.removeProperty('--bg-sidebar');
+
+      if (bgColor) document.documentElement.style.setProperty('--bg-main', bgColor);
+      else document.documentElement.style.removeProperty('--bg-main');
+    };
+
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('asc_theme', theme);
+    applyThemeColors();
+
+    const handleThemeUpdated = () => applyThemeColors();
+    window.addEventListener('theme-updated', handleThemeUpdated);
+    
+    return () => window.removeEventListener('theme-updated', handleThemeUpdated);
   }, [theme]);
 
   const isDateInFilter = React.useCallback((surgDateStr, fDate, tFilter) => {

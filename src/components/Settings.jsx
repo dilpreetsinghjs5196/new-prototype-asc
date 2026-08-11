@@ -15,7 +15,11 @@ const Settings = ({ onUpdate }) => {
         npi: '1234567890',
         apply_medicare_mppr: false,
         ai_allowed_email: '', // Restrict usage to this email
-        gemini_api_key: ''
+        gemini_api_key: '',
+        light_sidebar_color: '#112238',
+        light_bg_color: '#f8fafc',
+        dark_sidebar_color: '#0F2036',
+        dark_bg_color: '#142842'
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -31,7 +35,11 @@ const Settings = ({ onUpdate }) => {
             
             // Load local AI config for email just in case it's not in DB
             const localAI = {
-                ai_allowed_email: localStorage.getItem('ai_allowed_email') || ''
+                ai_allowed_email: localStorage.getItem('ai_allowed_email') || '',
+                light_sidebar_color: localStorage.getItem('light_sidebar_color') || '#112238',
+                light_bg_color: localStorage.getItem('light_bg_color') || '#f8fafc',
+                dark_sidebar_color: localStorage.getItem('dark_sidebar_color') || '#0F2036',
+                dark_bg_color: localStorage.getItem('dark_bg_color') || '#142842'
             };
 
             if (data) {
@@ -55,6 +63,16 @@ const Settings = ({ onUpdate }) => {
         }));
     };
 
+    const resetThemeDefaults = () => {
+        setSettings(prev => ({
+            ...prev,
+            light_sidebar_color: '#112238',
+            light_bg_color: '#f8fafc',
+            dark_sidebar_color: '#0F2036',
+            dark_bg_color: '#142842'
+        }));
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
 
@@ -62,10 +80,17 @@ const Settings = ({ onUpdate }) => {
             setSaving(true);
 
             // Separate AI settings to store locally to prevent Supabase schema errors for email
-            const { id, ai_allowed_email, ...settingsToUpdate } = settings;
+            const { id, ai_allowed_email, light_sidebar_color, light_bg_color, dark_sidebar_color, dark_bg_color, ...settingsToUpdate } = settings;
 
             // Save local settings
             if (ai_allowed_email !== undefined) localStorage.setItem('ai_allowed_email', ai_allowed_email);
+            if (light_sidebar_color) localStorage.setItem('light_sidebar_color', light_sidebar_color);
+            if (light_bg_color) localStorage.setItem('light_bg_color', light_bg_color);
+            if (dark_sidebar_color) localStorage.setItem('dark_sidebar_color', dark_sidebar_color);
+            if (dark_bg_color) localStorage.setItem('dark_bg_color', dark_bg_color);
+
+            // Dispatch theme update event
+            window.dispatchEvent(new Event('theme-updated'));
 
             // If the user didn't type a new API key (it's either empty or just the placeholder dots), we don't overwrite it in DB
             // We use a separate state to handle the input, but since it's in `settings.gemini_api_key`, 
@@ -435,6 +460,114 @@ const Settings = ({ onUpdate }) => {
                                 )}
                             </div>
                         </label>
+                    </div>
+
+                    {/* Section 5: Theme Configurations */}
+                    <div className="setting-content-card" style={{ padding: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: '8px', color: '#2563eb' }}>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/></svg>
+                                </div>
+                                <h3 style={{ fontSize: '1.125rem', color: 'var(--text-primary)', margin: 0 }}>Theme Configurations</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={resetThemeDefaults}
+                                style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                Restore Defaults
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                            {/* Light Mode Colors */}
+                            <div style={{ background: 'var(--bg-main)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)' }}>Light Mode Settings</h4>
+                                <div className="setting-form-group">
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Sidebar Background Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="light_sidebar_color"
+                                            value={settings.light_sidebar_color || '#112238'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.light_sidebar_color || '#112238'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Main Panel Background Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="light_bg_color"
+                                            value={settings.light_bg_color || '#f8fafc'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.light_bg_color || '#f8fafc'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dark Mode Colors */}
+                            <div style={{ background: 'var(--bg-main)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)' }}>Dark Mode Settings</h4>
+                                <div className="setting-form-group">
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Sidebar Background Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="dark_sidebar_color"
+                                            value={settings.dark_sidebar_color || '#0F2036'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.dark_sidebar_color || '#0F2036'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Main Panel Background Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="dark_bg_color"
+                                            value={settings.dark_bg_color || '#142842'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.dark_bg_color || '#142842'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </form>
