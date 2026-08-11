@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import { db } from '../lib/supabase';
-import { 
-    Search, Plus, Edit, Trash2, Clock, Calendar, 
+import {
+    Search, Plus, Edit, Trash2, Clock, Calendar,
     DollarSign, AlertCircle, Filter, Check, ChevronDown, ChevronUp, Wand2
 } from 'lucide-react';
 import ORBlockSchedule from './ORBlockSchedule';
@@ -99,26 +99,26 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         const year = parseInt(yearStr, 10);
         const month = parseInt(monthStr, 10);
         const day = parseInt(dayStr, 10);
-        
+
         return surgeons.filter(surgeon => {
             const format1 = `${surgeon.firstname} ${surgeon.lastname}`.trim(); // e.g. "Kelly Malinoski"
             const format2 = surgeon.name || `Dr. ${surgeon.lastname} ${surgeon.firstname}`.trim(); // e.g. "Dr. Malinoski Kelly"
-            
+
             // Check explicit DB blocks
             if (orBlocks.some(b => b.date === formData.date && (b.provider_name === format1 || b.provider_name === format2))) {
                 return true;
             }
-            
+
             // Check recurring templates
             let templates = surgeon.block_templates;
             if (typeof templates === 'string') {
-                try { templates = JSON.parse(templates); } catch(e) { templates = []; }
+                try { templates = JSON.parse(templates); } catch (e) { templates = []; }
             }
-            
+
             if (Array.isArray(templates) && templates.length > 0) {
                 const dayNameToIndex = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
                 const weekToMultiplier = { 'First': 0, 'Second': 1, 'Third': 2, 'Fourth': 3, 'Fifth': 4 };
-                
+
                 return templates.some(template => {
                     if (template.week === 'Specific Date') {
                         return template.day === formData.date;
@@ -245,7 +245,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
         if (surgery.cpt_expenses && typeof surgery.cpt_expenses === 'object' && Object.keys(surgery.cpt_expenses).length > 0) {
             calcCptExpenses = JSON.parse(JSON.stringify(surgery.cpt_expenses));
-            
+
             selectedCpts.forEach(code => {
                 const exp = calcCptExpenses[code];
                 if (exp && typeof exp === 'object') {
@@ -260,7 +260,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         } else {
             selectedCpts.forEach(code => {
                 const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
-                
+
                 const exp = {
                     suppliesCost: parseFloat(extraCostData?.supply_cost || 0),
                     implantsCost: parseFloat(extraCostData?.implant_cost || 0),
@@ -270,7 +270,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                     orRoomCost: parseFloat(extraCostData?.or_room_cost || 0)
                 };
                 calcCptExpenses[code] = exp;
-                
+
                 calcSupplies += exp.suppliesCost;
                 calcImplants += exp.implantsCost;
                 calcMeds += exp.medicationsCost;
@@ -302,9 +302,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         let formattedDoctorName = surgery.doctor_name || '';
         if (formattedDoctorName && surgeons && surgeons.length > 0) {
             const cleanDbName = formattedDoctorName.replace(/^Dr\.\s*/i, '').trim();
-            const surgeonObj = surgeons.find(s => 
-                s.name === formattedDoctorName || 
-                `${s.firstname} ${s.lastname}`.trim() === cleanDbName || 
+            const surgeonObj = surgeons.find(s =>
+                s.name === formattedDoctorName ||
+                `${s.firstname} ${s.lastname}`.trim() === cleanDbName ||
                 `${s.lastname} ${s.firstname}`.trim() === cleanDbName
             );
             if (surgeonObj) {
@@ -389,7 +389,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         // Calculate Full Total based on current UI toggle state
         const internalCost = includeLaborSupplies ? (roomCost + laborCost + suppliesCostTotal) : 0;
         const writeOff = parseFloat(formData.writeOff || 0);
-        
+
         let patientBillTotal;
         if (formData.isProbono) {
             patientBillTotal = 0;
@@ -398,13 +398,13 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         } else {
             patientBillTotal = reimbursementSum - writeOff + internalCost;
         }
-        
+
         let netProfit = reimbursementSum - writeOff - (roomCost + laborCost + suppliesCostTotal);
         if (formData.isProbono) netProfit = 0;
 
         // Save into notes to ensure they are captured in DB
         noteText += (noteText ? ' ' : '') + `[Full Total: ${patientBillTotal}]`;
-        
+
         const enhancedCptExpenses = {
             ...formData.cptExpenses,
             _full_total: patientBillTotal,
@@ -565,7 +565,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     const handleCptChange = (code, action) => {
         setFormData(prev => {
             let newCodes = [...prev.selectedCptCodes];
-            
+
             if (action === 'add') {
                 newCodes.push(code);
             } else if (action === 'remove') {
@@ -592,13 +592,20 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                 }
             } else if (action === 'add' && !prev.selectedCptCodes.includes(code)) {
                 const extraCostData = otExtraCosts.find(c => String(c.cpt_codes) === String(code));
-                const exp = {
+                const exp = includeLaborSupplies ? {
                     suppliesCost: parseFloat(extraCostData?.supply_cost || 0),
                     implantsCost: parseFloat(extraCostData?.implant_cost || 0),
                     medicationsCost: parseFloat(extraCostData?.medication_cost || 0),
                     trayCost: parseFloat(extraCostData?.tray_cost || 0),
                     labourCost: parseFloat(extraCostData?.labour_cost || 0),
                     orRoomCost: parseFloat(extraCostData?.or_room_cost || 0)
+                } : {
+                    suppliesCost: 0,
+                    implantsCost: 0,
+                    medicationsCost: 0,
+                    trayCost: 0,
+                    labourCost: 0,
+                    orRoomCost: 0
                 };
                 newCptExpenses[code] = exp;
             }
@@ -652,7 +659,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     const handleCptExpenseChange = (cptCode, field, value) => {
         setFormData(prev => {
             const numVal = parseFloat(value) || 0;
-            
+
             const newCptExpenses = {
                 ...prev.cptExpenses,
                 [cptCode]: {
@@ -660,7 +667,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                     [field]: numVal
                 }
             };
-            
+
             // Recalculate total for this field based on all selected CPT codes
             let newTotal = 0;
             prev.selectedCptCodes.forEach(code => {
@@ -766,10 +773,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             }
 
             // Search query filter
-            const matchesQuery = !cptSearchQuery || 
-                cpt.code.toLowerCase().includes(cptSearchQuery.toLowerCase()) || 
+            const matchesQuery = !cptSearchQuery ||
+                cpt.code.toLowerCase().includes(cptSearchQuery.toLowerCase()) ||
                 cpt.description.toLowerCase().includes(cptSearchQuery.toLowerCase());
-                
+
             // If user is actively searching, bypass the specialty/body part filters to allow finding any CPT
             if (cptSearchQuery) {
                 return matchesQuery;
@@ -986,7 +993,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                             </div>
 
                             {isCosmeticSurgeon && (
-                                <div className="form-group" style={{ 
+                                <div className="form-group" style={{
                                     marginTop: '8px',
                                     marginBottom: '16px',
                                     padding: '12px',
@@ -1006,7 +1013,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                             Apply Fixed Facility Fee (Cosmetic/Plastics)
                                         </span>
                                     </label>
-                                    
+
                                     {formData.applyFixedCosmeticFee && (
                                         <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #fed7aa' }}>
                                             <div>
@@ -1028,7 +1035,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         </span>
                                     )}
                                 </label>
-                                
+
                                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                                     <div style={{ position: 'relative', flex: '1' }}>
                                         <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
@@ -1073,16 +1080,16 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                     <span className="cpt-description" style={{ flex: 1 }}>{c.description}</span>
                                                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', gap: '8px' }}>
                                                         {count > 0 && (
-                                                            <button 
-                                                                type="button" 
+                                                            <button
+                                                                type="button"
                                                                 onClick={(e) => { e.stopPropagation(); handleCptChange(c.code, 'remove'); }}
                                                                 style={{ padding: '4px 8px', borderRadius: '4px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                                                             >
                                                                 - Remove
                                                             </button>
                                                         )}
-                                                        <button 
-                                                            type="button" 
+                                                        <button
+                                                            type="button"
                                                             onClick={(e) => { e.stopPropagation(); handleCptChange(c.code, 'add'); }}
                                                             style={{ padding: '4px 8px', borderRadius: '4px', background: 'var(--color-blue)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                                                         >
@@ -1191,98 +1198,98 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         {Array.from(new Set(formData.selectedCptCodes)).map(code => {
                                             const count = formData.selectedCptCodes.filter(c => c === code).length;
                                             return (
-                                            <div key={code} style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--primary-color)' }}>CPT {code} Expenses {count > 1 ? `(x${count})` : ''}</div>
-                                                <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-                                                    <div className="form-group">
-                                                        <label style={{ fontSize: '0.7rem' }}>Supply Cost</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="form-input"
-                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                                value={formData.cptExpenses[code]?.suppliesCost || ''}
-                                                                onChange={(e) => handleCptExpenseChange(code, 'suppliesCost', e.target.value)}
-                                                            />
+                                                <div key={code} style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--primary-color)' }}>CPT {code} Expenses {count > 1 ? `(x${count})` : ''}</div>
+                                                    <div className="form-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+                                                        <div className="form-group">
+                                                            <label style={{ fontSize: '0.7rem' }}>Supply Cost</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    className="form-input"
+                                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                    value={formData.cptExpenses[code]?.suppliesCost || ''}
+                                                                    onChange={(e) => handleCptExpenseChange(code, 'suppliesCost', e.target.value)}
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="form-group">
-                                                        <label style={{ fontSize: '0.7rem' }}>Implants & Devices</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="form-input"
-                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                                value={formData.cptExpenses[code]?.implantsCost || ''}
-                                                                onChange={(e) => handleCptExpenseChange(code, 'implantsCost', e.target.value)}
-                                                            />
+                                                        <div className="form-group">
+                                                            <label style={{ fontSize: '0.7rem' }}>Implants & Devices</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    className="form-input"
+                                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                    value={formData.cptExpenses[code]?.implantsCost || ''}
+                                                                    onChange={(e) => handleCptExpenseChange(code, 'implantsCost', e.target.value)}
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="form-group">
-                                                        <label style={{ fontSize: '0.7rem' }}>Tray Cost (New)</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="form-input"
-                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                                value={formData.cptExpenses[code]?.trayCost || ''}
-                                                                onChange={(e) => handleCptExpenseChange(code, 'trayCost', e.target.value)}
-                                                            />
+                                                        <div className="form-group">
+                                                            <label style={{ fontSize: '0.7rem' }}>Tray Cost (New)</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    className="form-input"
+                                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                    value={formData.cptExpenses[code]?.trayCost || ''}
+                                                                    onChange={(e) => handleCptExpenseChange(code, 'trayCost', e.target.value)}
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="form-group">
-                                                        <label style={{ fontSize: '0.7rem' }}>Medications</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="form-input"
-                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                                value={formData.cptExpenses[code]?.medicationsCost || ''}
-                                                                onChange={(e) => handleCptExpenseChange(code, 'medicationsCost', e.target.value)}
-                                                            />
+                                                        <div className="form-group">
+                                                            <label style={{ fontSize: '0.7rem' }}>Medications</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    className="form-input"
+                                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                    value={formData.cptExpenses[code]?.medicationsCost || ''}
+                                                                    onChange={(e) => handleCptExpenseChange(code, 'medicationsCost', e.target.value)}
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="form-group">
-                                                        <label style={{ fontSize: '0.7rem' }}>Labour Cost</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="form-input"
-                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                                value={formData.cptExpenses[code]?.labourCost || ''}
-                                                                onChange={(e) => handleCptExpenseChange(code, 'labourCost', e.target.value)}
-                                                            />
+                                                        <div className="form-group">
+                                                            <label style={{ fontSize: '0.7rem' }}>Labour Cost</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    className="form-input"
+                                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                    value={formData.cptExpenses[code]?.labourCost || ''}
+                                                                    onChange={(e) => handleCptExpenseChange(code, 'labourCost', e.target.value)}
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="form-group">
-                                                        <label style={{ fontSize: '0.7rem' }}>OR Room Cost</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="form-input"
-                                                                style={{ paddingLeft: '24px', paddingRight: '5px' }}
-                                                                value={formData.cptExpenses[code]?.orRoomCost || ''}
-                                                                onChange={(e) => handleCptExpenseChange(code, 'orRoomCost', e.target.value)}
-                                                            />
+                                                        <div className="form-group">
+                                                            <label style={{ fontSize: '0.7rem' }}>OR Room Cost</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <DollarSign size={12} style={{ position: 'absolute', left: '10px', top: '14px', color: 'var(--text-muted)' }} />
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    className="form-input"
+                                                                    style={{ paddingLeft: '24px', paddingRight: '5px' }}
+                                                                    value={formData.cptExpenses[code]?.orRoomCost || ''}
+                                                                    onChange={(e) => handleCptExpenseChange(code, 'orRoomCost', e.target.value)}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
                                             );
                                         })}
-                                        
+
                                         {/* Show grand totals summary if multiple CPTs */}
                                         {formData.selectedCptCodes.length > 1 && (
                                             <div style={{ padding: '8px 12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1381,18 +1388,18 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
 
                             {/* Financial Projection Box */}
                             {(formData.selectedCptCodes.length > 0 || formData.applyFixedCosmeticFee || formData.isProbono) && (
-                                <div style={{ 
-                                    marginTop: '24px', 
-                                    padding: '20px', 
-                                    borderRadius: '12px', 
+                                <div style={{
+                                    marginTop: '24px',
+                                    padding: '20px',
+                                    borderRadius: '12px',
                                     background: formData.isProbono ? '#fdf2f8' : (formData.applyFixedCosmeticFee ? '#eff6ff' : 'rgba(16, 185, 129, 0.05)'),
-                                    border: `2px solid ${formData.isProbono ? '#db2777' : (formData.applyFixedCosmeticFee ? '#3b82f6' : 'var(--success-color)')}`, 
-                                    position: 'relative' 
+                                    border: `2px solid ${formData.isProbono ? '#db2777' : (formData.applyFixedCosmeticFee ? '#3b82f6' : 'var(--success-color)')}`,
+                                    position: 'relative'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             {!formData.applyFixedCosmeticFee && !formData.isProbono && (
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
                                             )}
                                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: formData.isProbono ? '#9d174d' : (formData.applyFixedCosmeticFee ? '#1e40af' : 'var(--text-color)'), fontWeight: '700' }}>
                                                 {formData.isProbono ? '💗 Pro-Bono Case Summary' : (formData.applyFixedCosmeticFee ? '💰 Cosmetic Fee Breakdown' : 'Financial Projection')}
@@ -1401,8 +1408,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                                             {!formData.applyFixedCosmeticFee && (
                                                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                                    <input 
-                                                        type="checkbox" 
+                                                    <input
+                                                        type="checkbox"
                                                         checked={includeLaborSupplies}
                                                         onChange={(e) => {
                                                             const isChecked = e.target.checked;
@@ -1410,7 +1417,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                             setFormData(prev => {
                                                                 const newCptExpenses = { ...prev.cptExpenses };
                                                                 let totalSupplies = 0, totalImplants = 0, totalMeds = 0, totalTray = 0, totalLabour = 0, totalOrRoom = 0;
-                                                                
+
                                                                 if (!isChecked) {
                                                                     Object.keys(newCptExpenses).forEach(code => {
                                                                         newCptExpenses[code] = {
@@ -1433,7 +1440,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                         };
                                                                     });
                                                                 }
-                                                                
+
                                                                 Object.keys(newCptExpenses).forEach(code => {
                                                                     totalSupplies += newCptExpenses[code].suppliesCost;
                                                                     totalImplants += newCptExpenses[code].implantsCost;
@@ -1494,7 +1501,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                     const labelColor = isLightBg ? '#475569' : 'var(--text-secondary)';
                                                     const valGreen = isLightBg ? '#166534' : 'var(--color-green)';
                                                     const valRed = isLightBg ? '#991b1b' : 'var(--color-red)';
-                                                    
+
                                                     return (
                                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                                                             <div>
@@ -1539,29 +1546,29 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                     );
                                                 })()}
 
-                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '16px 0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: formData.applyFixedCosmeticFee ? '#1e40af' : 'inherit' }}>
-                                                        {formData.applyFixedCosmeticFee ? 'Total Fees Paid by User:' : 'Full Total:'}
-                                                    </span>
-                                                    {(() => {
-                                                        let patientBillTotal = 0;
-                                                        if (!formData.isProbono) {
-                                                            patientBillTotal = formData.applyFixedCosmeticFee ? 
-                                                                (formData.cosmeticFacilityFee + room + labor + supplies - writeOff) : 
-                                                                (revenue + (includeLaborSupplies ? internalCost : 0) - writeOff);
-                                                        }
-                                                        return (
-                                                            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: formData.applyFixedCosmeticFee ? '#1d4ed8' : (patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)') }}>
-                                                                {formatCurrency(patientBillTotal)}
-                                                            </span>
-                                                        );
-                                                    })()}
+                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '16px 0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: formData.applyFixedCosmeticFee ? '#1e40af' : 'inherit' }}>
+                                                            {formData.applyFixedCosmeticFee ? 'Total Fees Paid by User:' : 'Full Total:'}
+                                                        </span>
+                                                        {(() => {
+                                                            let patientBillTotal = 0;
+                                                            if (!formData.isProbono) {
+                                                                patientBillTotal = formData.applyFixedCosmeticFee ?
+                                                                    (formData.cosmeticFacilityFee + room + labor + supplies - writeOff) :
+                                                                    (revenue + (includeLaborSupplies ? internalCost : 0) - writeOff);
+                                                            }
+                                                            return (
+                                                                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: formData.applyFixedCosmeticFee ? '#1d4ed8' : (patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)') }}>
+                                                                    {formatCurrency(patientBillTotal)}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </>
-                                    );
-                                })()}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             )}
 
