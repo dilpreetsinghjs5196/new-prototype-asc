@@ -3,6 +3,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { db } from './lib/supabase';
 import SurgeryScheduler from './components/SurgeryScheduler';
+import StaffManagement from './components/StaffManagement';
 import CPTManagement from './components/CPTManagement';
 import OTCostManagement from './components/OTCostManagement';
 import SettingsView from './components/Settings';
@@ -1056,7 +1057,7 @@ export default function App() {
   const [timeFilter, setTimeFilter] = useState('All');
   const [filterDate, setFilterDate] = useState(new Date('2026-02-23T12:00:00'));
   const [surgeries, setSurgeries] = useState(INITIAL_SURGERIES);
-  const [includeAdvancedCosts, setIncludeAdvancedCosts] = useState(true);
+  const includeAdvancedCosts = false;
   const [theme, setTheme] = useState(() => localStorage.getItem('asc_theme') || 'light');
 
   useEffect(() => {
@@ -2808,6 +2809,13 @@ export default function App() {
             <div className="menu-item-icon"><UserCheck size={16} /></div>
             Surgeon Performance
           </div>
+          <div
+            className={`menu-item ${activeTab === 'staff_manage' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('staff_manage'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Users size={16} /></div>
+            Nurses & Staff Management
+          </div>
 
           <div className="sidebar-section-divider"></div>
 
@@ -3006,36 +3014,8 @@ export default function App() {
               )}
             </button>
 
-            {!['settings', 'business_analysis', 'instruction', 'ai_ops_analyst', 'or_block_schedule', 'cancellations', 'ot_cost_manage', 'cpt_manage', 'surgeons_manage', 'patients', 'scheduler'].includes(activeTab) && (
+            {!['settings', 'business_analysis', 'instruction', 'ai_ops_analyst', 'or_block_schedule', 'cancellations', 'ot_cost_manage', 'cpt_manage', 'surgeons_manage', 'staff_manage', 'patients', 'scheduler'].includes(activeTab) && (
               <>
-                {/* Toggle Advanced Costs Checkbox */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginRight: '4px',
-                  fontSize: '0.85rem',
-                  color: 'var(--text-primary)',
-                  fontWeight: '600',
-                  whiteSpace: 'nowrap',
-                  background: theme === 'dark' ? '#1E3A5F' : 'var(--bg-toggle, #f1f5f9)',
-                  padding: '7px 14px',
-                  borderRadius: '20px',
-                  border: '1px solid var(--border-color)',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
-                  flexShrink: 0
-                }} onClick={() => setIncludeAdvancedCosts(!includeAdvancedCosts)}>
-                  <input
-                    type="checkbox"
-                    id="includeAdvancedCosts"
-                    checked={includeAdvancedCosts}
-                    onChange={(e) => setIncludeAdvancedCosts(e.target.checked)}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ cursor: 'pointer', accentColor: 'var(--color-blue)', margin: 0 }}
-                  />
-                  <label htmlFor="includeAdvancedCosts" style={{ cursor: 'pointer', margin: 0, whiteSpace: 'nowrap' }}>Include Labor/Overhead in Margins</label>
-                </div>
 
                 {/* Toggle Group */}
                 <div style={{
@@ -4058,6 +4038,10 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+              )}
+
+              {activeTab === 'staff_manage' && (
+                <StaffManagement />
               )}
 
               {activeTab === 'surgeons_manage' && (
