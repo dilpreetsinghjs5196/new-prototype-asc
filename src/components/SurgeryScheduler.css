@@ -270,9 +270,55 @@
     border-color: var(--border-color);
 }
 
-.btn-edit:hover { color: var(--color-blue); }
-.btn-reschedule:hover { color: var(--color-orange); }
-.btn-action-cancel:hover { color: var(--color-red); }
+.btn-edit {
+    background: rgba(96, 165, 250, 0.2);
+    color: #3b82f6;
+}
+
+.btn-edit:hover {
+    background: rgba(96, 165, 250, 0.3);
+    color: #2563eb;
+}
+
+.btn-notes {
+    background: rgba(167, 139, 250, 0.2);
+    color: #8b5cf6;
+}
+
+.btn-notes:hover {
+    background: rgba(167, 139, 250, 0.3);
+    color: #7c3aed;
+}
+
+.btn-reschedule {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.btn-reschedule:hover {
+    background: rgba(251, 191, 36, 0.3);
+    color: #f59e0b;
+}
+
+.btn-action-cancel {
+    background: rgba(248, 113, 113, 0.2);
+    color: #f87171;
+}
+
+.btn-action-cancel:hover {
+    background: rgba(248, 113, 113, 0.3);
+    color: #ef4444;
+}
+
+.btn-delete {
+    background: rgba(248, 113, 113, 0.2);
+    color: #ef4444;
+}
+
+.btn-delete:hover {
+    background: rgba(248, 113, 113, 0.3);
+    color: #dc2626;
+}
 
 /* CPT Grid */
 .cpt-grid {

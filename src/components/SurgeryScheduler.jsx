@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import { db } from '../lib/supabase';
+import jsPDF from 'jspdf';
 import {
     Search, Plus, Edit, Trash2, Clock, Calendar,
-    DollarSign, AlertCircle, Filter, Check, ChevronDown, ChevronUp, Wand2
+    DollarSign, AlertCircle, Filter, Check, ChevronDown, ChevronUp, Wand2, MessageSquare, Download
 } from 'lucide-react';
 import ORBlockSchedule from './ORBlockSchedule';
 import './SurgeryScheduler.css';
@@ -343,6 +344,264 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             const el = document.getElementById('surgery-form-section');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
         }, 100);
+    };
+
+    // ----- PDF Download Helper -----
+    const downloadNotesAsPDF = (surgery, preOptNotes, postOptNotes) => {
+        try {
+            // Create jsPDF instance
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            // Set fonts and colors
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            let yPosition = 20;
+            const margin = 15;
+            const contentWidth = pageWidth - (margin * 2);
+
+            // Add header
+            pdf.setFillColor(59, 130, 246); // Blue background
+            pdf.rect(margin - 5, 10, pageWidth - (margin - 5) * 2, 25, 'F');
+            
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(24);
+            pdf.text('Surgery Notes', margin, 22);
+
+            // Add surgery info
+            pdf.setTextColor(0, 0, 0);
+            pdf.setFontSize(11);
+            yPosition = 40;
+            pdf.text(`Patient ID: ${surgery.patient_id || 'N/A'}`, margin, yPosition);
+            yPosition += 6;
+            pdf.text(`Date: ${surgery.date || 'N/A'}`, margin, yPosition);
+            yPosition += 6;
+            pdf.text(`Surgeon: ${surgery.doctor_name || 'N/A'}`, margin, yPosition);
+            yPosition += 12;
+
+            // Add Pre-Operative section
+            pdf.setFillColor(243, 244, 246); // Light gray background
+            pdf.rect(margin, yPosition - 5, contentWidth, 8, 'F');
+            pdf.setFontSize(13);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(59, 130, 246);
+            pdf.text('Pre-Operative Findings', margin + 3, yPosition);
+            yPosition += 12;
+
+            // Add Pre-Opt content with text wrapping
+            pdf.setFont(undefined, 'normal');
+            pdf.setFontSize(10);
+            pdf.setTextColor(0, 0, 0);
+            const preOptText = preOptNotes || 'No pre-operative notes added';
+            const preOptLines = pdf.splitTextToSize(preOptText, contentWidth - 2);
+            pdf.text(preOptLines, margin + 1, yPosition);
+            yPosition += preOptLines.length * 5 + 10;
+
+            // Check if we need a new page
+            if (yPosition > pageHeight - 30) {
+                pdf.addPage();
+                yPosition = 20;
+            }
+
+            // Add Post-Operative section
+            pdf.setFillColor(243, 244, 246);
+            pdf.rect(margin, yPosition - 5, contentWidth, 8, 'F');
+            pdf.setFontSize(13);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(59, 130, 246);
+            pdf.text('Post-Operative Summary', margin + 3, yPosition);
+            yPosition += 12;
+
+            // Add Post-Opt content with text wrapping
+            pdf.setFont(undefined, 'normal');
+            pdf.setFontSize(10);
+            pdf.setTextColor(0, 0, 0);
+            const postOptText = postOptNotes || 'No post-operative notes added';
+            const postOptLines = pdf.splitTextToSize(postOptText, contentWidth - 2);
+            pdf.text(postOptLines, margin + 1, yPosition);
+            yPosition += postOptLines.length * 5 + 15;
+
+            // Add footer
+            pdf.setFontSize(9);
+            pdf.setTextColor(153, 153, 153);
+            pdf.text(`Generated on: ${new Date().toLocaleString()}`, margin, pageHeight - 15);
+            pdf.text('ASC Profitability Platform - Surgery Log & OR Schedule', margin, pageHeight - 10);
+
+            // Download PDF
+            const fileName = `Surgery_Notes_${surgery.patient_id}_${surgery.date}.pdf`;
+            pdf.save(fileName);
+            
+            Swal.fire('Success', 'PDF downloaded successfully!', 'success');
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            Swal.fire('Error', 'Failed to generate PDF', 'error');
+        }
+    };
+
+    // ----- Notes Handler -----
+    const handleNotes = (surgery) => {
+        // Parse existing notes (if stored as JSON)
+        let preOptNotes = '';
+        let postOptNotes = '';
+        let isOldFormat = false;
+        
+        try {
+            if (surgery.notes && typeof surgery.notes === 'string') {
+                // Check if it's JSON format or old text format
+                if (surgery.notes.startsWith('{')) {
+                    const parsed = JSON.parse(surgery.notes);
+                    preOptNotes = parsed.preOpt || '';
+                    postOptNotes = parsed.postOpt || '';
+                } else {
+                    // Old format detected - don't load it automatically
+                    isOldFormat = true;
+                }
+            }
+        } catch (e) {
+            // If parsing fails, treat as old format
+            isOldFormat = true;
+        }
+
+        const notesHtml = `
+            <div style="text-align: left; width: 100%;">
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; border-bottom: 2px solid #e5e7eb;">
+                    <button id="tab-preopt" class="notes-tab active" style="flex: 1; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 4px 4px 0 0; cursor: pointer; font-weight: 600;">
+                        Pre-Operative Findings
+                    </button>
+                    <button id="tab-postopt" class="notes-tab" style="flex: 1; padding: 12px; background: #9ca3af; color: white; border: none; border-radius: 4px 4px 0 0; cursor: pointer; font-weight: 600;">
+                        Post-Operative Summary
+                    </button>
+                </div>
+                
+                ${isOldFormat ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.9rem; color: #92400e;">
+                    ⚠️ <strong>Note:</strong> Old notes format detected. Starting fresh with empty fields. Previous data will not be loaded.
+                </div>` : ''}
+                
+                <div style="margin-bottom: 12px; padding: 0 8px;">
+                    <p style="margin: 0 0 8px 0; font-size: 0.85rem; color: #6b7280;">
+                        <strong>Patient:</strong> ${surgery.patient_id || 'N/A'} | 
+                        <strong>Date:</strong> ${surgery.date || 'N/A'} | 
+                        <strong>Surgeon:</strong> ${surgery.doctor_name || 'N/A'}
+                    </p>
+                </div>
+                
+                <div id="tab-content-preopt" style="display: block;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">Key Findings & Pre-Operative Notes</label>
+                    <textarea id="preOptInput" placeholder="Enter pre-operative findings, key observations, patient assessment, examination findings..." style="width: 100%; height: 250px; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; font-family: Arial, sans-serif; font-size: 0.9rem; resize: none;">${preOptNotes}</textarea>
+                </div>
+                
+                <div id="tab-content-postopt" style="display: none;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">Post-Operative Notes & Summary</label>
+                    <textarea id="postOptInput" placeholder="Enter post-operative summary, procedure details, findings during surgery, complications (if any), next steps..." style="width: 100%; height: 250px; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; font-family: Arial, sans-serif; font-size: 0.9rem; resize: none;">${postOptNotes}</textarea>
+                </div>
+            </div>
+        `;
+
+        Swal.fire({
+            title: 'Surgery Notes',
+            html: notesHtml,
+            icon: 'info',
+            width: '700px',
+            showCancelButton: true,
+            confirmButtonText: 'Save Notes',
+            cancelButtonText: 'Cancel',
+            didOpen: (modal) => {
+                const preOptTab = modal.querySelector('#tab-preopt');
+                const postOptTab = modal.querySelector('#tab-postopt');
+                const preOptContent = modal.querySelector('#tab-content-preopt');
+                const postOptContent = modal.querySelector('#tab-content-postopt');
+                const preOptInput = modal.querySelector('#preOptInput');
+                const postOptInput = modal.querySelector('#postOptInput');
+
+                // Tab switching logic
+                preOptTab.addEventListener('click', () => {
+                    preOptContent.style.display = 'block';
+                    postOptContent.style.display = 'none';
+                    preOptTab.style.background = '#3b82f6';
+                    postOptTab.style.background = '#9ca3af';
+                    preOptInput.focus();
+                });
+
+                postOptTab.addEventListener('click', () => {
+                    preOptContent.style.display = 'none';
+                    postOptContent.style.display = 'block';
+                    postOptTab.style.background = '#3b82f6';
+                    preOptTab.style.background = '#9ca3af';
+                    postOptInput.focus();
+                });
+
+                // Add download button to modal
+                const modalFooter = modal.querySelector('.swal2-actions');
+                if (modalFooter) {
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'swal2-confirm';
+                    downloadBtn.style.background = '#10b981';
+                    downloadBtn.style.border = 'none';
+                    downloadBtn.style.color = 'white';
+                    downloadBtn.style.padding = '10px 20px';
+                    downloadBtn.style.fontSize = '15px';
+                    downloadBtn.style.fontWeight = '600';
+                    downloadBtn.style.borderRadius = '6px';
+                    downloadBtn.style.cursor = 'pointer';
+                    downloadBtn.style.display = 'flex';
+                    downloadBtn.style.alignItems = 'center';
+                    downloadBtn.style.gap = '8px';
+                    downloadBtn.style.transition = 'all 0.3s ease';
+                    downloadBtn.innerHTML = '<svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span>Download PDF</span>';
+                    
+                    // Hover effect
+                    downloadBtn.addEventListener('mouseover', () => {
+                        downloadBtn.style.background = '#059669';
+                        downloadBtn.style.transform = 'translateY(-2px)';
+                        downloadBtn.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
+                    });
+                    
+                    downloadBtn.addEventListener('mouseout', () => {
+                        downloadBtn.style.background = '#10b981';
+                        downloadBtn.style.transform = 'translateY(0)';
+                        downloadBtn.style.boxShadow = 'none';
+                    });
+                    
+                    downloadBtn.onclick = () => {
+                        const preOptInp = Swal.getHtmlContainer().querySelector('#preOptInput');
+                        const postOptInp = Swal.getHtmlContainer().querySelector('#postOptInput');
+                        downloadNotesAsPDF(surgery, preOptInp.value, postOptInp.value);
+                    };
+                    modalFooter.insertBefore(downloadBtn, modalFooter.firstChild);
+                }
+
+                preOptInput.focus();
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const preOptInput = Swal.getHtmlContainer().querySelector('#preOptInput');
+                const postOptInput = Swal.getHtmlContainer().querySelector('#postOptInput');
+                
+                const notesData = {
+                    preOpt: preOptInput.value,
+                    postOpt: postOptInput.value
+                };
+                
+                // Update surgery notes in database as JSON
+                try {
+                    const notesString = JSON.stringify(notesData);
+                    await db.updateSurgery(surgery.id, { notes: notesString });
+                    
+                    // Update the local surgery object so reopening the modal shows updated data
+                    surgery.notes = notesString;
+                    
+                    // Refresh the surgeries list
+                    if (onUpdate) onUpdate();
+                    Swal.fire('Success', 'Notes saved successfully!', 'success');
+                } catch (error) {
+                    console.error('Error saving notes:', error);
+                    Swal.fire('Error', 'Failed to save notes', 'error');
+                }
+            }
+        });
     };
 
     // ----- Submit Handler -----
@@ -1761,7 +2020,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                     <td>
                                                                         <div className="actions-cell">
                                                                             <button className="btn-icon btn-edit" title="Edit" onClick={() => handleEdit(s)}>
-                                                                                <Edit size={12} />
+                                                                                <Edit size={16} />
+                                                                            </button>
+                                                                            <button className="btn-icon btn-notes" title="Notes" onClick={() => handleNotes(s)}>
+                                                                                <MessageSquare size={16} />
                                                                             </button>
                                                                             {s.status !== 'completed' && s.status !== 'cancelled' && (
                                                                                 <>
@@ -1773,7 +2035,7 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                                     </button>
                                                                                 </>
                                                                             )}
-                                                                            <button className="btn-icon" style={{ color: 'var(--color-red)' }} title="Delete" onClick={() => handleDeleteSurgery(s.id)}>
+                                                                            <button className="btn-icon btn-delete" title="Delete" onClick={() => handleDeleteSurgery(s.id)}>
                                                                                 <Trash2 size={12} />
                                                                             </button>
                                                                         </div>
