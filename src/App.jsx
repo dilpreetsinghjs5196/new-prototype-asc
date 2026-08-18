@@ -65,7 +65,8 @@ import {
   Bot,
   Activity,
   Sun,
-  Moon
+  Moon,
+  Brain
 } from 'lucide-react';
 
 // ==========================================
@@ -2862,6 +2863,13 @@ export default function App() {
             <div className="menu-item-icon"><Bot size={16} /></div>
             Instruction Panel
           </div>
+          <div
+            className={`menu-item ${activeTab === 'ai_agent' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('ai_agent'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Brain size={16} /></div>
+            AI Agent
+          </div>
 
           <div className="sidebar-section-divider"></div>
 
@@ -2947,6 +2955,7 @@ export default function App() {
                   {activeTab === 'help' && 'Help & Support'}
                   {activeTab === 'scheduler' && 'Surgery Log & OR Schedule'}
                   {activeTab === 'instruction' && 'Chatbot Instructions'}
+                  {activeTab === 'ai_agent' && 'AI Agent Workbench'}
                 </>
               )}
             </h1>
@@ -2973,6 +2982,7 @@ export default function App() {
                   {activeTab === 'help' && 'Support desk and user guides'}
                   {activeTab === 'scheduler' && 'Schedule, track, and analyze surgical cases with full cost and OR time data'}
                   {activeTab === 'instruction' && 'Manage dynamic questions and categories for the AI Chatbot'}
+                  {activeTab === 'ai_agent' && 'Interact with the AI Agent for intelligent workflow automation'}
                 </>
               )}
             </span>
@@ -3014,7 +3024,7 @@ export default function App() {
               )}
             </button>
 
-            {!['settings', 'business_analysis', 'instruction', 'ai_ops_analyst', 'or_block_schedule', 'cancellations', 'ot_cost_manage', 'cpt_manage', 'surgeons_manage', 'staff_manage', 'patients', 'scheduler'].includes(activeTab) && (
+            {!['settings', 'business_analysis', 'instruction', 'ai_agent', 'ai_ops_analyst', 'or_block_schedule', 'cancellations', 'ot_cost_manage', 'cpt_manage', 'surgeons_manage', 'staff_manage', 'patients', 'scheduler'].includes(activeTab) && (
               <>
 
                 {/* Toggle Group */}
@@ -4752,6 +4762,17 @@ export default function App() {
                 <InstructionPanel />
               )}
 
+              {/* ==========================================
+              TAB: AI AGENT
+              ========================================== */}
+              {activeTab === 'ai_agent' && (
+                <AIOperationsAnalyst 
+                  surgeries={filteredSurgeries} 
+                  cptCodes={cptCodesList} 
+                  settings={{}} 
+                />
+              )}
+
 
               {/* ==========================================
               TAB: HELP & SUPPORT
@@ -4799,6 +4820,7 @@ export default function App() {
               {activeTab === 'cpt_manage' && (
                 <CPTManagement
                   cptCodes={cptCodesList}
+                  surgeries={filteredSurgeries}
                   onAdd={handleAddCPT}
                   onUpdate={handleUpdateCPT}
                   onDelete={handleDeleteCPT}

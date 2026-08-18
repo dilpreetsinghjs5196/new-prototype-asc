@@ -11,6 +11,7 @@ import {
   Loader
 } from 'lucide-react';
 import { db } from '../lib/supabase';
+import CPTAgentTestRunner from './CPTAgentTestRunner';
 
 // Hardcoded unique categories found in database to ensure the dropdown options are instantly available
 const CATEGORIES_LIST = [
@@ -59,6 +60,8 @@ const PROCEDURE_GROUPS = [
 const INDICATORS = ['A2', 'J8', 'G2', 'P3', 'N1', 'S', 'A', 'P2'];
 
 export default function CPTManagement({
+  cptCodes,
+  surgeries,
   onAdd,
   onUpdate,
   onDelete
@@ -331,8 +334,13 @@ export default function CPTManagement({
             <Plus size={16} /> Register CPT Code
           </button>
         </div>
+      
+      <div style={{ marginBottom: '24px' }}>
+        <CPTAgentTestRunner cptCodes={cptCodes || cpts} surgeries={surgeries || []} />
+      </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
           <div style={{ position: 'relative', flex: '1', minWidth: '220px' }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--text-muted)' }} />
             <input
