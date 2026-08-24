@@ -10,6 +10,7 @@ import { generateRecommendation } from '../services/aiOperations/ScenarioGenerat
 import { predictDuration } from '../services/aiOperations/PredictionEngine';
 import { generateScheduleExplanation } from '../services/aiOperations/GeminiExplanation';
 import './AIOperationsAnalyst.css';
+import MultiAgentConsole from './MultiAgentConsole';
 
 const OPTIMIZATION_STRATEGIES = {
     'plan_a': {
@@ -88,6 +89,7 @@ const AIOperationsAnalystInner = ({ surgeries, cptCodes, settings }) => {
     const safeCptCodes = Array.isArray(cptCodes) ? cptCodes : [];
     const safeSettings = settings || {};
 
+    const [analystMode, setAnalystMode] = useState('scheduler_optimize');
     const [selectedStrategy, setSelectedStrategy] = useState('plan_b');
     const [utilizationTarget, setUtilizationTarget] = useState(80);
     const [numberOfORs, setNumberOfORs] = useState(1);
@@ -192,10 +194,46 @@ const AIOperationsAnalystInner = ({ surgeries, cptCodes, settings }) => {
     return (
         <div className="management-container fade-in">
             <div className="management-header" style={{ marginBottom: '20px' }}>
-                <h2 className="management-title">Executive Optimization Dashboard</h2>
+                <h2 className="management-title">Executive Optimization & Agent Dashboard</h2>
             </div>
 
-            <div className="content-card fade-in">
+            <div className="tab-container" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px' }}>
+                <button 
+                    className={`btn-tab ${analystMode === 'scheduler_optimize' ? 'active' : ''}`}
+                    onClick={() => setAnalystMode('scheduler_optimize')}
+                    style={{
+                        padding: '8px 16px',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        backgroundColor: analystMode === 'scheduler_optimize' ? 'var(--color-blue)' : 'transparent',
+                        color: analystMode === 'scheduler_optimize' ? '#fff' : 'var(--text-secondary)',
+                        border: '1px solid var(--border-light)',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    OR Schedule Optimizer
+                </button>
+                <button 
+                    className={`btn-tab ${analystMode === 'multi_agent_sim' ? 'active' : ''}`}
+                    onClick={() => setAnalystMode('multi_agent_sim')}
+                    style={{
+                        padding: '8px 16px',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        backgroundColor: analystMode === 'multi_agent_sim' ? 'var(--color-blue)' : 'transparent',
+                        color: analystMode === 'multi_agent_sim' ? '#fff' : 'var(--text-secondary)',
+                        border: '1px solid var(--border-light)',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Multi-Agent Analyst Simulation
+                </button>
+            </div>
+
+            {analystMode === 'scheduler_optimize' ? (
+                <div className="content-card fade-in">
                 <div className="optimization-controls">
                     <div className="control-row">
                         <div className="control-group">
@@ -366,7 +404,10 @@ const AIOperationsAnalystInner = ({ surgeries, cptCodes, settings }) => {
                         </p>
                     </div>
                 )}
-            </div>
+                </div>
+            ) : (
+                <MultiAgentConsole surgeries={safeSurgeries} cptCodes={safeCptCodes} />
+            )}
         </div>
     );
 };
