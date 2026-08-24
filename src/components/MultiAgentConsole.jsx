@@ -4,14 +4,48 @@ import {
   Play, Bot, Users, Cpu, FileText, CheckCircle, 
   AlertTriangle, RotateCcw, ArrowRight, ShieldCheck 
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
-export default function MultiAgentConsole({ surgeries, cptCodes }) {
-  const [patientName, setPatientName] = useState('John Doe');
-  const [mrn, setMrn] = useState('MRN-5521');
-  const [procedureDesc, setProcedureDesc] = useState('Total Knee Replacement');
-  const [grossCharge, setGrossCharge] = useState(22125);
-  const [suppliesCost, setSuppliesCost] = useState(4800);
-  const [implantCost, setImplantCost] = useState(6200);
+export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], onSchedule }) {
+  const [patientName, setPatientName] = useState('');
+  const [mrn, setMrn] = useState('');
+  const [procedureDesc, setProcedureDesc] = useState('');
+  const [grossCharge, setGrossCharge] = useState(0);
+  const [suppliesCost, setSuppliesCost] = useState(0);
+  const [implantCost, setImplantCost] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedTime, setSelectedTime] = useState('08:00');
+  
+  // Set defaults when props load if not set
+  React.useEffect(() => {
+    if (!patientName && patients.length > 0) {
+       handlePatientChange(patients[0].id);
+    }
+  }, [patients]);
+  
+  React.useEffect(() => {
+    if (!procedureDesc && cptCodes && cptCodes.length > 0) {
+       handleCptChange(cptCodes[0].code);
+    }
+  }, [cptCodes]);
+  
+  const handlePatientChange = (id) => {
+    const p = patients.find(x => String(x.id) === String(id));
+    if (p) {
+       setPatientName(p.name || 'Unknown Patient');
+       setMrn(p.mrn || `MRN-${p.id}`);
+    }
+  };
+  
+  const handleCptChange = (code) => {
+    const c = cptCodes.find(x => String(x.code) === String(code));
+    if (c) {
+       setProcedureDesc(`${c.code} - ${c.description || 'Procedure'}`);
+       setGrossCharge(c.gross_charge || c.fee || 22000);
+       setSuppliesCost(c.supplies_cost || c.supplies || 4500);
+       setImplantCost(c.implants_cost || c.implants || 6000);
+    }
+  };
 
   const [isRunning, setIsRunning] = useState(false);
   const [currentStep, setCurrentStep] = useState(null);
@@ -33,6 +67,24 @@ export default function MultiAgentConsole({ surgeries, cptCodes }) {
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   const runSimulation = async () => {
+    // Check for scheduling conflicts
+    const hasConflict = surgeries && surgeries.some(s => 
+      s.date === selectedDate && 
+      (s.start_time === selectedTime || (s.actual_start_time && s.actual_start_time.startsWith(selectedTime))) &&
+      s.status !== 'cancelled'
+    );
+
+    if (hasConflict) {
+      Swal.fire({
+        title: 'Schedule Conflict',
+        text: 'schedule already booked please change time',
+        icon: 'warning',
+        background: 'var(--bg-card)',
+        color: 'var(--text-primary)'
+      });
+      return;
+    }
+
     setIsRunning(true);
     setApproved(false);
     setFinalContext(null);
@@ -99,13 +151,59 @@ export default function MultiAgentConsole({ surgeries, cptCodes }) {
     });
 
     setFinalContext(final);
+    
+    // Automatically schedule in the database
+    appendLog('Agent Action: Scheduling surgery in database...', 'system');
+    if (onSchedule) {
+      try {
+        const p = patients.find(x => (x.mrn || `MRN-${x.id}`) === mrn);
+        const patient_id = p ? p.id : null;
+        const codeMatch = procedureDesc.split(' - ')[0];
+
+        await onSchedule({
+          patient_id: patient_id,
+          doctor_name: 'AI Auto-Assigned',
+          date: selectedDate,
+          start_time: selectedTime,
+          duration_minutes: 120,
+          turnover_time: 20,
+          cpt_codes: [codeMatch],
+          status: 'scheduled',
+          supplies_cost: suppliesCost,
+          implants_cost: implantCost,
+          medications_cost: 0,
+          notes: 'Scheduled by AI Multi-Agent Simulation'
+        });
+        appendLog('Agent Action: Surgery successfully scheduled in the database.', 'success');
+        Swal.fire({
+          title: 'Scheduled',
+          text: 'Surgery successfully scheduled!',
+          icon: 'success',
+          background: 'var(--bg-card)',
+          color: 'var(--text-primary)',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        setApproved(true);
+      } catch (err) {
+        appendLog('Error scheduling surgery: ' + err.message, 'danger');
+      }
+    } else {
+      appendLog('Agent Action: Database hook not found. Simulated scheduling only.', 'warning');
+      setApproved(true);
+    }
+    
     setIsRunning(false);
     appendLog('Multi-Agent Pipeline completed successfully. Shared Context generated.', 'system');
   };
 
-  const handleApprove = () => {
-    setApproved(true);
-    appendLog('Shared Context Contract APPROVED and committed to database.', 'success');
+  const handleApprove = async () => {
+    // This is now just a manual override or acknowledgement if needed, 
+    // but the system auto-approves if successful.
+    if (!approved) {
+      setApproved(true);
+      appendLog('Shared Context Contract Manually Acknowledged.', 'success');
+    }
   };
 
   const getStatusBadgeClass = (status) => {
@@ -129,6 +227,14 @@ export default function MultiAgentConsole({ surgeries, cptCodes }) {
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div>
+            <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Select Patient</label>
+            <select className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} disabled={isRunning} onChange={(e) => handlePatientChange(e.target.value)}>
+               {patients.map(p => (
+                 <option key={p.id} value={p.id}>{p.name || 'Unknown Patient'} ({p.mrn || p.id})</option>
+               ))}
+            </select>
+          </div>
+          <div>
             <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Patient Name</label>
             <input type="text" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={patientName} onChange={(e) => setPatientName(e.target.value)} disabled={isRunning} />
           </div>
@@ -137,12 +243,28 @@ export default function MultiAgentConsole({ surgeries, cptCodes }) {
             <input type="text" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={mrn} onChange={(e) => setMrn(e.target.value)} disabled={isRunning} />
           </div>
           <div>
+            <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Select Procedure Template</label>
+            <select className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} disabled={isRunning} onChange={(e) => handleCptChange(e.target.value)}>
+               {cptCodes && cptCodes.map(c => (
+                 <option key={c.code} value={c.code}>{c.code} - {c.description || 'Procedure'}</option>
+               ))}
+            </select>
+          </div>
+          <div>
             <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Procedure Description</label>
             <input type="text" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={procedureDesc} onChange={(e) => setProcedureDesc(e.target.value)} disabled={isRunning} />
           </div>
           <div>
             <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Gross Charge ($)</label>
             <input type="number" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={grossCharge} onChange={(e) => setGrossCharge(Number(e.target.value))} disabled={isRunning} />
+          </div>
+          <div>
+            <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Selected Date</label>
+            <input type="date" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} disabled={isRunning} />
+          </div>
+          <div>
+            <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Start Time</label>
+            <input type="time" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)} disabled={isRunning} />
           </div>
         </div>
 

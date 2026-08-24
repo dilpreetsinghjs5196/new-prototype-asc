@@ -4769,7 +4769,14 @@ export default function App() {
                 <AIOperationsAnalyst 
                   surgeries={filteredSurgeries} 
                   cptCodes={cptCodesList} 
+                  patients={patients}
                   settings={{}} 
+                  onSchedule={async (surgData) => {
+                      const newSurg = await db.addSurgery(surgData);
+                      if (newSurg) {
+                        setSurgeries(prev => [{ ...surgData, id: newSurg.id, status: newSurg.status || 'scheduled' }, ...prev]);
+                      }
+                  }}
                 />
               )}
 
@@ -4841,6 +4848,13 @@ export default function App() {
                 <AIOperationsAnalyst
                   surgeries={filteredSurgeries}
                   cptCodes={cptCodesList}
+                  patients={patients}
+                  onSchedule={async (surgData) => {
+                      const newSurg = await db.addSurgery(surgData);
+                      if (newSurg) {
+                        setSurgeries(prev => [{ ...surgData, id: newSurg.id, status: newSurg.status || 'scheduled' }, ...prev]);
+                      }
+                  }}
                 />
               )}
             </>

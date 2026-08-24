@@ -84,9 +84,10 @@ class ErrorBoundary extends React.Component {
     }
 }
 
-const AIOperationsAnalystInner = ({ surgeries, cptCodes, settings }) => {
+const AIOperationsAnalystInner = ({ surgeries, cptCodes, settings, patients, onSchedule }) => {
     const safeSurgeries = Array.isArray(surgeries) ? surgeries : [];
     const safeCptCodes = Array.isArray(cptCodes) ? cptCodes : [];
+    const safePatients = Array.isArray(patients) ? patients : [];
     const safeSettings = settings || {};
 
     const [analystMode, setAnalystMode] = useState('scheduler_optimize');
@@ -406,7 +407,7 @@ const AIOperationsAnalystInner = ({ surgeries, cptCodes, settings }) => {
                 )}
                 </div>
             ) : (
-                <MultiAgentConsole surgeries={safeSurgeries} cptCodes={safeCptCodes} />
+                <MultiAgentConsole surgeries={safeSurgeries} cptCodes={safeCptCodes} patients={safePatients} onSchedule={onSchedule} />
             )}
         </div>
     );
