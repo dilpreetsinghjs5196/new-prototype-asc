@@ -242,14 +242,29 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
             <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>MRN Number</label>
             <input type="text" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={mrn} onChange={(e) => setMrn(e.target.value)} disabled={isRunning} />
           </div>
-          <div>
-            <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Select Procedure Template</label>
-            <select className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} disabled={isRunning} onChange={(e) => handleCptChange(e.target.value)}>
-               {cptCodes && cptCodes.map(c => (
-                 <option key={c.code} value={c.code}>{c.code} - {c.description || 'Procedure'}</option>
-               ))}
-            </select>
-          </div>
+            <div>
+              <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Search Procedure Template</label>
+              <input 
+                list="cpt-codes-list"
+                className="date-range-selector" 
+                style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} 
+                disabled={isRunning} 
+                placeholder="Type to search CPT or description..."
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val.includes(' - ')) {
+                    const codeMatch = val.split(' - ')[0];
+                    handleCptChange(codeMatch);
+                    e.target.value = ''; // Clear search after selection
+                  }
+                }}
+              />
+              <datalist id="cpt-codes-list">
+                 {cptCodes && cptCodes.map(c => (
+                   <option key={c.code} value={`${c.code} - ${c.description || 'Procedure'}`} />
+                 ))}
+              </datalist>
+            </div>
           <div>
             <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Procedure Description</label>
             <input type="text" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={procedureDesc} onChange={(e) => setProcedureDesc(e.target.value)} disabled={isRunning} />
