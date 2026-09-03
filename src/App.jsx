@@ -13,6 +13,7 @@ import AIOperationsAnalyst from './components/AIOperationsAnalyst';
 import CommandCenter from './components/CommandCenter';
 import BusinessAnalysis from './components/BusinessAnalysis';
 import ORBlockSchedule from './components/ORBlockSchedule';
+import CaseLogScheduler from './components/CaseLogScheduler';
 import { calculateMedicareRevenue, calculateORCost } from './utils/hospitalUtils';
 import InstructionPanel from './components/InstructionPanel';
 import {
@@ -2744,6 +2745,13 @@ export default function App() {
             Surgical Case Log
           </div>
           <div
+            className={`menu-item ${activeTab === 'caselog_scheduling' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('caselog_scheduling'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><CalendarDays size={16} /></div>
+            Case logs Scheduling
+          </div>
+          <div
             className={`menu-item ${activeTab === 'or_block_schedule' && !selectedSurgeon ? 'active' : ''}`}
             onClick={() => { setActiveTab('or_block_schedule'); setSelectedSurgeon(null); }}
           >
@@ -2954,6 +2962,7 @@ export default function App() {
                   {activeTab === 'settings' && 'System Configuration Settings'}
                   {activeTab === 'help' && 'Help & Support'}
                   {activeTab === 'scheduler' && 'Surgery Log & OR Schedule'}
+                  {activeTab === 'caselog_scheduling' && 'Case Log Scheduling Optimization'}
                   {activeTab === 'instruction' && 'Chatbot Instructions'}
                   {activeTab === 'ai_agent' && 'AI Agent Workbench'}
                 </>
@@ -2981,6 +2990,7 @@ export default function App() {
                   {activeTab === 'settings' && 'Manage operational baseline costs, roles, and integrations'}
                   {activeTab === 'help' && 'Support desk and user guides'}
                   {activeTab === 'scheduler' && 'Schedule, track, and analyze surgical cases with full cost and OR time data'}
+                  {activeTab === 'caselog_scheduling' && 'AI-powered optimization of historical case logs to generate ideal OR schedules'}
                   {activeTab === 'instruction' && 'Manage dynamic questions and categories for the AI Chatbot'}
                   {activeTab === 'ai_agent' && 'Interact with the AI Agent for intelligent workflow automation'}
                 </>
@@ -3110,7 +3120,12 @@ export default function App() {
                 <BusinessAnalysis
                   surgeries={filteredSurgeries}
                   orMetrics={orPerformanceMetrics}
+                  onSchedule={() => setActiveTab('scheduler')}
                 />
+              )}
+              
+              {activeTab === 'caselog_scheduling' && (
+                <CaseLogScheduler surgeonsList={surgeonsList} />
               )}
 
               {/* ==========================================
