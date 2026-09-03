@@ -360,6 +360,49 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
           </div>
         </div>
 
+        {/* Surgeon Operating Day Intelligence */}
+        <div className="dashboard-card" style={{ padding: '20px' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CalendarDays size={18} /> Surgeon Operating Day Intelligence
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
+            The AI engine dynamically recalculates valid operating days from the raw uploaded case log. 
+            A surgeon is strictly limited to future days matching their historical schedule footprint. 
+            This is enforced as a <strong>Hard Constraint</strong>.
+          </p>
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Surgeon</th>
+                  <th>Historical Operating Days</th>
+                  <th>Allowed Future Days</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.values(results.surgeonIntelligence || {}).map((s, idx) => {
+                  const historyArr = Object.entries(s.weekdayDistribution || {})
+                        .filter(([day, count]) => count > 0)
+                        .map(([day, count]) => `${day} — ${count} cases`);
+                  return (
+                    <tr key={idx}>
+                      <td style={{ fontWeight: '600' }}>{s.name}</td>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        {historyArr.length > 0 ? historyArr.map((str, i) => <div key={i}>{str}</div>) : 'UNKNOWN'}
+                      </td>
+                      <td style={{ color: 'var(--color-blue)', fontWeight: '500' }}>
+                        {(s.allowedFutureDays || []).join(', ') || 'UNKNOWN'}
+                      </td>
+                      <td style={{ color: 'var(--text-muted)' }}>Current Uploaded Case Log</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Model Comparison */}
         <div className="dashboard-card" style={{ padding: '20px' }}>
           <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>

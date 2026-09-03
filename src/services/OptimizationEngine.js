@@ -40,7 +40,7 @@ export const generateOptimizationModels = (normalizedData, config) => {
     if (sProfile.weekdayDistribution[dayOfWeek] !== undefined) {
       sProfile.weekdayDistribution[dayOfWeek]++;
     }
-
+    
     // CPT
     if (!cptProfiles[row.cptCode]) {
       cptProfiles[row.cptCode] = {
@@ -55,9 +55,12 @@ export const generateOptimizationModels = (normalizedData, config) => {
     cProfile.durations.push(row.caseDurationMinutes);
   });
 
-  // Calculate averages/medians
+  // Calculate averages/medians and dynamically detect allowed future days
   Object.values(surgeonProfiles).forEach(sp => {
     sp.averageDuration = Math.round(sp.totalMinutes / sp.totalCases) || 60;
+    
+    // Determine allowed operating days purely from historical case log presence
+    sp.allowedFutureDays = Object.keys(sp.weekdayDistribution).filter(day => sp.weekdayDistribution[day] > 0);
   });
 
   // Calculate ASC Capacity
@@ -79,6 +82,12 @@ export const generateOptimizationModels = (normalizedData, config) => {
     const errors = [];
     
     schedule.forEach(row => {
+      // Hard Constraint: Surgeon must historically operate on this day
+      const sProfile = surgeonProfiles[row.surgeonName];
+      if (sProfile && !sProfile.allowedFutureDays.includes(row.day)) {
+        errors.push(`Surgeon ${row.surgeonName} is scheduled on ${row.day}, but ${row.day} was not found in the current uploaded case log.`);
+      }
+
       row.casesList?.forEach(c => {
         if (assignedIds.has(c.caseId)) {
           errors.push(`${c.caseId} is assigned more than once`);
@@ -115,18 +124,25 @@ export const generateOptimizationModels = (normalizedData, config) => {
     const scheduleSummary = [];
     let pool = [...availableCases]; // Clone pool for this model
     
-    // Model-specific sorting logic
-    if (modelType === 'High Utilization') {
-      pool.sort((a, b) => b.caseDurationMinutes - a.caseDurationMinutes); // Best-Fit Decreasing
-    } else if (modelType === 'Revenue Optimized') {
-      pool.sort((a, b) => b.chargeAmount - a.chargeAmount);
-    } else if (modelType === 'Surgeon Balanced') {
-      // Sort to spread out surgeons
-      pool.sort((a, b) => surgeonProfiles[a.surgeonName].totalCases - surgeonProfiles[b.surgeonName].totalCases);
-    } else {
-      // Balanced / Conservative
-      pool.sort((a, b) => a.caseDurationMinutes - b.caseDurationMinutes);
-    }
+    // Group cases by surgeon first to enforce block scheduling (prevent interleaving), 
+    // then apply model-specific sorting logic within the blocks.
+    pool.sort((a, b) => {
+      // 1. Group by surgeon
+      if (a.surgeonName !== b.surgeonName) {
+        return a.surgeonName.localeCompare(b.surgeonName);
+      }
+      
+      // 2. Sort within the surgeon's block based on model objective
+      if (modelType === 'High Utilization') {
+        return b.caseDurationMinutes - a.caseDurationMinutes; // Best-Fit Decreasing
+      } else if (modelType === 'Revenue Optimized') {
+        return (b.chargeAmount || 0) - (a.chargeAmount || 0);
+      } else if (modelType === 'Surgeon Balanced') {
+        return surgeonProfiles[a.surgeonName].totalCases - surgeonProfiles[b.surgeonName].totalCases;
+      } else {
+        return a.caseDurationMinutes - b.caseDurationMinutes; // Balanced / Conservative
+      }
+    });
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].slice(0, operatingDays);
     
@@ -137,6 +153,9 @@ export const generateOptimizationModels = (normalizedData, config) => {
     Object.values(surgeonProfiles).forEach(sp => sp.scheduledDays.clear());
 
     days.forEach(day => {
+      // Track how many cases each surgeon is assigned on this specific day
+      const surgeonDailyCount = {};
+
       for (let orIndex = 1; orIndex <= activeORs; orIndex++) {
         const orName = `OR-${orIndex}`;
         let currentOrMinutes = 0;
@@ -155,6 +174,18 @@ export const generateOptimizationModels = (normalizedData, config) => {
           
           const candidateCase = pool[i];
           const sProfile = surgeonProfiles[candidateCase.surgeonName];
+
+          // Hard constraint: Surgeon historically operates on this day
+          if (!sProfile.allowedFutureDays.includes(day)) {
+            continue;
+          }
+
+          // Hard constraint: Limit to historical volume for this specific weekday
+          const historicalLimit = sProfile.weekdayDistribution[day] || 0;
+          const currentAssignedCount = surgeonDailyCount[candidateCase.surgeonName] || 0;
+          if (currentAssignedCount >= historicalLimit) {
+            continue;
+          }
 
           // Hard constraint: Surgeon day limits
           if (!sProfile.scheduledDays.has(day) && sProfile.scheduledDays.size >= maxSurgeonDays) {
@@ -193,6 +224,7 @@ export const generateOptimizationModels = (normalizedData, config) => {
           currentTime = addMinutes(endTime, 15); // 15 min turnover time assumed
           sProfile.scheduledDays.add(day);
           assignedSurgeon = candidateCase.surgeonName;
+          surgeonDailyCount[candidateCase.surgeonName] = (surgeonDailyCount[candidateCase.surgeonName] || 0) + 1;
           
           // Remove from pool
           pool.splice(i, 1);
@@ -261,7 +293,12 @@ export const generateOptimizationModels = (normalizedData, config) => {
   const validModels = generatedModels.filter(m => m.valid && parseFloat(m.score) > 0);
   validModels.sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
 
-  const recommendedModel = validModels.length > 0 ? validModels[0] : null;
+  let recommendedModel = validModels.length > 0 ? validModels[0] : null;
+  
+  // If user selected a specific optimization objective, force that model to be recommended
+  if (config.optimizationObjective && validModels.some(m => m.name === config.optimizationObjective)) {
+    recommendedModel = validModels.find(m => m.name === config.optimizationObjective);
+  }
 
   return {
     configuration: config,
