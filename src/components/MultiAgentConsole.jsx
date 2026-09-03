@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], onSchedule }) {
   const [patientName, setPatientName] = useState('');
   const [mrn, setMrn] = useState('');
+  const [selectedCpts, setSelectedCpts] = useState([]);
   const [procedureDesc, setProcedureDesc] = useState('');
   const [grossCharge, setGrossCharge] = useState(0);
   const [suppliesCost, setSuppliesCost] = useState(0);
@@ -24,7 +25,7 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
   }, [patients]);
   
   React.useEffect(() => {
-    if (!procedureDesc && cptCodes && cptCodes.length > 0) {
+    if (selectedCpts.length === 0 && cptCodes && cptCodes.length > 0) {
        handleCptChange(cptCodes[0].code);
     }
   }, [cptCodes]);
@@ -39,11 +40,27 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
   
   const handleCptChange = (code) => {
     const c = cptCodes.find(x => String(x.code) === String(code));
+    if (c && !selectedCpts.find(x => x.code === c.code)) {
+       const newCpts = [...selectedCpts, c];
+       setSelectedCpts(newCpts);
+       setProcedureDesc(newCpts.map(x => `${x.code} - ${x.description || 'Procedure'}`).join(', '));
+       
+       setGrossCharge(prev => prev + (c.gross_charge || c.fee || 22000));
+       setSuppliesCost(prev => prev + (c.supplies_cost || c.supplies || 4500));
+       setImplantCost(prev => prev + (c.implants_cost || c.implants || 6000));
+    }
+  };
+
+  const removeCpt = (code) => {
+    const c = selectedCpts.find(x => String(x.code) === String(code));
     if (c) {
-       setProcedureDesc(`${c.code} - ${c.description || 'Procedure'}`);
-       setGrossCharge(c.gross_charge || c.fee || 22000);
-       setSuppliesCost(c.supplies_cost || c.supplies || 4500);
-       setImplantCost(c.implants_cost || c.implants || 6000);
+       const newCpts = selectedCpts.filter(x => String(x.code) !== String(code));
+       setSelectedCpts(newCpts);
+       setProcedureDesc(newCpts.map(x => `${x.code} - ${x.description || 'Procedure'}`).join(', '));
+       
+       setGrossCharge(prev => Math.max(0, prev - (c.gross_charge || c.fee || 22000)));
+       setSuppliesCost(prev => Math.max(0, prev - (c.supplies_cost || c.supplies || 4500)));
+       setImplantCost(prev => Math.max(0, prev - (c.implants_cost || c.implants || 6000)));
     }
   };
 
@@ -158,7 +175,7 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
       try {
         const p = patients.find(x => (x.mrn || `MRN-${x.id}`) === mrn);
         const patient_id = p ? p.id : null;
-        const codeMatch = procedureDesc.split(' - ')[0];
+        const codeMatches = selectedCpts.length > 0 ? selectedCpts.map(c => c.code) : [procedureDesc.split(' - ')[0]];
 
         await onSchedule({
           patient_id: patient_id,
@@ -167,7 +184,7 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
           start_time: selectedTime,
           duration_minutes: 120,
           turnover_time: 20,
-          cpt_codes: [codeMatch],
+          cpt_codes: codeMatches,
           status: 'scheduled',
           supplies_cost: suppliesCost,
           implants_cost: implantCost,
@@ -265,9 +282,18 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
                  ))}
               </datalist>
             </div>
-          <div>
-            <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Procedure Description</label>
-            <input type="text" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} value={procedureDesc} onChange={(e) => setProcedureDesc(e.target.value)} disabled={isRunning} />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Selected Procedures</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px', minHeight: '36px', padding: '6px', border: '1px solid var(--border-light)', borderRadius: '6px', backgroundColor: 'var(--bg-input)' }}>
+              {selectedCpts.map(c => (
+                 <span key={c.code} style={{ backgroundColor: 'var(--color-blue)', color: 'white', padding: '4px 10px', borderRadius: '16px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                   {c.code} - {c.description || 'Procedure'}
+                   <button onClick={() => removeCpt(c.code)} disabled={isRunning} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: isRunning ? 'not-allowed' : 'pointer', padding: '0', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
+                 </span>
+              ))}
+              {selectedCpts.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: '4px' }}>No procedures selected</span>}
+            </div>
+            <input type="hidden" value={procedureDesc} />
           </div>
           <div>
             <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Gross Charge ($)</label>
