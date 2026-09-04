@@ -11,7 +11,6 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
   
   const [config, setConfig] = useState({
     activeORs: 1,
-    operatingDays: 5,
     dailyMinutes: 480,
     targetUtilization: 80,
     maxSurgeonDays: 2,
@@ -23,6 +22,8 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
   const [generationProgress, setGenerationProgress] = useState([]);
   const [results, setResults] = useState(null);
 
+  const [fileFingerprint, setFileFingerprint] = useState(null);
+
   // Load saved state on mount
   React.useEffect(() => {
     try {
@@ -31,6 +32,7 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
         const parsed = JSON.parse(saved);
         if (parsed.normalizedData && parsed.normalizedData.length > 0) {
           setNormalizedData(parsed.normalizedData);
+          setFileFingerprint(parsed.fileFingerprint);
           if (parsed.results) {
             setResults(parsed.results);
             setStep(3); // Go straight to results if they exist
@@ -48,22 +50,35 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
   React.useEffect(() => {
     if (normalizedData.length > 0) {
       localStorage.setItem('caseLogSchedulerState', JSON.stringify({
+        fileFingerprint,
         normalizedData,
         results
       }));
+    } else {
+      localStorage.removeItem('caseLogSchedulerState');
     }
-  }, [normalizedData, results]);
+  }, [normalizedData, results, fileFingerprint]);
 
   const handleFileUpload = async (e) => {
     const uploadedFile = e.target.files[0];
     if (uploadedFile) {
+      const newFingerprint = `${uploadedFile.name}-${uploadedFile.size}-${uploadedFile.lastModified}`;
+      
+      // Completely reset if new file
+      if (newFingerprint !== fileFingerprint) {
+        setNormalizedData([]);
+        setResults(null);
+        setFileFingerprint(newFingerprint);
+        localStorage.removeItem('caseLogSchedulerState');
+      }
+      
       setFile(uploadedFile);
       try {
         const data = await parseCaseLogExcel(uploadedFile, surgeonsList);
         setNormalizedData(data);
         setStep(2);
       } catch (err) {
-        alert("Error parsing excel file.");
+        alert("Error parsing excel file: " + err.message);
       }
     }
   };
@@ -140,7 +155,8 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
           ✅ Successfully parsed <strong>{normalizedData.length}</strong> historical cases.
           <button className="btn-header" style={{ marginLeft: '10px' }} onClick={() => { 
             setStep(1); 
-            setFile(null); 
+            setFile(null);
+            setFileFingerprint(null);
             setNormalizedData([]); 
             setResults(null); 
             localStorage.removeItem('caseLogSchedulerState');
@@ -154,10 +170,6 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
         <div>
           <label className="styled-label">Active ORs</label>
           <input type="number" name="activeORs" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px' }} value={config.activeORs} onChange={handleConfigChange} />
-        </div>
-        <div>
-          <label className="styled-label">Operating Days / Week</label>
-          <input type="number" name="operatingDays" className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px' }} value={config.operatingDays} onChange={handleConfigChange} />
         </div>
         <div>
           <label className="styled-label">Daily Minutes per OR</label>
@@ -251,6 +263,42 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
           </div>
         </div>
         
+        {/* Validation / Debug Summary */}
+        <div className="dashboard-card" style={{ padding: '24px', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-input)' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
+            System Validation & Constraint Summary
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
+            <div><strong>Total source cases:</strong> {sourceData.totalCases}</div>
+            <div><strong>Total surgeons:</strong> {sourceData.surgeons}</div>
+            <div><strong>Historical mappings:</strong> {Object.keys(results.surgeonIntelligence).length} tracked</div>
+            <div><strong>Eligible future dates:</strong> {capacity.operatingDays} days in horizon</div>
+            <div><strong>Scheduled cases:</strong> {recommendedModel?.scheduledCases || 0}</div>
+            <div><strong>Scheduled minutes:</strong> {recommendedModel?.scheduledMinutes || 0}</div>
+            <div><strong>OR capacity:</strong> {capacity.weeklyAvailableMinutes} min</div>
+            <div><strong>Projected utilization:</strong> {recommendedModel?.utilization || 0}%</div>
+            <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+              <strong>Constraint Status:</strong>{' '}
+              {recommendedModel?.valid ? (
+                <span style={{ color: 'var(--color-green)' }}>✓ All Hard Constraints Satisfied</span>
+              ) : (
+                <span style={{ color: 'var(--color-red)', fontWeight: 'bold' }}>
+                  HARD CONSTRAINT VIOLATION DETECTED
+                </span>
+              )}
+            </div>
+            {!recommendedModel?.valid && recommendedModel?.validationErrors && (
+              <div style={{ gridColumn: '1 / -1', color: 'var(--color-red)', marginTop: '8px', padding: '8px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '4px' }}>
+                <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                  {recommendedModel.validationErrors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+        
         {/* Recommendation Header */}
         <div className="dashboard-card" style={{ padding: '24px', border: '2px solid var(--color-blue)', backgroundColor: 'rgba(59, 130, 246, 0.03)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
@@ -280,6 +328,7 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Future Date</th>
                   <th>Day</th>
                   <th>OR</th>
                   <th>Surgeon</th>
@@ -293,6 +342,7 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
                 {recommendedModel.schedule.map((row, idx) => (
                   <Fragment key={idx}>
                     <tr onClick={() => toggleRow(idx)} style={{ cursor: 'pointer', backgroundColor: expandedRows[idx] ? 'rgba(255,255,255,0.05)' : 'transparent' }}>
+                      <td style={{ fontWeight: 'bold' }}>{row.futureDate}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {expandedRows[idx] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -315,29 +365,29 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
                     </tr>
                     {expandedRows[idx] && (
                       <tr>
-                        <td colSpan="7" style={{ padding: 0, border: 'none' }}>
+                        <td colSpan="8" style={{ padding: 0, border: 'none' }}>
                           <div style={{ padding: '16px 24px', backgroundColor: 'var(--bg-card)', borderLeft: '3px solid var(--color-blue)' }}>
                             <h4 style={{ fontSize: '0.9rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>Assigned Cases</h4>
                             <table className="data-table" style={{ fontSize: '0.85rem' }}>
                               <thead>
                                 <tr>
                                   <th>Time</th>
-                                  <th>Case ID</th>
+                                  <th>Future ID</th>
+                                  <th>Source ID</th>
                                   <th>CPT</th>
                                   <th>Procedure</th>
                                   <th>Duration</th>
-                                  <th>Source</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {row.casesList && row.casesList.map(c => (
-                                  <tr key={c.caseId}>
+                                  <tr key={c.futureScheduleCaseId}>
                                     <td style={{ fontWeight: '600' }}>{c.startTime} - {c.endTime}</td>
-                                    <td><span className="badge" style={{ backgroundColor: 'var(--bg-input)' }}>{c.caseId}</span></td>
+                                    <td><span className="badge" style={{ backgroundColor: 'var(--color-blue)', color: 'white' }}>{c.futureScheduleCaseId}</span></td>
+                                    <td><span className="badge" style={{ backgroundColor: 'var(--bg-input)' }}>{c.sourceCaseId}</span></td>
                                     <td>{c.cptCode}</td>
                                     <td>{c.procedureName}</td>
-                                    <td>{c.caseDurationMinutes}m</td>
-                                    <td><span style={{ color: c.durationSource === 'estimated' ? 'var(--color-orange)' : 'var(--text-secondary)' }}>{c.durationSource}</span></td>
+                                    <td>{c.duration}m</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -389,10 +439,14 @@ export default function CaseLogScheduler({ surgeonsList = [] }) {
                     <tr key={idx}>
                       <td style={{ fontWeight: '600' }}>{s.name}</td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                        {historyArr.length > 0 ? historyArr.map((str, i) => <div key={i}>{str}</div>) : 'UNKNOWN'}
+                        {historyArr.length > 0 ? historyArr.map((str, i) => <div key={i}>{str}</div>) : 'No Historical Cases'}
                       </td>
                       <td style={{ color: 'var(--color-blue)', fontWeight: '500' }}>
-                        {(s.allowedFutureDays || []).join(', ') || 'UNKNOWN'}
+                        {s.allowedFutureDays && s.allowedFutureDays.length > 0 ? (
+                           s.allowedFutureDays.join(', ')
+                        ) : (
+                           <span style={{ color: 'var(--color-orange)', fontSize: '0.85rem' }}>No eligible operating day found (weekends excluded)</span>
+                        )}
                       </td>
                       <td style={{ color: 'var(--text-muted)' }}>Current Uploaded Case Log</td>
                     </tr>

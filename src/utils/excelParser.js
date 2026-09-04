@@ -55,7 +55,7 @@ const normalizeData = (rawData, surgeonsList = []) => {
   };
 
   const normalized = rawData.map((row, index) => {
-    const surgeon = findKey(row, ['surgeon', 'doctor', 'physician', 'provider']) || 'Unknown Surgeon';
+    const surgeon = (findKey(row, ['surgeon', 'doctor', 'physician', 'provider']) || 'Unknown Surgeon').toString().trim().toUpperCase();
     let specialty = findKey(row, ['specialty', 'department', 'category']);
     
     if (!specialty && surgeonsList.length > 0) {
@@ -82,23 +82,21 @@ const normalizeData = (rawData, surgeonsList = []) => {
         const searchName = surgeon.toLowerCase().trim();
         const last = (s.lastname || '').toLowerCase().trim();
         const first = (s.firstname || '').toLowerCase().trim();
-        const full = `${first} ${last}`.trim();
         
         // Exact substring matches
         if (last && (searchName.includes(last) || last.includes(searchName))) return true;
         if (first && (searchName.includes(first) || first.includes(searchName))) return true;
         
-        // Tokenized matches (for cases like "Shell Masouras Troy")
+        // Tokenized matches
         const searchTokens = searchName.split(/\s+/);
         const lastTokens = last.split(/\s+/);
         for (const sTok of searchTokens) {
            for (const lTok of lastTokens) {
               if (sTok.length > 4 && lTok.length > 4) {
-                 if (getDistance(sTok, lTok) <= 2) return true; // Allows 2 typos (e.g. ie vs ei)
+                 if (getDistance(sTok, lTok) <= 2) return true;
               }
            }
         }
-
         return false;
       });
       if (match && match.specialty) {
@@ -136,12 +134,14 @@ const normalizeData = (rawData, surgeonsList = []) => {
     }
 
     // Parse date
-    let rawDate = findKey(row, ['date', 'scheduled', 'date of service']);
-    let historicalDate = new Date().toISOString().split('T')[0];
+    let rawDate = findKey(row, ['date', 'scheduled', 'date of service', 'dos', 'surgery date', 'procedure date', 'case date']);
+    let historicalDate = null;
+    
     if (typeof rawDate === 'number') {
       // Excel serial date
       const excelEpoch = new Date(1899, 11, 30);
-      historicalDate = new Date(excelEpoch.getTime() + rawDate * 86400000).toISOString().split('T')[0];
+      const parsedDate = new Date(excelEpoch.getTime() + rawDate * 86400000);
+      if (!isNaN(parsedDate.getTime())) historicalDate = parsedDate.toISOString().split('T')[0];
     } else if (rawDate) {
       const d = new Date(rawDate);
       if (!isNaN(d.getTime())) historicalDate = d.toISOString().split('T')[0];
@@ -166,7 +166,11 @@ const normalizeData = (rawData, surgeonsList = []) => {
       chargeAmount: chargeAmount,
       originalRowData: row
     };
-  }).filter(item => item.surgeonName !== 'Unknown Surgeon' && item.surgeonName.trim() !== '');
+  }).filter(item => item.surgeonName !== 'UNKNOWN SURGEON' && item.surgeonName.trim() !== '' && item.historicalDate !== null);
+
+  if (normalized.length === 0 && rawData.length > 0) {
+    throw new Error("Unable to determine surgeon operating days because no valid surgery date column was found or all rows were invalid.");
+  }
 
   // Remove strictly identical duplicate cases if any (same ID and content), but preserve all valid distinct cases.
   const uniqueMap = new Map();

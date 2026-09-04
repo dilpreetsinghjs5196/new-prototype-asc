@@ -4,8 +4,16 @@
  * Generates true OR schedules by assigning actual cases to time slots.
  */
 
+/**
+ * REAL ASC Case-Level Scheduling Engine
+ * Treats normalized historical data as the pool of available cases.
+ * Generates true OR schedules by assigning actual cases to true future dates.
+ */
+
+const VALID_ASC_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
 export const generateOptimizationModels = (normalizedData, config) => {
-  const { activeORs, operatingDays, dailyMinutes, targetUtilization, maxSurgeonDays } = config;
+  const { activeORs, dailyMinutes, targetUtilization, maxSurgeonDays } = config;
 
   // 1. Build Surgeon Intelligence
   const surgeonProfiles = {};
@@ -26,7 +34,7 @@ export const generateOptimizationModels = (normalizedData, config) => {
         totalMinutes: 0,
         durations: [],
         weekdayDistribution: {
-          'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0
+          'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0
         },
         scheduledDays: new Set()
       };
@@ -39,6 +47,8 @@ export const generateOptimizationModels = (normalizedData, config) => {
     const dayOfWeek = new Date(row.historicalDate).toLocaleDateString('en-US', { weekday: 'long' });
     if (sProfile.weekdayDistribution[dayOfWeek] !== undefined) {
       sProfile.weekdayDistribution[dayOfWeek]++;
+    } else {
+      sProfile.weekdayDistribution[dayOfWeek] = 1;
     }
     
     // CPT
@@ -59,14 +69,46 @@ export const generateOptimizationModels = (normalizedData, config) => {
   Object.values(surgeonProfiles).forEach(sp => {
     sp.averageDuration = Math.round(sp.totalMinutes / sp.totalCases) || 60;
     
-    // Determine allowed operating days purely from historical case log presence
-    sp.allowedFutureDays = Object.keys(sp.weekdayDistribution).filter(day => sp.weekdayDistribution[day] > 0);
+    // All days historically worked
+    sp.historicalOperatingDays = Object.keys(sp.weekdayDistribution).filter(day => sp.weekdayDistribution[day] > 0);
+    
+    // Intersect with ASC allowed days
+    let validFutureDays = sp.historicalOperatingDays.filter(day => VALID_ASC_DAYS.includes(day));
+    
+    // Rank deterministically (by frequency, then alphabetically) to respect maxSurgeonDays
+    validFutureDays.sort((a, b) => {
+      const diff = sp.weekdayDistribution[b] - sp.weekdayDistribution[a];
+      if (diff !== 0) return diff;
+      return a.localeCompare(b);
+    });
+    
+    // Slice to max allowed
+    sp.allowedFutureDays = validFutureDays.slice(0, maxSurgeonDays);
   });
 
-  // Calculate ASC Capacity
+  // Calculate ASC Capacity for a 3-week horizon (15 valid days)
+  const daysInHorizon = 15; 
   const dailyCapacity = activeORs * dailyMinutes; 
-  const weeklyAvailableMinutes = dailyCapacity * operatingDays;
-  const targetMinutesPerDay = dailyCapacity * (targetUtilization / 100);
+  const weeklyAvailableMinutes = dailyCapacity * daysInHorizon;
+
+  // Generate Future Calendar Dates (starting from next available Monday)
+  // For prototype determinism, let's just pick a fixed base date or dynamic.
+  // Using a fixed near-future date for consistency in demo, e.g. next week Monday.
+  const baseDate = new Date();
+  baseDate.setDate(baseDate.getDate() + ((1 + 7 - baseDate.getDay()) % 7 || 7)); // Next Monday
+  
+  const futureCalendar = [];
+  for (let i = 0; i < 21; i++) {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + i);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+    if (VALID_ASC_DAYS.includes(dayName)) {
+      futureCalendar.push({
+        dateStr: d.toISOString().split('T')[0],
+        dayOfWeek: dayName
+      });
+    }
+  }
 
   // Time manipulation helper
   const addMinutes = (timeStr, minsToAdd) => {
@@ -81,24 +123,42 @@ export const generateOptimizationModels = (normalizedData, config) => {
     const assignedIds = new Set();
     const errors = [];
     
+    let totalScheduledMinutes = 0;
+
     schedule.forEach(row => {
-      // Hard Constraint: Surgeon must historically operate on this day
-      const sProfile = surgeonProfiles[row.surgeonName];
-      if (sProfile && !sProfile.allowedFutureDays.includes(row.day)) {
-        errors.push(`Surgeon ${row.surgeonName} is scheduled on ${row.day}, but ${row.day} was not found in the current uploaded case log.`);
+      // Hard Constraint: ASC strictly Mon-Fri
+      if (!VALID_ASC_DAYS.includes(row.day)) {
+        errors.push(`ASC day violation: ${row.day} is not a valid operating day.`);
       }
 
+      // Hard Constraint: Surgeon allowed days
+      const sProfile = surgeonProfiles[row.surgeon];
+      if (sProfile && !sProfile.allowedFutureDays.includes(row.day)) {
+        errors.push(`Surgeon violation: ${row.surgeon} is scheduled on ${row.day}, but their allowed future days are: ${sProfile.allowedFutureDays.join(', ')}.`);
+      }
+
+      // OR Capacity Constraint
+      if (row.minutes > dailyMinutes) {
+        errors.push(`Capacity violation: ${row.or} on ${row.day} exceeds ${dailyMinutes} minutes (${row.minutes} min).`);
+      }
+      
+      totalScheduledMinutes += row.minutes;
+
       row.casesList?.forEach(c => {
-        if (assignedIds.has(c.caseId)) {
-          errors.push(`${c.caseId} is assigned more than once`);
+        // Hard Constraint: No duplicate source cases
+        if (assignedIds.has(c.sourceCaseId)) {
+          errors.push(`Duplicate violation: Historical case ${c.sourceCaseId} is assigned more than once`);
         }
-        assignedIds.add(c.caseId);
+        assignedIds.add(c.sourceCaseId);
       });
     });
 
+    const calculatedUtil = (totalScheduledMinutes / weeklyAvailableMinutes) * 100;
+
     return {
       valid: errors.length === 0,
-      errors
+      errors,
+      calculatedUtil
     };
   };
 
@@ -144,16 +204,15 @@ export const generateOptimizationModels = (normalizedData, config) => {
       }
     });
 
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].slice(0, operatingDays);
-    
     let totalScheduledMinutes = 0;
     let scheduledCaseCount = 0;
+    let futureCaseCounter = 1;
     
     // Reset surgeon scheduled days tracking
     Object.values(surgeonProfiles).forEach(sp => sp.scheduledDays.clear());
 
-    days.forEach(day => {
-      // Track how many cases each surgeon is assigned on this specific day
+    futureCalendar.forEach(calDay => {
+      const { dateStr: futureDate, dayOfWeek: day } = calDay;
       const surgeonDailyCount = {};
 
       for (let orIndex = 1; orIndex <= activeORs; orIndex++) {
@@ -175,19 +234,19 @@ export const generateOptimizationModels = (normalizedData, config) => {
           const candidateCase = pool[i];
           const sProfile = surgeonProfiles[candidateCase.surgeonName];
 
-          // Hard constraint: Surgeon historically operates on this day
+          // Hard constraint: Surgeon strictly allowed on this future weekday
           if (!sProfile.allowedFutureDays.includes(day)) {
             continue;
           }
 
-          // Hard constraint: Limit to historical volume for this specific weekday
+          // Hard constraint: Limit to historical volume for this specific weekday (throttle)
           const historicalLimit = sProfile.weekdayDistribution[day] || 0;
           const currentAssignedCount = surgeonDailyCount[candidateCase.surgeonName] || 0;
           if (currentAssignedCount >= historicalLimit) {
             continue;
           }
 
-          // Hard constraint: Surgeon day limits
+          // Hard constraint: Max surgeon days
           if (!sProfile.scheduledDays.has(day) && sProfile.scheduledDays.size >= maxSurgeonDays) {
             continue; // Can't schedule this surgeon on a new day
           }
@@ -197,11 +256,8 @@ export const generateOptimizationModels = (normalizedData, config) => {
             continue;
           }
 
-          // Soft constraint: Try to keep same surgeon in OR block to minimize turnover conflicts
+          // Soft constraint: block scheduling preference
           if (assignedSurgeon && assignedSurgeon !== candidateCase.surgeonName) {
-            // In a real ASC, we usually want block scheduling. For now, allow mixed ORs if needed, 
-            // but strongly prefer sticking to the same surgeon if they have more cases.
-            // Let's only mix if the model is 'High Utilization'.
             if (modelType !== 'High Utilization' && modelType !== 'Revenue Optimized') {
               continue; 
             }
@@ -212,9 +268,18 @@ export const generateOptimizationModels = (normalizedData, config) => {
           const endTime = addMinutes(startTime, candidateCase.caseDurationMinutes);
           
           dailyAssignedCases.push({
-            ...candidateCase,
-            scheduledDay: day,
-            scheduledOR: orName,
+            futureScheduleCaseId: `FUT-${String(futureCaseCounter++).padStart(4, '0')}`,
+            sourceCaseId: candidateCase.caseId,
+            surgeon: candidateCase.surgeonName,
+            cptCode: candidateCase.cptCode,
+            procedureName: candidateCase.procedureName,
+            specialty: candidateCase.specialty,
+            duration: candidateCase.caseDurationMinutes,
+            historicalDate: candidateCase.historicalDate,
+            historicalDay: new Date(candidateCase.historicalDate).toLocaleDateString('en-US', { weekday: 'long' }),
+            futureDate: futureDate,
+            futureWeekday: day,
+            or: orName,
             startTime,
             endTime
           });
@@ -238,15 +303,16 @@ export const generateOptimizationModels = (normalizedData, config) => {
           // Group by surgeon for summary view
           const casesBySurgeon = {};
           dailyAssignedCases.forEach(c => {
-            if (!casesBySurgeon[c.surgeonName]) {
-              casesBySurgeon[c.surgeonName] = { cases: [], totalMinutes: 0, specialty: c.specialty };
+            if (!casesBySurgeon[c.surgeon]) {
+              casesBySurgeon[c.surgeon] = { cases: [], totalMinutes: 0, specialty: c.specialty };
             }
-            casesBySurgeon[c.surgeonName].cases.push(c);
-            casesBySurgeon[c.surgeonName].totalMinutes += c.caseDurationMinutes;
+            casesBySurgeon[c.surgeon].cases.push(c);
+            casesBySurgeon[c.surgeon].totalMinutes += c.duration;
           });
 
           Object.keys(casesBySurgeon).forEach(sName => {
             scheduleSummary.push({
+              futureDate,
               day,
               or: orName,
               surgeon: sName,
@@ -261,10 +327,9 @@ export const generateOptimizationModels = (normalizedData, config) => {
       }
     });
 
-    const weeklyUtilization = (totalScheduledMinutes / weeklyAvailableMinutes) * 100;
-    
     // Validation
     const validation = validateUniqueCaseAssignment(scheduleSummary);
+    const weeklyUtilization = validation.calculatedUtil;
     const { score, status } = calculateScore(modelType, weeklyUtilization, targetUtilization, validation);
 
     return {
@@ -295,7 +360,6 @@ export const generateOptimizationModels = (normalizedData, config) => {
 
   let recommendedModel = validModels.length > 0 ? validModels[0] : null;
   
-  // If user selected a specific optimization objective, force that model to be recommended
   if (config.optimizationObjective && validModels.some(m => m.name === config.optimizationObjective)) {
     recommendedModel = validModels.find(m => m.name === config.optimizationObjective);
   }
@@ -312,9 +376,9 @@ export const generateOptimizationModels = (normalizedData, config) => {
       dailyCapacity,
       weeklyAvailableMinutes,
       activeORs,
-      operatingDays
+      operatingDays: daysInHorizon
     },
-    models: generatedModels, // Return all so UI can show invalid ones as 0 score
+    models: generatedModels,
     recommendedModel: recommendedModel
   };
 };
