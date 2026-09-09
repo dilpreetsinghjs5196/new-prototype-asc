@@ -63,10 +63,12 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
     const [monthSurgeriesPerPage, setMonthSurgeriesPerPage] = useState({});
     const [otExtraCosts, setOtExtraCosts] = useState([]);
     const [orBlocks, setOrBlocks] = useState([]);
+    const [staffList, setStaffList] = useState([]);
 
     useEffect(() => {
         db.getOTExtraCosts().then(setOtExtraCosts).catch(console.error);
         db.getORBlockSchedule().then(setOrBlocks).catch(console.error);
+        db.getStaff().then(setStaffList).catch(console.error);
     }, []);
 
     const [formData, setFormData] = useState({
@@ -92,7 +94,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         cptExpenses: {},
         applyFixedCosmeticFee: false,
         cosmeticFacilityFee: calculateCosmeticFees(60).facilityFee,
-        cosmeticAnesthesiaFee: calculateCosmeticFees(60).anesthesiaFee
+        cosmeticAnesthesiaFee: calculateCosmeticFees(60).anesthesiaFee,
+        orStaffIds: [],
+        calculateStaffFee: false
     });
 
     const availableSurgeons = useMemo(() => {
@@ -186,7 +190,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             cptExpenses: {},
             applyFixedCosmeticFee: false,
             cosmeticFacilityFee: calculateCosmeticFees(60).facilityFee,
-            cosmeticAnesthesiaFee: calculateCosmeticFees(60).anesthesiaFee
+            cosmeticAnesthesiaFee: calculateCosmeticFees(60).anesthesiaFee,
+            orStaffIds: [],
+            calculateStaffFee: false
         });
     };
 
@@ -336,7 +342,9 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             cptExpenses: calcCptExpenses,
             applyFixedCosmeticFee: false, // Per request: always off by default when starting edit, or pull from DB if it existed? Let's default to false as in old system
             cosmeticFacilityFee: calculateCosmeticFees(surgery.duration_minutes || 60).facilityFee,
-            cosmeticAnesthesiaFee: calculateCosmeticFees(surgery.duration_minutes || 60).anesthesiaFee
+            cosmeticAnesthesiaFee: calculateCosmeticFees(surgery.duration_minutes || 60).anesthesiaFee,
+            orStaffIds: surgery.cpt_expenses?._or_staff_ids || [],
+            calculateStaffFee: surgery.cpt_expenses?._calculate_staff_fee || false
         });
 
         setIsFormOpen(true);
@@ -643,22 +651,37 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
         // Room Cost & Labor Cost are now directly mapped from the user-entered CPT expense values
         const roomCost = parseFloat(formData.orRoomCost || 0);
         const laborCost = parseFloat(formData.labourCost || 0);
+        
+        // Add calculated staff fees if checkbox is checked
+        let calculatedStaffFee = 0;
+        if (formData.calculateStaffFee && formData.orStaffIds && formData.orStaffIds.length > 0) {
+            let totalHourlyRate = 0;
+            formData.orStaffIds.forEach(staffId => {
+                const staff = staffList.find(s => s.id === staffId);
+                if (staff && staff.hourly_rate) {
+                    totalHourlyRate += parseFloat(staff.hourly_rate);
+                }
+            });
+            const durationInHours = (formData.actualDurationMinutes || formData.durationMinutes || 0) / 60;
+            calculatedStaffFee = Number((totalHourlyRate * durationInHours).toFixed(2));
+        }
+
         const suppliesCostTotal = parseFloat(formData.suppliesCost || 0) + parseFloat(formData.implantsCost || 0) + parseFloat(formData.medicationsCost || 0) + parseFloat(formData.trayCost || 0);
 
         // Calculate Full Total based on current UI toggle state
-        const internalCost = includeLaborSupplies ? (roomCost + laborCost + suppliesCostTotal) : 0;
+        const internalCost = (includeLaborSupplies ? (roomCost + laborCost + suppliesCostTotal) : 0) + calculatedStaffFee;
         const writeOff = parseFloat(formData.writeOff || 0);
 
         let patientBillTotal;
         if (formData.isProbono) {
             patientBillTotal = 0;
         } else if (formData.applyFixedCosmeticFee) {
-            patientBillTotal = reimbursementSum + roomCost + laborCost + suppliesCostTotal - writeOff;
+            patientBillTotal = reimbursementSum + roomCost + laborCost + calculatedStaffFee + suppliesCostTotal - writeOff;
         } else {
             patientBillTotal = reimbursementSum - writeOff + internalCost;
         }
 
-        let netProfit = reimbursementSum - writeOff - (roomCost + laborCost + suppliesCostTotal);
+        let netProfit = reimbursementSum - writeOff - (roomCost + laborCost + calculatedStaffFee + suppliesCostTotal);
         if (formData.isProbono) netProfit = 0;
 
         // Save into notes to ensure they are captured in DB
@@ -668,7 +691,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
             ...formData.cptExpenses,
             _full_total: patientBillTotal,
             _net_profit: netProfit,
-            _include_labor_supplies: includeLaborSupplies
+            _include_labor_supplies: includeLaborSupplies,
+            _or_staff_ids: formData.orStaffIds,
+            _calculate_staff_fee: formData.calculateStaffFee,
+            _staff_fee_total: calculatedStaffFee
         };
 
         const surgeryData = {
@@ -1609,6 +1635,63 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                 </div>
                             </div>
 
+                            {/* OR Staff Selection */}
+                            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px' }}>
+                                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>OR Staff Management</h4>
+                                <div className="form-row" style={{ gridTemplateColumns: '1fr' }}>
+                                    <div className="form-group">
+                                        <label>Select OR Staff</label>
+                                        <div style={{ 
+                                            maxHeight: '150px', 
+                                            overflowY: 'auto', 
+                                            border: '1px solid var(--border-color)', 
+                                            borderRadius: '6px', 
+                                            padding: '8px', 
+                                            background: 'var(--bg-input)' 
+                                        }}>
+                                            {staffList.filter(staff => staff.department === 'Operating Room RN').map(staff => {
+                                                const isSelected = (formData.orStaffIds || []).includes(staff.id);
+                                                return (
+                                                    <label key={staff.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px', cursor: 'pointer', borderRadius: '4px', background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent', transition: 'background 0.2s' }}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isSelected}
+                                                            onChange={(e) => {
+                                                                const currentIds = formData.orStaffIds || [];
+                                                                if (e.target.checked) {
+                                                                    setFormData({ ...formData, orStaffIds: [...currentIds, staff.id] });
+                                                                } else {
+                                                                    setFormData({ ...formData, orStaffIds: currentIds.filter(id => id !== staff.id) });
+                                                                }
+                                                            }}
+                                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                        />
+                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                                                            {staff.firstname} {staff.lastname} - {staff.department} (${staff.hourly_rate}/hr)
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                            {staffList.filter(staff => staff.department === 'Operating Room RN').length === 0 && (
+                                                <div style={{ padding: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>No OR RNs found.</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '8px' }}>
+                                        <input
+                                            type="checkbox"
+                                            id="calculateStaffFee"
+                                            checked={formData.calculateStaffFee}
+                                            onChange={(e) => setFormData({ ...formData, calculateStaffFee: e.target.checked })}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                        <label htmlFor="calculateStaffFee" style={{ fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '600' }}>
+                                            Calculate staff fees based on actual OR time (overrides Labour Cost)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Write-offs and Pro-bono options */}
                             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px' }}>
                                 <div className="form-row">
@@ -1735,8 +1818,22 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                         }
                                         const room = parseFloat(formData.orRoomCost || 0);
                                         const labor = parseFloat(formData.labourCost || 0);
+
+                                        let calculatedStaffFee = 0;
+                                        if (formData.calculateStaffFee && formData.orStaffIds && formData.orStaffIds.length > 0) {
+                                            let totalHourlyRate = 0;
+                                            formData.orStaffIds.forEach(staffId => {
+                                                const staff = staffList.find(s => s.id === staffId);
+                                                if (staff && staff.hourly_rate) {
+                                                    totalHourlyRate += parseFloat(staff.hourly_rate);
+                                                }
+                                            });
+                                            const durationInHours = (formData.actualDurationMinutes || formData.durationMinutes || 0) / 60;
+                                            calculatedStaffFee = Number((totalHourlyRate * durationInHours).toFixed(2));
+                                        }
+
                                         const supplies = parseFloat(formData.suppliesCost || 0) + parseFloat(formData.implantsCost || 0) + parseFloat(formData.medicationsCost || 0) + parseFloat(formData.trayCost || 0);
-                                        const internalCost = includeLaborSupplies ? (room + labor + supplies) : 0;
+                                        const internalCost = (includeLaborSupplies ? (room + labor + supplies) : 0) + calculatedStaffFee;
                                         const writeOff = parseFloat(formData.writeOff || 0);
                                         let netProfit = revenue - writeOff - internalCost;
                                         if (formData.isProbono) netProfit = 0;
@@ -1776,6 +1873,10 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                                     <span style={{ color: labelColor }}>Actual Labor:</span>
                                                                     <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency((includeLaborSupplies || formData.isProbono) ? labor : 0)}</span>
                                                                 </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                                    <span style={{ color: labelColor }}>Staff Fees:</span>
+                                                                    <span style={{ fontWeight: 'bold', color: valRed }}>{formatCurrency(calculatedStaffFee)}</span>
+                                                                </div>
                                                             </div>
                                                             <div>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
@@ -1808,8 +1909,8 @@ const SurgeryScheduler = ({ patients = [], surgeons = [], cptCodes = [], surgeri
                                                             let patientBillTotal = 0;
                                                             if (!formData.isProbono) {
                                                                 patientBillTotal = formData.applyFixedCosmeticFee ?
-                                                                    (formData.cosmeticFacilityFee + room + labor + supplies - writeOff) :
-                                                                    (revenue + (includeLaborSupplies ? internalCost : 0) - writeOff);
+                                                                    (formData.cosmeticFacilityFee + room + labor + calculatedStaffFee + supplies - writeOff) :
+                                                                    (revenue + internalCost - writeOff);
                                                             }
                                                             return (
                                                                 <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: formData.applyFixedCosmeticFee ? '#1d4ed8' : (patientBillTotal >= 0 ? 'var(--success-color)' : 'var(--danger-color)') }}>

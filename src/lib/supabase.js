@@ -224,6 +224,16 @@ export const db = {
     return data || [];
   },
 
+  // Fetch all staff
+  async getStaff() {
+    const { data, error } = await supabase
+      .from('staff')
+      .select('*')
+      .order('lastname', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
   // Fetch CPT codes list with server-side filtering, search, and pagination
   async getCPTCodesPaged({ search = '', category = 'All', page = 1, limit = 10, sortField = 'code', sortDirection = 'asc' }) {
     let query = supabase
