@@ -1067,12 +1067,29 @@ export default function App() {
       const isDark = theme === 'dark';
       const sidebarColor = localStorage.getItem(isDark ? 'dark_sidebar_color' : 'light_sidebar_color');
       const bgColor = localStorage.getItem(isDark ? 'dark_bg_color' : 'light_bg_color');
+      const textColor = localStorage.getItem(isDark ? 'dark_text_color' : 'light_text_color');
+      const labelColor = localStorage.getItem(isDark ? 'dark_label_color' : 'light_label_color');
+      const portalColor = localStorage.getItem(isDark ? 'dark_portal_color' : 'light_portal_color');
 
       if (sidebarColor) document.documentElement.style.setProperty('--bg-sidebar', sidebarColor);
       else document.documentElement.style.removeProperty('--bg-sidebar');
 
       if (bgColor) document.documentElement.style.setProperty('--bg-main', bgColor);
       else document.documentElement.style.removeProperty('--bg-main');
+
+      if (textColor) {
+        document.documentElement.style.setProperty('--text-primary', textColor);
+        document.documentElement.style.setProperty('--text-color', textColor);
+      } else {
+        document.documentElement.style.removeProperty('--text-primary');
+        document.documentElement.style.removeProperty('--text-color');
+      }
+
+      if (labelColor) document.documentElement.style.setProperty('--text-secondary', labelColor);
+      else document.documentElement.style.removeProperty('--text-secondary');
+
+      if (portalColor) document.documentElement.style.setProperty('--bg-card', portalColor);
+      else document.documentElement.style.removeProperty('--bg-card');
     };
 
     document.documentElement.setAttribute('data-theme', theme);

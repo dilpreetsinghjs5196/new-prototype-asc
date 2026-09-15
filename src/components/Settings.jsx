@@ -18,8 +18,14 @@ const Settings = ({ onUpdate }) => {
         gemini_api_key: '',
         light_sidebar_color: '#112238',
         light_bg_color: '#f8fafc',
+        light_text_color: '#0f172a',
+        light_label_color: '#334155',
+        light_portal_color: '#ffffff',
         dark_sidebar_color: '#0F2036',
-        dark_bg_color: '#142842'
+        dark_bg_color: '#142842',
+        dark_text_color: '#f8fafc',
+        dark_label_color: '#cbd5e1',
+        dark_portal_color: '#1E3A5F'
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -38,8 +44,14 @@ const Settings = ({ onUpdate }) => {
                 ai_allowed_email: localStorage.getItem('ai_allowed_email') || '',
                 light_sidebar_color: localStorage.getItem('light_sidebar_color') || '#112238',
                 light_bg_color: localStorage.getItem('light_bg_color') || '#f8fafc',
+                light_text_color: localStorage.getItem('light_text_color') || '#0f172a',
+                light_label_color: localStorage.getItem('light_label_color') || '#334155',
+                light_portal_color: localStorage.getItem('light_portal_color') || '#ffffff',
                 dark_sidebar_color: localStorage.getItem('dark_sidebar_color') || '#0F2036',
-                dark_bg_color: localStorage.getItem('dark_bg_color') || '#142842'
+                dark_bg_color: localStorage.getItem('dark_bg_color') || '#142842',
+                dark_text_color: localStorage.getItem('dark_text_color') || '#f8fafc',
+                dark_label_color: localStorage.getItem('dark_label_color') || '#cbd5e1',
+                dark_portal_color: localStorage.getItem('dark_portal_color') || '#1E3A5F'
             };
 
             if (data) {
@@ -68,8 +80,14 @@ const Settings = ({ onUpdate }) => {
             ...prev,
             light_sidebar_color: '#112238',
             light_bg_color: '#f8fafc',
+            light_text_color: '#0f172a',
+            light_label_color: '#334155',
+            light_portal_color: '#ffffff',
             dark_sidebar_color: '#0F2036',
-            dark_bg_color: '#142842'
+            dark_bg_color: '#142842',
+            dark_text_color: '#f8fafc',
+            dark_label_color: '#cbd5e1',
+            dark_portal_color: '#1E3A5F'
         }));
     };
 
@@ -80,14 +98,20 @@ const Settings = ({ onUpdate }) => {
             setSaving(true);
 
             // Separate AI settings to store locally to prevent Supabase schema errors for email
-            const { id, ai_allowed_email, light_sidebar_color, light_bg_color, dark_sidebar_color, dark_bg_color, ...settingsToUpdate } = settings;
+            const { id, ai_allowed_email, light_sidebar_color, light_bg_color, light_text_color, light_label_color, light_portal_color, dark_sidebar_color, dark_bg_color, dark_text_color, dark_label_color, dark_portal_color, ...settingsToUpdate } = settings;
 
             // Save local settings
             if (ai_allowed_email !== undefined) localStorage.setItem('ai_allowed_email', ai_allowed_email);
             if (light_sidebar_color) localStorage.setItem('light_sidebar_color', light_sidebar_color);
             if (light_bg_color) localStorage.setItem('light_bg_color', light_bg_color);
+            if (light_text_color) localStorage.setItem('light_text_color', light_text_color);
+            if (light_label_color) localStorage.setItem('light_label_color', light_label_color);
+            if (light_portal_color) localStorage.setItem('light_portal_color', light_portal_color);
             if (dark_sidebar_color) localStorage.setItem('dark_sidebar_color', dark_sidebar_color);
             if (dark_bg_color) localStorage.setItem('dark_bg_color', dark_bg_color);
+            if (dark_text_color) localStorage.setItem('dark_text_color', dark_text_color);
+            if (dark_label_color) localStorage.setItem('dark_label_color', dark_label_color);
+            if (dark_portal_color) localStorage.setItem('dark_portal_color', dark_portal_color);
 
             // Dispatch theme update event
             window.dispatchEvent(new Event('theme-updated'));
@@ -523,6 +547,63 @@ const Settings = ({ onUpdate }) => {
                                         />
                                     </div>
                                 </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Portal (Card) Background Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="light_portal_color"
+                                            value={settings.light_portal_color || '#ffffff'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.light_portal_color || '#ffffff'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Text Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="light_text_color"
+                                            value={settings.light_text_color || '#0f172a'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.light_text_color || '#0f172a'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Label Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="light_label_color"
+                                            value={settings.light_label_color || '#334155'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.light_label_color || '#334155'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Dark Mode Colors */}
@@ -561,6 +642,63 @@ const Settings = ({ onUpdate }) => {
                                             className="setting-form-input"
                                             type="text"
                                             value={settings.dark_bg_color || '#142842'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Portal (Card) Background Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="dark_portal_color"
+                                            value={settings.dark_portal_color || '#1E3A5F'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.dark_portal_color || '#1E3A5F'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Text Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="dark_text_color"
+                                            value={settings.dark_text_color || '#f8fafc'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.dark_text_color || '#f8fafc'}
+                                            disabled
+                                            style={{ height: '48px', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="setting-form-group" style={{ marginTop: '1rem' }}>
+                                    <label style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Label Color</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input
+                                            type="color"
+                                            name="dark_label_color"
+                                            value={settings.dark_label_color || '#cbd5e1'}
+                                            onChange={handleChange}
+                                            style={{ width: '48px', height: '48px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                        />
+                                        <input
+                                            className="setting-form-input"
+                                            type="text"
+                                            value={settings.dark_label_color || '#cbd5e1'}
                                             disabled
                                             style={{ height: '48px', fontFamily: 'monospace' }}
                                         />
