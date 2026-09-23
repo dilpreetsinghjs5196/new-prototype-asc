@@ -2293,6 +2293,35 @@ export default function App() {
     }
   };
 
+  const handleExportSurgeons = () => {
+    if (!surgeonsList || surgeonsList.length === 0) return;
+    
+    const headers = ['NPI / License', 'First Name', 'Last Name', 'Specialty', 'Email', 'Phone'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...surgeonsList.map(s => {
+        return [
+          `"${s.license_number || ''}"`,
+          `"${s.firstname || ''}"`,
+          `"${s.lastname || ''}"`,
+          `"${s.specialty || ''}"`,
+          `"${s.email || ''}"`,
+          `"${s.phone || ''}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'surgeons_directory.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleOpenAddSurgeon = () => {
     setEditingSurgeon(null);
     setSurgeonForm({
@@ -4123,6 +4152,13 @@ export default function App() {
                           Clear
                         </button>
                       )}
+                      <button
+                        className="btn-header"
+                        onClick={handleExportSurgeons}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content' }}
+                      >
+                        <Download size={14} /> Download
+                      </button>
                       <button
                         className="btn-header btn-primary"
                         onClick={handleOpenAddSurgeon}
