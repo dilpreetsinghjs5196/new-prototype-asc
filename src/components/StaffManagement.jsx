@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Edit, Trash2, Plus, X, Users, DollarSign, Activity, Search } from 'lucide-react';
+import { Edit, Trash2, Plus, X, Users, DollarSign, Activity, Search, Download } from 'lucide-react';
 import Swal from 'sweetalert2';
 import './StaffManagement.css';
 
@@ -149,6 +149,40 @@ const StaffManagement = () => {
     }
   };
 
+  const handleExportStaff = () => {
+    if (!staffList || staffList.length === 0) return;
+    
+    const headers = ['Department', 'First Name', 'Last Name', 'Role', 'Specialty / Position', 'License / ID', 'Phone', 'Email', 'Hourly Rate', 'Monthly Salary', 'Benefits'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...staffList.map(s => {
+        return [
+          `"${s.department || ''}"`,
+          `"${s.firstname || ''}"`,
+          `"${s.lastname || ''}"`,
+          `"${s.role || ''}"`,
+          `"${s.specialty || ''}"`,
+          `"${s.license_id || ''}"`,
+          `"${s.phone || ''}"`,
+          `"${s.email || ''}"`,
+          `"${s.hourly_rate || ''}"`,
+          `"${s.monthly_salary || ''}"`,
+          `"${s.benefits || ''}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'staff_directory.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Group staff by department
   const groupedStaff = DEPARTMENT_CATEGORIES.reduce((acc, dept) => {
     acc[dept] = staffList.filter(s => s.department === dept);
@@ -221,6 +255,13 @@ const StaffManagement = () => {
               Clear
             </button>
           )}
+          <button
+            className="btn-header"
+            onClick={handleExportStaff}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content' }}
+          >
+            <Download size={14} /> Download
+          </button>
           <button
             className="btn-header btn-primary"
             onClick={() => openModal()}
