@@ -2108,6 +2108,55 @@ export default function App() {
     setShowAutoSuggest(false);
   };
 
+  const handleExportPatients = () => {
+    if (!patients || patients.length === 0) return;
+    
+    const headers = [
+      'MRN', 'Patient Name', 'DOB', 'Gender', 'Phone', 'Email', 'Address',
+      'Insurance Provider', 'Policy Number', 'Group Number', 'Insurance Type',
+      'Subscriber Name', 'Relationship', 'Effective Date', 'Expiration Date',
+      'Copay Amount', 'Deductible Amount',
+      'Secondary Provider', 'Secondary Policy Number', 'Secondary Group Number'
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      ...patients.map(p => {
+        return [
+          `"${p.mrn || ''}"`,
+          `"${p.name || ''}"`,
+          `"${p.dob || ''}"`,
+          `"${p.gender || ''}"`,
+          `"${p.phone || ''}"`,
+          `"${p.email || ''}"`,
+          `"${p.address || ''}"`,
+          `"${p.insurance_provider || ''}"`,
+          `"${p.insurance_policy_number || ''}"`,
+          `"${p.insurance_group_number || ''}"`,
+          `"${p.insurance_type || ''}"`,
+          `"${p.subscriber_name || ''}"`,
+          `"${p.subscriber_relationship || ''}"`,
+          `"${p.insurance_effective_date || ''}"`,
+          `"${p.insurance_expiration_date || ''}"`,
+          `"${p.copay_amount || ''}"`,
+          `"${p.deductible_amount || ''}"`,
+          `"${p.secondary_insurance_provider || ''}"`,
+          `"${p.secondary_insurance_policy_number || ''}"`,
+          `"${p.secondary_insurance_group_number || ''}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'patient_directory.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleOpenAddPatient = () => {
     setEditingPatient(null);
     setPatientForm({
@@ -3951,6 +4000,13 @@ export default function App() {
                           Clear
                         </button>
                       )}
+                      <button
+                        className="btn-header"
+                        onClick={handleExportPatients}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content' }}
+                      >
+                        <Download size={14} /> Download
+                      </button>
                       <button
                         className="btn-header btn-primary"
                         onClick={handleOpenAddPatient}
