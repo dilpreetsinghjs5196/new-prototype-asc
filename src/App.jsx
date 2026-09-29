@@ -7,6 +7,7 @@ import StaffManagement from './components/StaffManagement';
 import CPTManagement from './components/CPTManagement';
 import OTCostManagement from './components/OTCostManagement';
 import SettingsView from './components/Settings';
+import CPTUpload from './components/CPTUpload';
 import Chatbot from './components/Chatbot';
 import AIAnalystModal from './components/AIAnalystModal';
 import AIOperationsAnalyst from './components/AIOperationsAnalyst';
@@ -67,7 +68,8 @@ import {
   Activity,
   Sun,
   Moon,
-  Brain
+  Brain,
+  Upload
 } from 'lucide-react';
 
 // ==========================================
@@ -2933,6 +2935,13 @@ export default function App() {
             <div className="menu-item-icon"><Sliders size={16} /></div>
             CPT Codes Management
           </div>
+          <div
+            className={`menu-item ${activeTab === 'upload_code_files' && !selectedSurgeon ? 'active' : ''}`}
+            onClick={() => { setActiveTab('upload_code_files'); setSelectedSurgeon(null); }}
+          >
+            <div className="menu-item-icon"><Upload size={16} /></div>
+            Upload new Code Files
+          </div>
 
           <div className="sidebar-section-divider"></div>
 
@@ -3048,6 +3057,7 @@ export default function App() {
                   {activeTab === 'financial' && 'Financial Performance'}
                   {activeTab === 'cpt' && 'Case Profitability'}
                   {activeTab === 'cpt_manage' && 'CPT Codes Management'}
+                  {activeTab === 'upload_code_files' && 'Upload new Code Files'}
                   {activeTab === 'payer' && 'Payer Intelligence'}
                   {activeTab === 'supply' && 'Supply Chain'}
                   {activeTab === 'cancellations' && 'Cancellations'}
@@ -4956,6 +4966,13 @@ export default function App() {
                   onUpdate={handleUpdateCPT}
                   onDelete={handleDeleteCPT}
                 />
+              )}
+
+              {/* ==========================================
+              TAB: UPLOAD CODE FILES
+              ========================================== */}
+              {activeTab === 'upload_code_files' && (
+                <CPTUpload />
               )}
 
               {/* ==========================================
