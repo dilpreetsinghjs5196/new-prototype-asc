@@ -8,7 +8,9 @@ import {
   CheckCircle,
   XCircle,
   Sliders,
-  Loader
+  Loader,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { db } from '../lib/supabase';
 import CPTAgentTestRunner from './CPTAgentTestRunner';
@@ -66,14 +68,27 @@ export default function CPTManagement({
   onUpdate,
   onDelete
 }) {
-  const [cpts, setCpts] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [latestCpts, setLatestCpts] = useState([]);
+  const [latestTotalCount, setLatestTotalCount] = useState(0);
+  const [historicalCpts, setHistoricalCpts] = useState([]);
+  const [historicalTotalCount, setHistoricalTotalCount] = useState(0);
+  
+  const [loadingLatest, setLoadingLatest] = useState(true);
+  const [loadingHistorical, setLoadingHistorical] = useState(true);
+  
+  const [expandedGroups, setExpandedGroups] = useState({
+    latest: true,
+    historical: false
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  const [latestPage, setLatestPage] = useState(1);
+  const [latestRowsPerPage, setLatestRowsPerPage] = useState(10);
+  const [historicalPage, setHistoricalPage] = useState(1);
+  const [historicalRowsPerPage, setHistoricalRowsPerPage] = useState(10);
+  
   const [sortField, setSortField] = useState('code');
   const [sortDirection, setSortDirection] = useState('asc');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -97,40 +112,63 @@ export default function CPTManagement({
     active_code: true
   });
 
-  // Dynamic server-side data fetching
+  // Fetch Latest CPT Codes
   useEffect(() => {
     let active = true;
-    async function fetchData() {
-      setLoading(true);
+    async function fetchLatest() {
+      setLoadingLatest(true);
       try {
-        const { cptCodes: fetched, totalCount: total } = await db.getCPTCodesPaged({
+        const { cptCodes, totalCount } = await db.getCPTCodesPaged({
           search: searchQuery,
           category: categoryFilter,
-          page: currentPage,
-          limit: rowsPerPage,
+          page: latestPage,
+          limit: latestRowsPerPage,
           sortField,
-          sortDirection
+          sortDirection,
+          status: 'latest'
         });
         if (active) {
-          setCpts(fetched);
-          setTotalCount(total);
+          setLatestCpts(cptCodes);
+          setLatestTotalCount(totalCount);
         }
       } catch (err) {
-        console.error('Error fetching paged CPT codes:', err);
+        console.error('Error fetching latest CPT codes:', err);
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoadingLatest(false);
       }
     }
-    fetchData();
-    return () => {
-      active = false;
-    };
-  }, [searchQuery, categoryFilter, currentPage, rowsPerPage, sortField, sortDirection, refreshKey]);
+    fetchLatest();
+    return () => { active = false; };
+  }, [searchQuery, categoryFilter, latestPage, latestRowsPerPage, sortField, sortDirection, refreshKey]);
 
-  // Pagination calculations
-  const totalPages = Math.ceil(totalCount / rowsPerPage) || 1;
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
+  // Fetch Historical CPT Codes
+  useEffect(() => {
+    let active = true;
+    async function fetchHistorical() {
+      setLoadingHistorical(true);
+      try {
+        const { cptCodes, totalCount } = await db.getCPTCodesPaged({
+          search: searchQuery,
+          category: categoryFilter,
+          page: historicalPage,
+          limit: historicalRowsPerPage,
+          sortField,
+          sortDirection,
+          status: 'historical'
+        });
+        if (active) {
+          setHistoricalCpts(cptCodes);
+          setHistoricalTotalCount(totalCount);
+        }
+      } catch (err) {
+        console.error('Error fetching historical CPT codes:', err);
+      } finally {
+        if (active) setLoadingHistorical(false);
+      }
+    }
+    fetchHistorical();
+    return () => { active = false; };
+  }, [searchQuery, categoryFilter, historicalPage, historicalRowsPerPage, sortField, sortDirection, refreshKey]);
 
   // Handle sorting
   const handleSort = (field) => {
@@ -140,8 +178,8 @@ export default function CPTManagement({
       setSortField(field);
       setSortDirection('asc');
     }
-    // reset to page 1 on sort change
-    setCurrentPage(1);
+    setLatestPage(1);
+    setHistoricalPage(1);
   };
 
   // Open modal for add
@@ -252,7 +290,7 @@ export default function CPTManagement({
     }
   };
 
-  const renderPageNumbers = () => {
+  const renderPageNumbers = (currentPage, totalPages, setCurrentPage) => {
     const pages = [];
     const maxVisible = 5;
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
@@ -336,7 +374,7 @@ export default function CPTManagement({
         </div>
       
       <div style={{ marginBottom: '24px' }}>
-        <CPTAgentTestRunner cptCodes={cptCodes || cpts} surgeries={surgeries || []} />
+        <CPTAgentTestRunner cptCodes={cptCodes || [...(latestCpts || []), ...(historicalCpts || [])]} surgeries={surgeries || []} />
       </div>
 
       <div style={{
@@ -351,7 +389,8 @@ export default function CPTManagement({
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                setCurrentPage(1);
+                setLatestPage(1);
+                setHistoricalPage(1);
               }}
             />
           </div>
@@ -364,7 +403,8 @@ export default function CPTManagement({
               value={categoryFilter}
               onChange={(e) => {
                 setCategoryFilter(e.target.value);
-                setCurrentPage(1);
+                setLatestPage(1);
+                setHistoricalPage(1);
               }}
             >
               <option value="All">All Categories</option>
@@ -376,10 +416,10 @@ export default function CPTManagement({
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="dashboard-card" style={{ padding: '0', position: 'relative' }}>
+      {/* Main Container */}
+      <div className="content-card" style={{ position: 'relative', marginTop: '12px' }}>
         
-        {loading && (
+        {(loadingLatest && loadingHistorical) && (
           <div style={{
             position: 'absolute',
             top: 0,
@@ -406,146 +446,251 @@ export default function CPTManagement({
           </div>
         )}
 
-        <div className="custom-table-container">
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th onClick={() => handleSort('code')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Code {sortField === 'code' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                </th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Procedure Group</th>
-                <th>Indicator</th>
-                <th>Body Part</th>
-                <th onClick={() => handleSort('average_duration')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Duration {sortField === 'average_duration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                </th>
-                <th>Turnover</th>
-                <th onClick={() => handleSort('gross_charge')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  Gross Charge {sortField === 'gross_charge' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                </th>
-                <th onClick={() => handleSort('reimbursement')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  Reimbursement {sortField === 'reimbursement' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                </th>
-                <th style={{ textAlign: 'center' }}>Status</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cpts.length > 0 ? (
-                cpts.map(cpt => (
-                  <tr key={cpt.id} className="clickable-row">
-                    <td style={{ fontWeight: '700', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
-                      {cpt.code}
-                    </td>
-                    <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
-                      {cpt.description}
-                    </td>
-                    <td>{cpt.category || 'N/A'}</td>
-                    <td>{cpt.procedure_group || 'N/A'}</td>
-                    <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-primary)' }}>{cpt.procedure_indicator || 'N/A'}</td>
-                    <td>{cpt.body_part || 'N/A'}</td>
-                    <td>{cpt.average_duration ? `${cpt.average_duration} mins` : 'N/A'}</td>
-                    <td>{cpt.turnover_time ? `${cpt.turnover_time} mins` : 'N/A'}</td>
-                    <td style={{ textAlign: 'right', fontWeight: '600' }}>
-                      {cpt.gross_charge ? `$${cpt.gross_charge.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '$0.00'}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--color-green)' }}>
-                      {cpt.reimbursement ? `$${cpt.reimbursement.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '$0.00'}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <span className={`badge ${cpt.is_active ? 'badge-scheduled' : 'badge-cancelled'}`}>
-                        {cpt.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => handleOpenEdit(cpt)}
-                          className="btn-header"
-                          style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)' }}
-                          title="Edit CPT Details"
-                        >
-                          <Edit size={12} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(cpt)}
-                          className="btn-header"
-                          style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)' }}
-                          title="Delete CPT Code"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
+        <div>
+          {(() => {
+            const renderTableHeaders = () => (
+              <thead>
                 <tr>
-                  <td colSpan="12" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
-                    <Stethoscope size={32} style={{ opacity: 0.2, marginBottom: '12px' }} />
-                    <div style={{ fontSize: '0.9rem', fontWeight: '600' }}>No CPT codes found</div>
-                    <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>Try adjusting your keyword filter or register a new CPT code.</div>
-                  </td>
+                  <th onClick={() => handleSort('code')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    Code {sortField === 'code' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Procedure Group</th>
+                  <th>Indicator</th>
+                  <th>Body Part</th>
+                  <th onClick={() => handleSort('average_duration')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    Duration {sortField === 'average_duration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th>Turnover</th>
+                  <th onClick={() => handleSort('gross_charge')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    Gross Charge {sortField === 'gross_charge' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th onClick={() => handleSort('reimbursement')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    Reimbursement {sortField === 'reimbursement' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th>Effective Date</th>
+                  <th>End Date</th>
+                  <th style={{ textAlign: 'center' }}>Status</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+            );
 
-        {/* Limit & Pagination Controls Footer */}
-        <div className="table-footer" style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 20px',
-          borderTop: '1px solid var(--border-light)',
-          fontSize: '0.8rem',
-          color: 'var(--text-secondary)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>Rows per page:</span>
-            <select
-              className="date-range-selector"
-              style={{ height: '32px', background: 'var(--bg-card)', padding: '2px 8px', width: '70px', cursor: 'pointer' }}
-              value={rowsPerPage}
-              onChange={(e) => {
-                setRowsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <span style={{ marginLeft: '12px' }}>
-              Showing {totalCount > 0 ? startIndex + 1 : 0}–{Math.min(totalCount, endIndex)} of {totalCount} records
-            </span>
-          </div>
+            const renderRows = (data, isHistorical = false) => {
+              if (data.length === 0) {
+                return (
+                  <tbody>
+                    <tr>
+                      <td colSpan="14" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: '0.85rem' }}>No records found in this group</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                );
+              }
+              
+              return (
+                <tbody>
+                  {data.map(cpt => (
+                    <tr key={cpt.id} className="clickable-row" style={isHistorical ? { backgroundColor: 'rgba(0,0,0,0.1)', opacity: 0.8 } : {}}>
+                      <td style={{ fontWeight: '700', fontFamily: 'monospace', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
+                        {cpt.code}
+                      </td>
+                      <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{cpt.description}</td>
+                      <td>{cpt.category || 'N/A'}</td>
+                      <td>{cpt.procedure_group || 'N/A'}</td>
+                      <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-primary)' }}>{cpt.procedure_indicator || 'N/A'}</td>
+                      <td>{cpt.body_part || 'N/A'}</td>
+                      <td>{cpt.average_duration ? `${cpt.average_duration} mins` : 'N/A'}</td>
+                      <td>{cpt.turnover_time ? `${cpt.turnover_time} mins` : 'N/A'}</td>
+                      <td style={{ textAlign: 'right', fontWeight: '600' }}>
+                        {cpt.gross_charge ? `$${cpt.gross_charge.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '$0.00'}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--color-green)' }}>
+                        {cpt.reimbursement ? `$${cpt.reimbursement.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '$0.00'}
+                      </td>
+                      <td style={{ fontSize: '0.8rem', color: isHistorical ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{cpt.effective_date || 'N/A'}</td>
+                      <td style={{ fontSize: '0.8rem', color: isHistorical ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{cpt.termination_date || '-'}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`badge ${isHistorical ? 'badge-pending' : (cpt.is_active ? 'badge-scheduled' : 'badge-cancelled')}`} style={isHistorical ? { opacity: 0.7 } : {}}>
+                          {isHistorical ? 'Historical' : (cpt.is_active ? 'Active' : 'Inactive')}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          {!isHistorical && (
+                            <button onClick={() => handleOpenEdit(cpt)} className="btn-header" style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)' }} title="Edit CPT Details">
+                              <Edit size={12} />
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(cpt)} className="btn-header" style={{ padding: '4px 8px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)', opacity: isHistorical ? 0.5 : 1 }} title="Delete CPT Code">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              );
+            };
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              className="btn-header"
-              style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            >
-              Previous
-            </button>
+            const renderPagination = (currentPage, rowsPerPage, totalCount, setPage, setRowsPerPage) => {
+              const totalPages = Math.ceil(totalCount / rowsPerPage) || 1;
+              const startIndex = (currentPage - 1) * rowsPerPage;
+              const endIndex = startIndex + rowsPerPage;
+              
+              return (
+                <div className="table-footer" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 20px',
+                  borderTop: '1px solid var(--border-light)',
+                  fontSize: '0.8rem',
+                  color: 'var(--text-secondary)',
+                  background: 'var(--bg-main)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>Rows per page:</span>
+                    <select
+                      className="date-range-selector"
+                      style={{ height: '32px', background: 'var(--bg-card)', padding: '2px 8px', width: '70px', cursor: 'pointer' }}
+                      value={rowsPerPage}
+                      onChange={(e) => {
+                        setRowsPerPage(Number(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span style={{ marginLeft: '12px' }}>
+                      Showing {totalCount > 0 ? startIndex + 1 : 0}–{Math.min(totalCount, endIndex)} of {totalCount} records
+                    </span>
+                  </div>
 
-            {renderPageNumbers()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      className="btn-header"
+                      style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}
+                      disabled={currentPage === 1}
+                      onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    >
+                      Previous
+                    </button>
 
-            <button
-              className="btn-header"
-              style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            >
-              Next
-            </button>
-          </div>
+                    {renderPageNumbers(currentPage, totalPages, setPage)}
+
+                    <button
+                      className="btn-header"
+                      style={{ height: '32px', padding: '0 10px', minWidth: 'auto', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}
+                      disabled={currentPage === totalPages}
+                      onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                
+                {/* LATEST CODES ACCORDION */}
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div
+                    onClick={() => setExpandedGroups(prev => ({ ...prev, latest: !prev.latest }))}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'var(--bg-card)',
+                      borderLeft: '4px solid var(--color-blue)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+                      {expandedGroups.latest ? <ChevronUp size={18} style={{ color: 'var(--color-blue)' }} /> : <ChevronDown size={18} style={{ color: 'var(--text-secondary)' }} />}
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                        LATEST CPT CODES
+                      </h4>
+                      <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
+                        {latestTotalCount} total codes
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {expandedGroups.latest && (
+                    <div className="custom-table-container" style={{ borderTop: '1px solid var(--border-light)', borderRadius: '0' }}>
+                      <div style={{ position: 'relative' }}>
+                        {loadingLatest && (
+                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,11,24,0.5)', zIndex: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <Loader size={20} className="animate-spin" />
+                          </div>
+                        )}
+                        <table className="custom-table">
+                          {renderTableHeaders()}
+                          {renderRows(latestCpts, false)}
+                        </table>
+                      </div>
+                      {renderPagination(latestPage, latestRowsPerPage, latestTotalCount, setLatestPage, setLatestRowsPerPage)}
+                    </div>
+                  )}
+                </div>
+
+                {/* HISTORICAL CODES ACCORDION */}
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div
+                    onClick={() => setExpandedGroups(prev => ({ ...prev, historical: !prev.historical }))}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'var(--bg-card)',
+                      borderLeft: '4px solid var(--color-red)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+                      {expandedGroups.historical ? <ChevronUp size={18} style={{ color: 'var(--color-red)' }} /> : <ChevronDown size={18} style={{ color: 'var(--text-secondary)' }} />}
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                        HISTORICAL CPT CODES
+                      </h4>
+                      <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
+                        {historicalTotalCount} total codes
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {expandedGroups.historical && (
+                    <div className="custom-table-container" style={{ borderTop: '1px solid var(--border-light)', borderRadius: '0' }}>
+                      <div style={{ position: 'relative' }}>
+                        {loadingHistorical && (
+                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,11,24,0.5)', zIndex: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <Loader size={20} className="animate-spin" />
+                          </div>
+                        )}
+                        <table className="custom-table">
+                          {renderTableHeaders()}
+                          {renderRows(historicalCpts, true)}
+                        </table>
+                      </div>
+                      {renderPagination(historicalPage, historicalRowsPerPage, historicalTotalCount, setHistoricalPage, setHistoricalRowsPerPage)}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            );
+          })()}
         </div>
       </div>
 
