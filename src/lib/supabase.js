@@ -326,6 +326,21 @@ export const db = {
     return true;
   },
 
+  // Bulk update dates for a group of CPT codes
+  async bulkUpdateCPTGroup(status, updates) {
+    let query = supabase.from('cpt_codes').update(updates);
+    if (status === 'latest') {
+      query = query.is('termination_date', null);
+    } else if (status === 'historical') {
+      query = query.not('termination_date', 'is', null);
+    } else {
+      throw new Error('Invalid status for bulk update');
+    }
+    const { error } = await query;
+    if (error) throw error;
+    return true;
+  },
+
   // ==================== SETTINGS ====================
   async getSettings() {
     const { data, error } = await supabase

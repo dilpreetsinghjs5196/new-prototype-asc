@@ -112,6 +112,10 @@ export default function CPTManagement({
     active_code: true
   });
 
+  const [bulkEditStatus, setBulkEditStatus] = useState(null); // 'latest' or 'historical'
+  const [bulkEditForm, setBulkEditForm] = useState({ effective_date: '', termination_date: '', version_year: '' });
+  const [bulkEditLoading, setBulkEditLoading] = useState(false);
+
   // Fetch Latest CPT Codes
   useEffect(() => {
     let active = true;
@@ -287,6 +291,34 @@ export default function CPTManagement({
         console.error(err);
         alert('An error occurred while deleting CPT code.');
       }
+    }
+  };
+
+  // Handle Bulk Update
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+    if (!bulkEditStatus) return;
+    setBulkEditLoading(true);
+    
+    const updates = {};
+    if (bulkEditForm.effective_date) updates.effective_date = bulkEditForm.effective_date;
+    else updates.effective_date = null;
+    
+    if (bulkEditForm.termination_date) updates.termination_date = bulkEditForm.termination_date;
+    else updates.termination_date = null;
+    
+    if (bulkEditForm.version_year) updates.version_year = bulkEditForm.version_year;
+    else updates.version_year = null;
+
+    try {
+      await db.bulkUpdateCPTGroup(bulkEditStatus, updates);
+      setRefreshKey(prev => prev + 1);
+      setBulkEditStatus(null);
+    } catch (err) {
+      console.error(err);
+      alert('Error updating dates.');
+    } finally {
+      setBulkEditLoading(false);
     }
   };
 
@@ -623,6 +655,23 @@ export default function CPTManagement({
                       <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
                         {latestTotalCount} total codes
                       </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const first = latestCpts && latestCpts.length > 0 ? latestCpts[0] : {};
+                          setBulkEditForm({ 
+                            effective_date: first.effective_date || '', 
+                            termination_date: first.termination_date || '', 
+                            version_year: first.version_year || '' 
+                          });
+                          setBulkEditStatus('latest');
+                        }}
+                        className="btn-header"
+                        style={{ padding: '4px', minWidth: 'auto', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Bulk Edit Dates"
+                      >
+                        <Edit size={14} />
+                      </button>
                     </div>
                   </div>
                   
@@ -667,6 +716,23 @@ export default function CPTManagement({
                       <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
                         {historicalTotalCount} total codes
                       </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const first = historicalCpts && historicalCpts.length > 0 ? historicalCpts[0] : {};
+                          setBulkEditForm({ 
+                            effective_date: first.effective_date || '', 
+                            termination_date: first.termination_date || '', 
+                            version_year: first.version_year || '' 
+                          });
+                          setBulkEditStatus('historical');
+                        }}
+                        className="btn-header"
+                        style={{ padding: '4px', minWidth: 'auto', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Bulk Edit Dates"
+                      >
+                        <Edit size={14} />
+                      </button>
                     </div>
                   </div>
                   
@@ -927,10 +993,76 @@ export default function CPTManagement({
                   </button>
                 </div>
               </div>
+              {/* Register / Edit CPT Modal and Bulk Edit Modal */}
             </form>
           </div>
         </div>
       )}
+
+      {/* Bulk Edit Modal */}
+      {bulkEditStatus && (
+        <div className="modal-overlay" onClick={() => setBulkEditStatus(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '400px', maxWidth: '95%', background: 'var(--bg-app)', border: '1px solid var(--border-light)' }}>
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-light)' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: '700', margin: 0 }}>
+                  Bulk Edit Dates
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                  Update dates for all <span style={{textTransform: 'capitalize'}}>{bulkEditStatus}</span> CPT codes.
+                </p>
+              </div>
+              <button className="modal-close" onClick={() => setBulkEditStatus(null)} style={{ fontSize: '1.5rem', color: 'var(--text-muted)' }}>×</button>
+            </div>
+            
+            <form onSubmit={handleBulkSubmit} className="modal-body" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Effective Date (YYYY-MM-DD)</label>
+                <input
+                  type="date"
+                  className="date-range-selector"
+                  style={{ width: '100%', height: '38px' }}
+                  value={bulkEditForm.effective_date}
+                  onChange={(e) => setBulkEditForm({ ...bulkEditForm, effective_date: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Termination Date (YYYY-MM-DD)</label>
+                <input
+                  type="date"
+                  className="date-range-selector"
+                  style={{ width: '100%', height: '38px' }}
+                  value={bulkEditForm.termination_date}
+                  onChange={(e) => setBulkEditForm({ ...bulkEditForm, termination_date: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Version Year</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2025-2026"
+                  className="date-range-selector"
+                  style={{ width: '100%', height: '38px' }}
+                  value={bulkEditForm.version_year}
+                  onChange={(e) => setBulkEditForm({ ...bulkEditForm, version_year: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setBulkEditStatus(null)} className="btn-secondary" style={{ height: '38px' }} disabled={bulkEditLoading}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" style={{ height: '38px' }} disabled={bulkEditLoading}>
+                  {bulkEditLoading ? 'Applying...' : 'Apply Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
