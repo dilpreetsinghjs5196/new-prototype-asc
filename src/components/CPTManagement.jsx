@@ -81,7 +81,8 @@ export default function CPTManagement({
     historical: false
   });
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [latestSearchQuery, setLatestSearchQuery] = useState('');
+  const [historicalSearchQuery, setHistoricalSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   
   const [latestPage, setLatestPage] = useState(1);
@@ -123,7 +124,7 @@ export default function CPTManagement({
       setLoadingLatest(true);
       try {
         const { cptCodes, totalCount } = await db.getCPTCodesPaged({
-          search: searchQuery,
+          search: latestSearchQuery,
           category: categoryFilter,
           page: latestPage,
           limit: latestRowsPerPage,
@@ -143,7 +144,7 @@ export default function CPTManagement({
     }
     fetchLatest();
     return () => { active = false; };
-  }, [searchQuery, categoryFilter, latestPage, latestRowsPerPage, sortField, sortDirection, refreshKey]);
+  }, [latestSearchQuery, categoryFilter, latestPage, latestRowsPerPage, sortField, sortDirection, refreshKey]);
 
   // Fetch Historical CPT Codes
   useEffect(() => {
@@ -152,7 +153,7 @@ export default function CPTManagement({
       setLoadingHistorical(true);
       try {
         const { cptCodes, totalCount } = await db.getCPTCodesPaged({
-          search: searchQuery,
+          search: historicalSearchQuery,
           category: categoryFilter,
           page: historicalPage,
           limit: historicalRowsPerPage,
@@ -172,7 +173,7 @@ export default function CPTManagement({
     }
     fetchHistorical();
     return () => { active = false; };
-  }, [searchQuery, categoryFilter, historicalPage, historicalRowsPerPage, sortField, sortDirection, refreshKey]);
+  }, [historicalSearchQuery, categoryFilter, historicalPage, historicalRowsPerPage, sortField, sortDirection, refreshKey]);
 
   // Handle sorting
   const handleSort = (field) => {
@@ -410,23 +411,7 @@ export default function CPTManagement({
       </div>
 
       <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
-          <div style={{ position: 'relative', flex: '1', minWidth: '220px' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              placeholder="Search by code or description..."
-              className="date-range-selector"
-              style={{ width: '100%', paddingLeft: '32px', height: '36px' }}
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setLatestPage(1);
-                setHistoricalPage(1);
-              }}
-            />
-          </div>
-
+        display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '180px' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Category:</span>
             <select
@@ -673,6 +658,20 @@ export default function CPTManagement({
                         <Edit size={14} />
                       </button>
                     </div>
+                    <div style={{ position: 'relative', width: '300px' }} onClick={e => e.stopPropagation()}>
+                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--text-muted)' }} />
+                      <input
+                        type="text"
+                        placeholder="Search latest codes..."
+                        className="date-range-selector"
+                        style={{ width: '100%', paddingLeft: '32px', height: '32px', fontSize: '0.85rem' }}
+                        value={latestSearchQuery}
+                        onChange={(e) => {
+                          setLatestSearchQuery(e.target.value);
+                          setLatestPage(1);
+                        }}
+                      />
+                    </div>
                   </div>
                   
                   {expandedGroups.latest && (
@@ -733,6 +732,20 @@ export default function CPTManagement({
                       >
                         <Edit size={14} />
                       </button>
+                    </div>
+                    <div style={{ position: 'relative', width: '300px' }} onClick={e => e.stopPropagation()}>
+                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--text-muted)' }} />
+                      <input
+                        type="text"
+                        placeholder="Search historical codes..."
+                        className="date-range-selector"
+                        style={{ width: '100%', paddingLeft: '32px', height: '32px', fontSize: '0.85rem' }}
+                        value={historicalSearchQuery}
+                        onChange={(e) => {
+                          setHistoricalSearchQuery(e.target.value);
+                          setHistoricalPage(1);
+                        }}
+                      />
                     </div>
                   </div>
                   
