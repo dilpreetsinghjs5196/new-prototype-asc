@@ -234,8 +234,59 @@ export const db = {
     return data || [];
   },
 
+  // Fetch distinct batches
+  async getCPTBatches() {
+    let allDates = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from('cpt_codes')
+            .select('effective_date, termination_date')
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allDates = [...allDates, ...data];
+            if (data.length < pageSize) {
+                hasMore = false;
+            } else {
+                page++;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
+    
+    // Get unique batches and counts
+    const batchMap = new Map();
+    for (const d of allDates) {
+      const key = `${d.effective_date}|${d.termination_date}`;
+      if (!batchMap.has(key)) {
+        batchMap.set(key, { effective_date: d.effective_date, termination_date: d.termination_date, count: 0 });
+      }
+      batchMap.get(key).count++;
+    }
+    const batches = Array.from(batchMap.values());
+    
+    // Sort batches: latest first (null termination date first, then descending effective date)
+    batches.sort((a, b) => {
+       if (a.termination_date === null && b.termination_date !== null) return -1;
+       if (a.termination_date !== null && b.termination_date === null) return 1;
+       if (a.termination_date === b.termination_date) {
+           return new Date(b.effective_date) - new Date(a.effective_date);
+       }
+       return new Date(b.termination_date) - new Date(a.termination_date);
+    });
+    
+    return batches;
+  },
+
   // Fetch CPT codes list with server-side filtering, search, and pagination
-  async getCPTCodesPaged({ search = '', category = 'All', page = 1, limit = 10, sortField = 'code', sortDirection = 'asc', status = 'all' }) {
+  async getCPTCodesPaged({ search = '', category = 'All', page = 1, limit = 10, sortField = 'code', sortDirection = 'asc', status = 'all', effective_date, termination_date }) {
     let query = supabase
       .from('cpt_codes')
       .select('*', { count: 'exact' });
@@ -252,6 +303,12 @@ export const db = {
       query = query.is('termination_date', null);
     } else if (status === 'historical') {
       query = query.not('termination_date', 'is', null);
+    } else if (status === 'batch') {
+      if (effective_date === null) query = query.is('effective_date', null);
+      else query = query.eq('effective_date', effective_date);
+      
+      if (termination_date === null) query = query.is('termination_date', null);
+      else query = query.eq('termination_date', termination_date);
     }
 
     query = query.order(sortField, { ascending: sortDirection === 'asc' });
