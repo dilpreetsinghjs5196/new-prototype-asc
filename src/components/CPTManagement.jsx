@@ -91,8 +91,77 @@ export default function CPTManagement({
   const [historicalRowsPerPage, setHistoricalRowsPerPage] = useState(10);
   
   const [sortField, setSortField] = useState('code');
+  const [batches, setBatches] = useState([]);
+  const [batchesLoading, setBatchesLoading] = useState(true);
+
+  // Batch states
+  const [batchData, setBatchData] = useState({});
+  const [batchExpanded, setBatchExpanded] = useState({});
+  const [batchPage, setBatchPage] = useState({});
+  const [batchSearchQuery, setBatchSearchQuery] = useState({});
+  const [batchLoading, setBatchLoading] = useState({});
+  const [batchTotalCount, setBatchTotalCount] = useState({});
+
+  useEffect(() => {
+    async function fetchBatches() {
+      try {
+        const data = await db.getCPTBatches();
+        setBatches(data);
+        
+        // Initialize expanded state for first batch
+        if (data.length > 0) {
+           const firstKey = data[0].effective_date + '_' + data[0].termination_date;
+           setBatchExpanded({ [firstKey]: true });
+        }
+      } catch (err) {
+        console.error('Error fetching batches:', err);
+      } finally {
+        setBatchesLoading(false);
+      }
+    }
+    fetchBatches();
+  }, []);
+
+  const fetchBatchCodes = async (batch) => {
+    const key = batch.effective_date + '_' + batch.termination_date;
+    const page = batchPage[key] || 1;
+    const search = batchSearchQuery[key] || '';
+    
+    setBatchLoading(prev => ({ ...prev, [key]: true }));
+    try {
+      const { cptCodes, totalCount } = await db.getCPTCodesPaged({
+        search,
+        category: categoryFilter,
+        page,
+        limit: 10,
+        sortField,
+        sortDirection,
+        status: 'batch',
+        effective_date: batch.effective_date,
+        termination_date: batch.termination_date
+      });
+      setBatchData(prev => ({ ...prev, [key]: cptCodes }));
+      setBatchTotalCount(prev => ({ ...prev, [key]: totalCount }));
+    } catch (err) {
+      console.error('Error fetching batch CPT codes:', err);
+    } finally {
+      setBatchLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   const [sortDirection, setSortDirection] = useState('asc');
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Effect to load batch data when a batch becomes expanded, or dependencies change
+  useEffect(() => {
+    batches.forEach(batch => {
+      const key = batch.effective_date + '_' + batch.termination_date;
+      if (batchExpanded[key]) {
+        fetchBatchCodes(batch);
+      }
+    });
+  }, [batches, batchExpanded, batchPage, batchSearchQuery, categoryFilter, sortField, sortDirection, refreshKey]);
+
 
   // Form & Modal States
   const [modalOpen, setModalOpen] = useState(false);
@@ -617,155 +686,83 @@ export default function CPTManagement({
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 
-                {/* LATEST CODES ACCORDION */}
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div
-                    onClick={() => setExpandedGroups(prev => ({ ...prev, latest: !prev.latest }))}
-                    style={{
-                      padding: '12px 16px',
-                      background: 'var(--bg-card)',
-                      borderLeft: '4px solid var(--color-blue)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
-                      {expandedGroups.latest ? <ChevronUp size={18} style={{ color: 'var(--color-blue)' }} /> : <ChevronDown size={18} style={{ color: 'var(--text-secondary)' }} />}
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        LATEST CPT CODES
-                      </h4>
-                      <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
-                        {latestTotalCount} total codes
-                      </span>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const first = latestCpts && latestCpts.length > 0 ? latestCpts[0] : {};
-                          setBulkEditForm({ 
-                            effective_date: first.effective_date || '', 
-                            termination_date: first.termination_date || '', 
-                            version_year: first.version_year || '' 
-                          });
-                          setBulkEditStatus('latest');
-                        }}
-                        className="btn-header"
-                        style={{ padding: '4px', minWidth: 'auto', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--color-blue)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Bulk Edit Dates"
-                      >
-                        <Edit size={14} />
-                      </button>
-                    </div>
-                    <div style={{ position: 'relative', width: '300px' }} onClick={e => e.stopPropagation()}>
-                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--text-muted)' }} />
-                      <input
-                        type="text"
-                        placeholder="Search latest codes..."
-                        className="date-range-selector"
-                        style={{ width: '100%', paddingLeft: '32px', height: '32px', fontSize: '0.85rem' }}
-                        value={latestSearchQuery}
-                        onChange={(e) => {
-                          setLatestSearchQuery(e.target.value);
-                          setLatestPage(1);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {expandedGroups.latest && (
-                    <div className="custom-table-container" style={{ borderTop: '1px solid var(--border-light)', borderRadius: '0' }}>
-                      <div style={{ position: 'relative' }}>
-                        {loadingLatest && (
-                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,11,24,0.5)', zIndex: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <Loader size={20} className="animate-spin" />
-                          </div>
-                        )}
-                        <table className="custom-table">
-                          {renderTableHeaders()}
-                          {renderRows(latestCpts, false)}
-                        </table>
-                      </div>
-                      {renderPagination(latestPage, latestRowsPerPage, latestTotalCount, setLatestPage, setLatestRowsPerPage)}
-                    </div>
-                  )}
-                </div>
+                              {batchesLoading ? (
+                 <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}><Loader size={24} className="animate-spin" style={{ margin: '0 auto 10px auto' }} /> Loading Batches...</div>
+              ) : batches.map((batch, index) => {
+                const key = batch.effective_date + '_' + batch.termination_date;
+                const isExpanded = !!batchExpanded[key];
+                const isLoading = !!batchLoading[key];
+                const data = batchData[key] || [];
+                const totalCount = batchTotalCount[key] ?? batch.count ?? 0;
+                const search = batchSearchQuery[key] || '';
+                const page = batchPage[key] || 1;
+                
+                let title = 'BATCH';
+                if (batch.termination_date === null) {
+                   title = 'ACTIVE CODES (Effective: ' + (batch.effective_date || 'N/A') + ')';
+                } else {
+                   title = 'HISTORICAL CODES (Effective: ' + (batch.effective_date || 'N/A') + ' to ' + batch.termination_date + ')';
+                }
 
-                {/* HISTORICAL CODES ACCORDION */}
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div
-                    onClick={() => setExpandedGroups(prev => ({ ...prev, historical: !prev.historical }))}
-                    style={{
-                      padding: '12px 16px',
-                      background: 'var(--bg-card)',
-                      borderLeft: '4px solid var(--color-red)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
-                      {expandedGroups.historical ? <ChevronUp size={18} style={{ color: 'var(--color-red)' }} /> : <ChevronDown size={18} style={{ color: 'var(--text-secondary)' }} />}
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        HISTORICAL CPT CODES
-                      </h4>
-                      <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
-                        {historicalTotalCount} total codes
-                      </span>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const first = historicalCpts && historicalCpts.length > 0 ? historicalCpts[0] : {};
-                          setBulkEditForm({ 
-                            effective_date: first.effective_date || '', 
-                            termination_date: first.termination_date || '', 
-                            version_year: first.version_year || '' 
-                          });
-                          setBulkEditStatus('historical');
-                        }}
-                        className="btn-header"
-                        style={{ padding: '4px', minWidth: 'auto', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-red)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Bulk Edit Dates"
-                      >
-                        <Edit size={14} />
-                      </button>
-                    </div>
-                    <div style={{ position: 'relative', width: '300px' }} onClick={e => e.stopPropagation()}>
-                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--text-muted)' }} />
-                      <input
-                        type="text"
-                        placeholder="Search historical codes..."
-                        className="date-range-selector"
-                        style={{ width: '100%', paddingLeft: '32px', height: '32px', fontSize: '0.85rem' }}
-                        value={historicalSearchQuery}
-                        onChange={(e) => {
-                          setHistoricalSearchQuery(e.target.value);
-                          setHistoricalPage(1);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {expandedGroups.historical && (
-                    <div className="custom-table-container" style={{ borderTop: '1px solid var(--border-light)', borderRadius: '0' }}>
-                      <div style={{ position: 'relative' }}>
-                        {loadingHistorical && (
-                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,11,24,0.5)', zIndex: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <Loader size={20} className="animate-spin" />
-                          </div>
-                        )}
-                        <table className="custom-table">
-                          {renderTableHeaders()}
-                          {renderRows(historicalCpts, true)}
-                        </table>
+                return (
+                  <div key={key} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+                    <div
+                      onClick={() => setBatchExpanded(prev => ({ ...prev, [key]: !prev[key] }))}
+                      style={{
+                        padding: '12px 16px',
+                        background: 'var(--bg-card)',
+                        borderLeft: '4px solid ' + (batch.termination_date === null ? 'var(--color-blue)' : 'var(--color-red)'),
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+                        {isExpanded ? <ChevronUp size={18} style={{ color: 'var(--color-blue)' }} /> : <ChevronDown size={18} style={{ color: 'var(--text-secondary)' }} />}
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                          {title}
+                        </h4>
+                        <span style={{ fontSize: '0.75rem', padding: '2px 10px', background: 'var(--bg-subtab)', borderRadius: '12px', color: 'var(--text-secondary)', fontWeight: '600', border: '1px solid var(--border-light)' }}>
+                          {totalCount} total codes
+                        </span>
                       </div>
-                      {renderPagination(historicalPage, historicalRowsPerPage, historicalTotalCount, setHistoricalPage, setHistoricalRowsPerPage)}
+                      <div style={{ position: 'relative', width: '300px' }} onClick={e => e.stopPropagation()}>
+                        <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--text-muted)' }} />
+                        <input
+                          type="text"
+                          placeholder="Search codes..."
+                          className="date-range-selector"
+                          style={{ width: '100%', paddingLeft: '32px', height: '32px', fontSize: '0.85rem' }}
+                          value={search}
+                          onChange={(e) => {
+                            setBatchSearchQuery(prev => ({ ...prev, [key]: e.target.value }));
+                            setBatchPage(prev => ({ ...prev, [key]: 1 }));
+                          }}
+                        />
+                      </div>
                     </div>
-                  )}
-                </div>
+                    
+                    {isExpanded && (
+                      <div className="custom-table-container" style={{ borderTop: '1px solid var(--border-light)', borderRadius: '0' }}>
+                        <div style={{ position: 'relative' }}>
+                          {isLoading && (
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,11,24,0.5)', zIndex: 5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                              <Loader size={20} className="animate-spin" />
+                            </div>
+                          )}
+                          <table className="custom-table">
+                            {renderTableHeaders()}
+                            {renderRows(data, batch.termination_date !== null)}
+                          </table>
+                        </div>
+                        {renderPagination(page, 10, totalCount, (newPage) => setBatchPage(prev => ({ ...prev, [key]: newPage })), () => {})}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               </div>
             );
