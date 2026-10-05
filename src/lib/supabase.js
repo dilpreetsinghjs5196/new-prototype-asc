@@ -37,6 +37,7 @@ export const db = {
         const { data, error } = await supabase
             .from('cpt_codes')
             .select('*')
+            .is('termination_date', null)
             .order('code', { ascending: true })
             .range(page * pageSize, (page + 1) * pageSize - 1);
 
