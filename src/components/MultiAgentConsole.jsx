@@ -17,26 +17,21 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTime, setSelectedTime] = useState('08:00');
   
-  // Set defaults when props load if not set
-  React.useEffect(() => {
-    if (!patientName && patients.length > 0) {
-       handlePatientChange(patients[0].id);
-    }
-  }, [patients]);
-  
-  React.useEffect(() => {
-    if (selectedCpts.length === 0 && cptCodes && cptCodes.length > 0) {
-       handleCptChange(cptCodes[0].code);
-    }
-  }, [cptCodes]);
+  // Removed auto-filling defaults on load as per user request
   
   const handlePatientChange = (id) => {
+    if (!id) {
+       setPatientName('');
+       setMrn('');
+       return;
+    }
     const p = patients.find(x => String(x.id) === String(id));
     if (p) {
        setPatientName(p.name || 'Unknown Patient');
        setMrn(p.mrn || `MRN-${p.id}`);
     }
   };
+
   
   const handleCptChange = (code) => {
     const c = cptCodes.find(x => String(x.code) === String(code));
@@ -245,7 +240,8 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div>
             <label className="styled-label" style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Select Patient</label>
-            <select className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} disabled={isRunning} onChange={(e) => handlePatientChange(e.target.value)}>
+            <select className="date-range-selector" style={{ width: '100%', height: '36px', padding: '0 10px', marginTop: '4px' }} disabled={isRunning} value={patients.find(p => p.name === patientName)?.id || ""} onChange={(e) => handlePatientChange(e.target.value)}>
+               <option value="">-- Select Patient --</option>
                {patients.map(p => (
                  <option key={p.id} value={p.id}>{p.name || 'Unknown Patient'} ({p.mrn || p.id})</option>
                ))}
@@ -277,9 +273,12 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
                 }}
               />
               <datalist id="cpt-codes-list">
-                 {cptCodes && cptCodes.map(c => (
-                   <option key={c.code} value={`${c.code} - ${c.description || 'Procedure'}`} />
-                 ))}
+                 {cptCodes && cptCodes.map(c => {
+                   const priceStr = c.gross_charge ? ` - $${c.gross_charge}` : '';
+                   return (
+                     <option key={c.code} value={`${c.code} - ${c.description || 'Procedure'}${priceStr}`} />
+                   );
+                 })}
               </datalist>
             </div>
           <div style={{ gridColumn: '1 / -1' }}>
@@ -287,7 +286,7 @@ export default function MultiAgentConsole({ surgeries, cptCodes, patients = [], 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px', minHeight: '36px', padding: '6px', border: '1px solid var(--border-light)', borderRadius: '6px', backgroundColor: 'var(--bg-input)' }}>
               {selectedCpts.map(c => (
                  <span key={c.code} style={{ backgroundColor: 'var(--color-blue)', color: 'white', padding: '4px 10px', borderRadius: '16px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                   {c.code} - {c.description || 'Procedure'}
+                   {c.code} - {c.description || 'Procedure'} {c.gross_charge ? `- $${c.gross_charge}` : ''}
                    <button onClick={() => removeCpt(c.code)} disabled={isRunning} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: isRunning ? 'not-allowed' : 'pointer', padding: '0', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
                  </span>
               ))}
